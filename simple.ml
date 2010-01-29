@@ -13,9 +13,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(** API *)
+(** Sequential implementation *)
 
-(** The sequential implementation (to be used as a reference) *)
-module Simple : sig
 
-end
+
