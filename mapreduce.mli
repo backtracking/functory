@@ -18,4 +18,11 @@
 (** The sequential implementation (to be used as a reference) *)
 module Simple : sig
 
+  val map_reduce :
+    map:('a -> 'b list) ->
+    reduce:('c -> 'b -> 'c) -> 
+    'c ->
+    'a list -> 
+    'c
+
 end
