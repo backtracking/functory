@@ -20,3 +20,4 @@ let map_reduce ~map ~reduce acc l =
     (fun acc x -> List.fold_left reduce acc (map x))
     acc l
 
+let map = List.map

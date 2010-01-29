@@ -25,4 +25,13 @@ module Simple : sig
     'a list -> 
     'c
 
+  val map : ('a -> 'b) -> 'a list -> 'b list
+
+end
+
+(** Several cores on the same machine *)
+module Cores : sig
+
+  val map : ('a -> 'b) -> 'a list -> 'b list
+
 end
