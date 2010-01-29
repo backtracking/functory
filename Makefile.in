@@ -79,6 +79,12 @@ version.ml: Makefile
 	echo "let version = \""$(VERSION)"\"" > version.ml
 	echo "let date = \""`date`"\"" >> version.ml
 
+# tests
+#######
+
+tests/%/a.out: tests/%/main.ml
+	cd tests/$*; $(OCAMLOPT) -I ../.. mapreduce.cmxa main.ml
+
 # installation
 ##############
 
