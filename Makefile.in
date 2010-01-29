@@ -42,6 +42,8 @@ OFLAGS = $(INCLUDES) -for-pack Mapreduce
 # main target
 #############
 
+NAME = mapreduce
+
 CMA  = mapreduce.cma
 CMXA = mapreduce.cmxa
 
@@ -97,9 +99,9 @@ install-opt:
 # documentation
 ###############
 
-DOCFILES=manual.ps manual.html
-
-doc: $(DOCFILES)
+doc: mapreduce.mli
+	mkdir -p doc
+	ocamldoc -html -hide Mapreduce -d doc mapreduce.mli
 
 # export
 ########
@@ -110,9 +112,9 @@ TAR=$(EXPORTDIR).tar
 FTP = $$HOME/ftp/$(NAME)
 WWW = $$HOME/WWW/$(NAME)
 
-FILES = *.ml* $(NAME).1 manual.tex	     \
+FILES = *.ml* \
 	Makefile.in configure configure.in   \
-	.depend README INSTALL COPYING GPL CHANGES
+	.depend README.txt LICENSE
 
 export: source binary export-doc
 	cp README COPYING GPL CHANGES $(FTP)
@@ -138,14 +140,6 @@ binary: $(NAME).$(OCAMLBEST) $(DOCFILES)
 	cp $(NAME).$(OCAMLBEST) export/$(BINARY)/$(NAME)
 	(cd export; tar czf $(BINARY).tar.gz $(BINARY))
 	cp export/$(BINARY).tar.gz $(FTP)
-
-# literate programming
-######################
-
-SOURCES = 
-
-$(NAME).tex: $(SOURCES)
-	$(OCAMLWEB) -o $@ $^
 
 # generic rules
 ###############

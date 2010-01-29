@@ -2,3 +2,4 @@ Makefile autom4te.cache config.status configure
 .depend
 version.ml
 mapreduce.cma mapreduce.cmxa
+doc

@@ -13,7 +13,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(** API *)
+(** Map/Reduce Paradigm *)
 
 (** The sequential implementation (to be used as a reference) *)
 module Simple : sig
