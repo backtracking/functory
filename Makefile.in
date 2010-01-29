@@ -82,8 +82,8 @@ version.ml: Makefile
 # tests
 #######
 
-tests/%/a.out: tests/%/main.ml
-	cd tests/$*; $(OCAMLOPT) -I ../.. mapreduce.cmxa main.ml
+tests/%/a.out: tests/%/main.ml mapreduce.cmxa
+	cd tests/$*; $(OCAMLOPT) -I ../.. unix.cmxa mapreduce.cmxa main.ml
 
 # installation
 ##############
@@ -187,7 +187,7 @@ binary: $(NAME).$(OCAMLBEST) $(DOCFILES)
 
 headers:
 	headache -c misc/headache_config.txt -h misc/header.txt \
-	 *.in README.txt *.mli *.ml 
+	 *.in README.txt *.mli *.ml tests/*/*.ml
 	./config.status
 
 # Emacs tags
