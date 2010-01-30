@@ -59,8 +59,9 @@ End:
        16 cores    2.17s
 
    17    simple 1m51.00s
-        4 cores   31.7s
+        4 cores   31.70s
         8 cores   17.83s
        16 cores   16.90s
+       17 cores   15.20s
 *)
 
