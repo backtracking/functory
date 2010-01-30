@@ -48,3 +48,18 @@ End:
 *)
 
 
+(* benchmark results on moloch
+
+   N   implem.    real time 
+  -------------------------
+   16    simple   15.92s
+        4 cores    4.15s
+        8 cores    2.14s
+       16 cores    2.17s
+
+   17    simple 1m51.00s
+        4 cores   31.7s
+        8 cores   17.83s
+       16 cores   16.90s
+*)
+
