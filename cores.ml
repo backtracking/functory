@@ -55,6 +55,7 @@ module Make(P : sig val ncores : int end) = struct
       while !idle > 0 && not (Stack.is_empty todo) do
 	let t = Stack.pop todo in
 	let w = create_worker (fun (_,x) -> f x) t in
+	eprintf "master: started worker %d@." w.pid;
 	Hashtbl.add workers w.pid w;
 	decr idle
       done;
