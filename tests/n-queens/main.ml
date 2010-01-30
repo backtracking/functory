@@ -15,7 +15,8 @@
 
 (* Number of solutions to the n-queens puzzle using Map/Reduce *)
 
-open Mapreduce.Simple
+open Mapreduce.Cores
+include Make(struct let ncores = 1 end)
 
 let rec t a b c count =
   if a > 0 then

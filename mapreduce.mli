@@ -32,6 +32,10 @@ end
 (** Several cores on the same machine *)
 module Cores : sig
 
-  val map : ('a -> 'b) -> 'a list -> 'b list
+  module Make(P : sig val ncores : int end) : sig
+
+    val map : ('a -> 'b) -> 'a list -> 'b list
+
+  end
 
 end

@@ -20,7 +20,13 @@ let long_computation () =
   sleep 3;
   42
 
-let process (f : 'a -> 'b) (x : 'a) : 'b =
+type 'a worker = {
+  pid : int;
+  file : string; (* local filename that will contain the result *)
+  task : 'a;
+}
+
+let create_worker (f : 'a -> 'b) (x : 'a) : 'a worker =
   let file = Filename.temp_file "result" "" in
   match fork () with
     | 0 -> (* child *)
@@ -30,17 +36,44 @@ let process (f : 'a -> 'b) (x : 'a) : 'b =
 	close_out c;
 	exit 0
     | pid -> (* parent *)
-	match wait () with
-	  | p, WEXITED e ->
-	      assert (p = pid);
-	      printf "PID %d: exit code = %d@." p e;
-	      let c = open_in file in
-	      let r = input_value c in
-	      close_in c;
-	      r
-	  | p, _ ->
-	      printf "PID %d: killed or stopped!@." p;
-	      failwith "process"
+	{ pid = pid;
+	  file = file;
+	  task = x }
 
-(* TODO *)
-let map = List.map
+module Make(P : sig val ncores : int end) = struct
+
+  let map (f : 'a -> 'b) (l : 'a list) : 'b list = 
+    let tasks = let i = ref 0 in List.map (fun x -> incr i; (!i, x)) l in
+    let todo = Stack.create () in
+    List.iter (fun x -> Stack.push x todo) tasks;
+    let towait = ref (Stack.length todo) in
+    let idle = ref P.ncores in
+    let results = Hashtbl.create 17 in (* task id -> result *)
+    let workers = Hashtbl.create 17 in (* pid -> worker *)
+    while not (Stack.is_empty todo) || !towait > 0 do
+      (* if possible, start new workers *)
+      while !idle > 0 && not (Stack.is_empty todo) do
+	let t = Stack.pop todo in
+	let w = create_worker (fun (_,x) -> f x) t in
+	Hashtbl.add workers w.pid w;
+	decr idle
+      done;
+      (* otherwise, wait for results *)
+      match wait () with
+	| p, WEXITED e ->
+	    eprintf "master: got result from PID %d@." p;
+	    let w = Hashtbl.find workers p in (* TODO: make it more robust *)
+	    let c = open_in w.file in
+	    let r : 'b = input_value c in
+	    close_in c;
+	    Hashtbl.add results (fst w.task) r;
+	    incr idle;
+	    decr towait
+	| p, _ ->
+	    eprintf "master: PID %d killed or stopped!@." p;
+	    exit 1
+    done;
+    assert (Stack.is_empty todo && !towait = 0);
+    List.map (function (i,_) -> Hashtbl.find results i) tasks
+
+end
