@@ -16,28 +16,24 @@
 open Format
 open Unix
 
-let long_computation () =
-  sleep 3;
-  42
-
 type 'a worker = {
   pid : int;
-  file : string; (* local filename that will contain the result *)
+  file : file_descr; (* the pipe where to read the result from *)
   task : 'a;
 }
 
 let create_worker (f : 'a -> 'b) (x : 'a) : 'a worker =
-  let file = Filename.temp_file "result" "" in
+  let fin, fout = pipe () in
   match fork () with
     | 0 -> (* child *)
 	let r = f x in
-	let c = open_out file in
+	let c = out_channel_of_descr fout in
 	output_value c r;
 	close_out c;
 	exit 0
     | pid -> (* parent *)
 	{ pid = pid;
-	  file = file;
+	  file = fin;
 	  task = x }
 
 module Make(P : sig val ncores : int end) = struct
@@ -64,7 +60,7 @@ module Make(P : sig val ncores : int end) = struct
 	| p, WEXITED e ->
 	    eprintf "master: got result from PID %d@." p;
 	    let w = Hashtbl.find workers p in (* TODO: make it more robust *)
-	    let c = open_in w.file in
+	    let c = in_channel_of_descr w.file in
 	    let r : 'b = input_value c in
 	    close_in c;
 	    Hashtbl.add results (fst w.task) r;
