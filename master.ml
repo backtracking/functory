@@ -1,22 +1,26 @@
 
 (** The generic master implementation *)
 
-(** The master context is a notion of workers, tasks and jobs *)
+(** The master requires a notion of workers, tasks and jobs *)
+
+module type WORKER = sig 
+  type t 
+  val hash : t -> int 
+  val equal : t -> t -> bool 
+end
+
 module type CONTEXT = sig
-  module Worker : sig 
-    type t 
-    val hash : t -> int 
-    val equal : t -> t -> bool 
-  end
+  type worker
+
   type 'a task
 
   type 'a job
-  val create_job : Worker.t -> 'a task -> 'a job
+  val create_job : worker -> 'a task -> 'a job
     (** We create a job by assigning a given task to a given worker.
         It is guaranted that each worker will be assigned only one task at
         a time. *)
 
-  val wait : unit -> Worker.t list
+  val wait : unit -> worker list
     (** When the master is idle, it waits for worker completions using this
 	function. This function must return only workers for which a task was
 	assigned and is now completed. *)
@@ -27,9 +31,9 @@ module type CONTEXT = sig
 end
 
 (** Given a context, we provide a master implementation *)
-module Make(C : CONTEXT) : sig 
+module Make(W : WORKER)(C : CONTEXT with type worker = W.t) : sig 
 
-  val run : C.Worker.t list -> 'a C.task list -> unit
+  val run : C.worker list -> 'a C.task list -> unit
     (** Runs the master with the given list of workers and tasks.
 	It returns only when there are not more pending tasks. *)
 
