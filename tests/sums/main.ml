@@ -13,32 +13,20 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(** Map/Reduce Paradigm *)
+include Mapreduce.Cores.Make(struct let ncores = 2 end)
+(* open Mapreduce.Simple *)
 
-(** The sequential implementation (to be used as a reference) *)
-module Simple : sig
+let map x = [x]
 
-  val map_reduce :
-    map:('a -> 'b list) ->
-    reduce:('c -> 'b -> 'c) -> 
-    'c ->
-    'a list -> 
-    'c
+let reduce = (+)
 
-  val map : ('a -> 'b) -> 'a list -> 'b list
+let () =
+  let r = fold ~map ~reduce 0 [1;2;3;4;5] in
+  Format.printf "%d@." r
 
-end
 
-(** Several cores on the same machine *)
-module Cores : sig
-
-  module Make(P : sig val ncores : int end) : sig
-
-    val map : ('a -> 'b) -> 'a list -> 'b list
-
-    val fold : 
-      map:('a -> 'b list) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
-
-  end
-
-end
+(*
+Local Variables: 
+compile-command: "make -C ../.. tests/sums/a.out"
+End: 
+*)

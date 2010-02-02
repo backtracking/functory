@@ -54,7 +54,7 @@ opt: $(CMA) $(CMXA)
 # bytecode and native-code compilation
 ######################################
 
-CMO = simple.cmo cores.cmo
+CMO = simple.cmo master.cmo cores.cmo
 CMX = $(CMO:.cmo=.cmx)
 
 GENERATED = version.ml
@@ -82,8 +82,8 @@ version.ml: Makefile
 # tests
 #######
 
-test: tests/n-queens/a.out
-	tests/n-queens/a.out
+test: tests/sums/a.out
+	tests/sums/a.out
 
 tests/%/a.out: tests/%/main.ml mapreduce.cmxa
 	cd tests/$*; $(OCAMLOPT) -I ../.. unix.cmxa mapreduce.cmxa main.ml

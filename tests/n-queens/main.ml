@@ -45,7 +45,7 @@ let test_n_queens q =
   let r = n_queens q in
   Format.printf "done (answer = %d)@." r
 
-let () = test_n_queens 15
+let () = test_n_queens 12
 
 (*
 Local Variables: 
