@@ -27,11 +27,13 @@ let create_worker w (f : 'a -> 'b) (x : 'a) : 'a job =
   let fin, fout = pipe () in
   match fork () with
     | 0 -> (* child *)
+	close fin;
 	let r = f x in
 	let c = out_channel_of_descr fout in
 	output_value c r;
 	exit 0
     | pid -> (* parent *)
+	close fout;
 	{ worker = w;
 	  pid = pid;
 	  file = fin;

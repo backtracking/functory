@@ -82,7 +82,8 @@ version.ml: Makefile
 # tests
 #######
 
-test: tests/sums/a.out
+test: tests/n-queens/a.out tests/sums/a.out
+	tests/n-queens/a.out
 	tests/sums/a.out
 
 tests/%/a.out: tests/%/main.ml mapreduce.cmxa
