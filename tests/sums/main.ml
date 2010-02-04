@@ -17,12 +17,13 @@ open Mapreduce.Cores
 let () = set_number_of_cores 2
 (* open Mapreduce.Simple *)
 
-let map x = [x]
+let map x = [x+1]
 
 let reduce = (+)
 
 let () =
   let r = fold ~map ~reduce 0 [1;2;3;4;5] in
+  assert (r = 20);
   Format.printf "%d@." r
 
 

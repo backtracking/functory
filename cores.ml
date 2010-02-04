@@ -45,6 +45,7 @@ let set_number_of_cores n = ncores := n
 let rec listij acc i j = if i > j then acc else listij (j :: acc) i (j-1)
 let workers () = listij [] 1 !ncores
 
+(* the generic master *)
 let master ~(f : 'a -> 'b) ~(handle : 'a job -> 'b -> 'a list) tasks =
   let jobs = Hashtbl.create 17 in (* PID -> job *)
   Master.run
@@ -64,6 +65,9 @@ let master ~(f : 'a -> 'b) ~(handle : 'a job -> 'b -> 'a list) tasks =
 		 Format.eprintf "master: ** PID %d killed or stopped! **@." p;
 		 exit 1)
     (workers ()) tasks
+
+
+(* and its instances *)
 
 let map f l =
   let tasks = let i = ref 0 in List.map (fun x -> incr i; !i,x) l in

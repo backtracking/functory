@@ -54,7 +54,7 @@ opt: $(CMA) $(CMXA)
 # bytecode and native-code compilation
 ######################################
 
-CMO = control.cmo simple.cmo master.cmo cores.cmo
+CMO = control.cmo simple.cmo master.cmo cores.cmo binary.cmo
 CMX = $(CMO:.cmo=.cmx)
 
 GENERATED = version.ml
