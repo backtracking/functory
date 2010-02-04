@@ -43,7 +43,7 @@ val get_int31 : string -> int -> int * int
   (** [get_int31 s pos] decodes four bytes in [s] at the position [pos] 
       and return a 31 bits integer along with the new position in [s]. *)
 
-val get_string : string -> int -> int -> string * int
-  (** [get_string s pos len] decodes [len] bytes in [s] at the position [pos] 
-      and return a string along with the new position in [s]. *)
+val get_string : string -> int -> string * int
+  (** [get_string s pos] decodes a string in [s] at the position [pos] 
+      and returns it along with the new position in [s]. *)
 

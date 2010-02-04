@@ -46,11 +46,7 @@ let get_int31 s pos =
   let x =   c1 lor (c2 lsl 8) lor (c3 lsl 16) lor (c4 lsl 24) in
   x, pos
 
-let get_string s pos len =
+let get_string s pos =
+  let len, pos = get_int31 s pos in
   String.sub s pos len, pos+len
 
-(*
-Local Variables: 
-compile-command: "unset LANG; make -C .."
-End: 
-*)
