@@ -32,13 +32,19 @@ end
 (** Several cores on the same machine *)
 module Cores : sig
 
-  module Make(P : sig val ncores : int end) : sig
+  val set_number_of_cores : int -> unit
 
-    val map : ('a -> 'b) -> 'a list -> 'b list
-
-    val fold : 
-      map:('a -> 'b list) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
-
-  end
+  val map : ('a -> 'b) -> 'a list -> 'b list
+    
+  val fold : 
+    map:('a -> 'b list) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
 end
+
+module Control : sig
+
+  val set_debug : bool -> unit
+    (** set the debug flag *)
+
+end
+

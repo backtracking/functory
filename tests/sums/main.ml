@@ -13,7 +13,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
-include Mapreduce.Cores.Make(struct let ncores = 2 end)
+open Mapreduce.Cores
+let () = set_number_of_cores 2
 (* open Mapreduce.Simple *)
 
 let map x = [x]
