@@ -18,7 +18,9 @@ let () =
   bind sock sockaddr;
   listen sock 3
 
-let compute s = s ^ s
+let compute s = 
+  let rec fib n = if n <= 1 then 1 else fib (n-1) + fib (n-2) in
+  string_of_int (fib (int_of_string s))
 
 type running_task = {
   pid : int;

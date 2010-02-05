@@ -29,6 +29,6 @@ let sockaddr = ADDR_INET (server_addr, !port)
 
 let () = 
   Network.declare_workers sockaddr 2;
-  let l = Network.map (fun _ -> "") ["a"; "b"; "c"] in
+  let l = Network.map (fun _ -> "") ["10"; "12"; "15"] in
   List.iter (fun s -> printf "%s@." s) l
 
