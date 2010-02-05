@@ -16,21 +16,25 @@ module Master : sig
     | Assign of int * string (* id, task *)
     | Kill of int            (* id *)
 
-  val buf : Buffer.t -> t -> unit
+  val send : Unix.file_descr -> t -> unit
 
-  val get : string -> int -> t * int
+  val receive : Unix.file_descr -> t
+
+  val print : Format.formatter -> t -> unit
 
 end
 
 module Worker : sig
 
   type t =
-    | Ack of int                (* id *)
+    | Started of int            (* id *)
     | Completed of int * string (* id, result *)
     | Aborted of int            (* id *)
 
-  val buf : Buffer.t -> t -> unit
+  val send : Unix.file_descr -> t -> unit
 
-  val get : string -> int -> t * int
+  val receive : Unix.file_descr -> t
+
+  val print : Format.formatter -> t -> unit
 
 end

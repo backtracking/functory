@@ -43,7 +43,7 @@ let get_int31 s pos =
   let c2, pos = get_uint8 s pos in
   let c3, pos = get_uint8 s pos in
   let c4, pos = get_uint8 s pos in
-  let x =   c1 lor (c2 lsl 8) lor (c3 lsl 16) lor (c4 lsl 24) in
+  let x = c1 lor (c2 lsl 8) lor (c3 lsl 16) lor (c4 lsl 24) in
   x, pos
 
 let get_string s pos =
