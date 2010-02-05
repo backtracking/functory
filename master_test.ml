@@ -23,12 +23,17 @@ let server_addr =
       eprintf "%s : Unknown server@." !server ;
       exit 2
 
-let () = eprintf "server_addr = %s@." (string_of_inet_addr server_addr)
+(* let () = eprintf "server_addr = %s@." (string_of_inet_addr server_addr) *)
 	
 let sockaddr = ADDR_INET (server_addr, !port) 
 
+let (++) = Int64.add
+
 let () = 
-  Network.declare_workers sockaddr 2;
-  let l = Network.map (fun _ -> "") ["10"; "12"; "15"] in
-  List.iter (fun s -> printf "%s@." s) l
+  Network.declare_workers sockaddr 4;
+  let l = 
+    Network.map (fun _ -> "") ["10"; "45"; "20"; "30"; "15"] 
+  in
+  let v = List.fold_left (fun acc s -> acc ++ Int64.of_string s) 0L l  in
+  printf "total = %Ld@." v
 

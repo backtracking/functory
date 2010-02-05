@@ -68,7 +68,7 @@ $(CMXA): mapreduce.cmx
 
 mapreduce.cmo: mapreduce.cmi
 mapreduce.cmo: $(CMO)
-	$(OCAMLC) $(INCLUDES) -pack -o $@ $(CMO)
+	$(OCAMLC) $(BFLAGS) -pack -o $@ $(CMO)
 
 mapreduce.cmx: mapreduce.cmi
 mapreduce.cmx: $(CMX)
@@ -88,7 +88,7 @@ MTCMO = master_test.cmo
 MTCMX = $(MTCMO:.cmo=.cmx)
 
 master_test.byte: $(CMA) $(MTCMO)
-	$(OCAMLC) $(INCLUDES) -o $@ unix.cma $^
+	$(OCAMLC) $(BFLAGS) -o $@ unix.cma $^
 
 master_test.opt: $(CMXA) $(MTCMX)
 	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $^

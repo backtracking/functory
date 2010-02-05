@@ -4,3 +4,4 @@ version.ml
 mapreduce.cma mapreduce.cmxa
 doc
 master_test.opt worker_test.opt
+master_test.byte worker_test.byte

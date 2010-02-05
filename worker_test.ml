@@ -75,6 +75,7 @@ let server_fun cin cout =
 	  close_in c;
 	  Worker.send fdout (Worker.Completed (id, r))
       | _, (WSIGNALED _ | WSTOPPED _) -> (* failure *)
+	  Hashtbl.remove pids id;
 	  Worker.send fdout (Worker.Aborted id)
   in
   try 
