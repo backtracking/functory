@@ -32,11 +32,19 @@ let generic_send buf fd t =
 
 let read_buffer = String.create 1024
 
+let rec read_n_bytes fd s ofs len =
+  let n = Unix.read fd s ofs len in
+  (* eprintf "read: len=%d got=%d@." len n; *)
+  if n < 0 then begin eprintf "read_n_bytes: couldn't read@."; exit 1 end;
+  if n = 0 then raise End_of_file;
+  assert (n = len) (* FIXME: wait for other bytes to be available *)
+
 let generic_receive get fd = 
-  assert (Unix.read fd read_buffer 0 4 = 4);
+  read_n_bytes fd read_buffer 0 4;
   let len, _ = get_int31 read_buffer 0 in
+  (* eprintf "generic_receive: len=%d@." len; *)
   let s = if len <= 1024 then read_buffer else String.create len in
-  assert (Unix.read fd s 0 len = len);
+  read_n_bytes fd s 0 len;
   let t, _ = get s 0 in
   t
 

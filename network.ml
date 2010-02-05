@@ -27,14 +27,20 @@ let sockaddr = ADDR_INET (server_addr, !port)
 
 let master_test () =
   let ic,oc = open_connection sockaddr in
+  at_exit (fun () -> shutdown_connection ic);
   let fdin = descr_of_in_channel ic in
   let fdout = descr_of_out_channel oc in
-  Master.send fdout (Master.Assign (3, "hello"));
-  let _,_,_ = select [fdin] [] [] (-1.) in
-  let m = Worker.receive fdin in
-  eprintf "received: %a@." Worker.print m;
-  sleep 2;
-  Master.send fdout (Master.Kill 3);
-  shutdown_connection ic
-
-
+  let id = ref 0 in
+  while true do
+    incr id;
+    let msg = "hello " ^ string_of_int (Random.int 1000) in
+    Master.send fdout (Master.Assign (!id, msg));
+    let l,_,_ = select [fdin] [] [] 1. in
+    List.iter
+      (fun _ -> 
+	 let m = Worker.receive fdin in
+	 eprintf "received: %a@." Worker.print m) l;
+  done;
+(*   Master.send fdout (Master.Kill 3); *)
+(*    *)
+  ()

@@ -80,8 +80,9 @@ WTCMX = $(WTCMO:.cmo=.cmx)
 worker_test.byte: $(CMA) $(WTCMO)
 	$(OCAMLC) $(INCLUDES) -o $@ unix.cma $^
 
+worker_test.cmx: mapreduce.cmi
 worker_test.opt: $(CMXA) $(WTCMX)
-	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $^
+	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $(CMXA) $(WTCMX)
 
 MTCMO = master_test.cmo
 MTCMX = $(MTCMO:.cmo=.cmx)
