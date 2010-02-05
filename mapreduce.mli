@@ -43,7 +43,10 @@ end
 
 module Network : sig
 
-  val master_test : unit -> unit
+  val declare_workers : Unix.sockaddr -> int -> unit
+    (** [declare_workers s n] declares [n] workers on machine [s] *)
+
+  val map : (string -> string) -> string list -> string list
 
 end
 

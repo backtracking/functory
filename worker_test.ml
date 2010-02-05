@@ -10,9 +10,6 @@ let () =
     (fun _ -> ())
     "worker_test: usage:"
 
-(* let my_address = *)
-(*   (Unix.gethostbyname (Unix.gethostname ())).Unix.h_addr_list.(0) *)
-
 let sock = socket PF_INET SOCK_STREAM 0
 
 let () = 
