@@ -10,13 +10,13 @@ let () =
     (fun _ -> ())
     "worker_test: usage:"
 
-let my_address =
-  (Unix.gethostbyname (Unix.gethostname ())).Unix.h_addr_list.(0)
+(* let my_address = *)
+(*   (Unix.gethostbyname (Unix.gethostname ())).Unix.h_addr_list.(0) *)
 
 let sock = socket PF_INET SOCK_STREAM 0
 
 let () = 
-  let sockaddr = Unix.ADDR_INET (my_address, !port) in
+  let sockaddr = Unix.ADDR_INET (inet_addr_any, !port) in
   setsockopt sock SO_REUSEADDR true;
   bind sock sockaddr;
   listen sock 3
