@@ -1,6 +1,7 @@
 
 open Format
 open Unix
+open Mapreduce.Protocol
 
 let port = ref 51000
 let () = 
@@ -17,12 +18,18 @@ let sockaddr =
 
 let serv_fun cin cout =
   printf "new connection@.";
+  let fdin = descr_of_in_channel cin in
+  let fdout = descr_of_out_channel cout in
+  let receive_message _ = 
+    let m = Master.receive fdin in
+    printf "received: %a@." Master.print m;
+    sleep 3;
+    Worker.send fdout (Worker.Started 42)
+  in
   try 
     while true do    
-      let s = input_line cin in 
-      printf "received %S@." s;
-      Printf.fprintf cout "%s\n" s;
-      flush cout
+      let l,_,_ = select [fdin] [] [] 1. in
+      List.iter receive_message l
     done
   with 
     | End_of_file -> printf "End of text@."; exit 0 
