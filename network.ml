@@ -22,6 +22,8 @@ let server_addr =
     with Not_found ->
       eprintf "%s : Unknown server@." !server ;
       exit 2
+
+let () = eprintf "server_addr = %s@." (string_of_inet_addr server_addr)
 	
 let sockaddr = ADDR_INET (server_addr, !port) 
 

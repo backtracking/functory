@@ -13,8 +13,13 @@ let () =
 let my_address =
   (Unix.gethostbyname (Unix.gethostname ())).Unix.h_addr_list.(0)
 
-let sockaddr = 
-  Unix.ADDR_INET (my_address, !port)
+let sock = socket PF_INET SOCK_STREAM 0
+
+let () = 
+  let sockaddr = Unix.ADDR_INET (my_address, !port) in
+  setsockopt sock SO_REUSEADDR true;
+  bind sock sockaddr;
+  listen sock 3
 
 let compute s = s ^ s
 
@@ -23,7 +28,7 @@ type running_task = {
   file : file_descr;
 }
 
-let serv_fun cin cout =
+let server_fun cin cout =
   printf "new connection@.";
   let fdin = descr_of_in_channel cin in
   let fdout = descr_of_out_channel cout in
@@ -87,5 +92,18 @@ let serv_fun cin cout =
     | e -> 
 	printf "anomaly: %s@." (Printexc.to_string e); exit 1
 
-let () = establish_server serv_fun sockaddr
-
+let () = 
+  while true do
+    let (s, caller) = Unix.accept sock in 
+    match Unix.fork() with
+      | 0 -> 
+	  if Unix.fork() <> 0 then exit 0; 
+          let inchan = Unix.in_channel_of_descr s 
+          and outchan = Unix.out_channel_of_descr s in 
+	  server_fun inchan outchan;
+          close_in inchan;
+          close_out outchan;
+          exit 0
+      | id -> 
+	  Unix.close s; ignore(Unix.waitpid [] id)
+  done 
