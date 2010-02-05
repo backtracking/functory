@@ -3,3 +3,4 @@ Makefile autom4te.cache config.status configure
 version.ml
 mapreduce.cma mapreduce.cmxa
 doc
+master_test.opt worker_test.opt

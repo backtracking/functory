@@ -48,13 +48,14 @@ CMA  = mapreduce.cma
 CMXA = mapreduce.cmxa
 
 all: $(OCAMLBEST)
-byte: $(CMA)
-opt: $(CMA) $(CMXA)
+byte: $(CMA) worker_test.byte master_test.byte
+opt: $(CMA) $(CMXA) worker_test.opt master_test.opt
 
 # bytecode and native-code compilation
 ######################################
 
-CMO = control.cmo simple.cmo master.cmo cores.cmo binary.cmo protocol.cmo
+CMO = control.cmo simple.cmo master.cmo cores.cmo binary.cmo protocol.cmo \
+      network.cmo
 CMX = $(CMO:.cmo=.cmx)
 
 GENERATED = version.ml
@@ -72,6 +73,24 @@ mapreduce.cmo: $(CMO)
 mapreduce.cmx: mapreduce.cmi
 mapreduce.cmx: $(CMX)
 	$(OCAMLOPT) $(INCLUDES) -pack -o $@ $(CMX)
+
+WTCMO = worker_test.cmo
+WTCMX = $(WTCMO:.cmo=.cmx)
+
+worker_test.byte: $(WTCMO)
+	$(OCAMLC) $(INCLUDES) -o $@ unix.cma $(WTCMO)
+
+worker_test.opt: $(WTCMX)
+	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $(WTCMX)
+
+MTCMO = master_test.cmo
+MTCMX = $(MTCMO:.cmo=.cmx)
+
+master_test.byte: $(CMA) $(MTCMO)
+	$(OCAMLC) $(INCLUDES) -o $@ unix.cma $^
+
+master_test.opt: $(CMXA) $(MTCMX)
+	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $^
 
 VERSION=0.1
 

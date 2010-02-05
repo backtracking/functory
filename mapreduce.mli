@@ -41,6 +41,12 @@ module Cores : sig
 
 end
 
+module Network : sig
+
+  val master_test : unit -> unit
+
+end
+
 module Control : sig
 
   val set_debug : bool -> unit
