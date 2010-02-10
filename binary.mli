@@ -31,6 +31,8 @@ val buf_string :  Buffer.t -> string -> unit
   (** [buf_string b s] encodes a string in the buffer [b].
       The string length must fit into a signed 31-bits integer. *)
 
+val buf_string_list :  Buffer.t -> string list -> unit
+
 exception IncompleteMessage
 
 (** Decoding functions *)
@@ -47,3 +49,4 @@ val get_string : string -> int -> string * int
   (** [get_string s pos] decodes a string in [s] at the position [pos] 
       and returns it along with the new position in [s]. *)
 
+val get_string_list : string -> int -> string list * int

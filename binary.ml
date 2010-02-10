@@ -31,6 +31,10 @@ let buf_string buf s =
   buf_int31 buf (String.length s);
   Buffer.add_string buf s
 
+let buf_string_list buf l =
+  buf_int31 buf (List.length l);
+  List.iter (buf_string buf) l
+
 (* decoding *)
 
 exception IncompleteMessage
@@ -49,4 +53,15 @@ let get_int31 s pos =
 let get_string s pos =
   let len, pos = get_int31 s pos in
   String.sub s pos len, pos+len
+
+let get_string_list s pos =
+  let len, pos = get_int31 s pos in
+  let rec read acc pos n = 
+    if n = 0 then
+      List.rev acc, pos
+    else 
+      let s, pos = get_string s pos in
+      read (s :: acc) pos (n - 1)
+  in
+  read [] pos len
 

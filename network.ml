@@ -213,6 +213,15 @@ let master ~(f : 'a -> 'b) ~(handle : 'a -> 'b -> 'a list) tasks =
 
 (* and its instances *)
 
+let encode_string_list l =
+  let buf = Buffer.create 1024 in
+  Binary.buf_string_list buf l;
+  Buffer.contents buf
+
+let decode_string_list s =
+  let l, _ = Binary.get_string_list s 0 in 
+  l
+
 let map f l =
   let is_worker = 
     try ignore (Sys.getenv "WORKER"); true with Not_found -> false 
@@ -221,7 +230,7 @@ let map f l =
     Worker.register_computation "f" f;
     let r = Worker.compute ~stop:true () in
     eprintf "worker: result is %S@." r;
-    [] (*TODO: decode *)
+    decode_string_list r
   end else begin
     let tasks = let i = ref 0 in List.map (fun x -> incr i; !i,"f",x) l in
     let results = Hashtbl.create 17 in (* index -> 'b *)
@@ -230,9 +239,9 @@ let map f l =
       ~handle:(fun (i,_,_) r -> Hashtbl.add results i r; [])
       tasks;
     let r = List.map (fun (i,_,_) -> Hashtbl.find results i) tasks in
-    (*TODO: encode *)
+    let res = encode_string_list r in
     List.iter
-      (fun w -> Protocol.Master.send w.fdout (Protocol.Master.Stop "res"))
+      (fun w -> Protocol.Master.send w.fdout (Protocol.Master.Stop res))
       !workers;
     r
   end
