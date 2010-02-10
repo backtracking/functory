@@ -48,9 +48,9 @@ CMA  = mapreduce.cma
 CMXA = mapreduce.cmxa
 
 all: $(OCAMLBEST)
-byte: $(CMA) worker_test.byte master_test.byte
-opt: $(CMA) $(CMXA) worker_test.opt master_test.opt
-	cp worker_test.opt ~
+byte: $(CMA) worker_test.byte master_test.byte test.byte
+opt: $(CMA) $(CMXA) worker_test.opt master_test.opt test.opt
+	cp worker_test.opt test.opt ~
 
 # bytecode and native-code compilation
 ######################################
@@ -92,6 +92,15 @@ master_test.byte: $(CMA) $(MTCMO)
 	$(OCAMLC) $(BFLAGS) -o $@ unix.cma $^
 
 master_test.opt: $(CMXA) $(MTCMX)
+	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $^
+
+TCMO = test.cmo
+TCMX = $(TCMO:.cmo=.cmx)
+
+test.byte: $(CMA) $(TCMO)
+	$(OCAMLC) $(BFLAGS) -o $@ unix.cma $^
+
+test.opt: $(CMXA) $(TCMX)
 	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $^
 
 VERSION=0.1

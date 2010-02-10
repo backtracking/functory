@@ -13,24 +13,11 @@ let () =
     (fun _ -> ())
     "usage"
 
-let server_addr =
-  try  
-    inet_addr_of_string !server 
-  with Failure "inet_addr_of_string" -> 
-    try 
-      (gethostbyname !server).h_addr_list.(0) 
-    with Not_found ->
-      eprintf "%s : Unknown server@." !server ;
-      exit 2
-
-(* let () = eprintf "server_addr = %s@." (string_of_inet_addr server_addr) *)
-	
-let sockaddr = ADDR_INET (server_addr, !port) 
 
 let (++) = Int64.add
 
 let () = 
-  Network.declare_workers sockaddr 4;
+  Network.declare_workers ~n:4 "moloch";
   let l = 
     Network.map (fun _ -> "") ["10"; "20"; "15"] 
   in

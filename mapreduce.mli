@@ -43,8 +43,9 @@ end
 
 module Network : sig
 
-  val declare_workers : Unix.sockaddr -> int -> unit
-    (** [declare_workers s n] declares [n] workers on machine [s] *)
+  val declare_workers : ?port:int -> ?n:int -> string -> unit
+    (** [declare_workers s] declares workers on machine [s];
+        the number of workers is [n] and defaults to 1 *)
 
   val map : (string -> string) -> string list -> string list
 

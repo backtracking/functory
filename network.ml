@@ -93,26 +93,42 @@ module Worker = struct
 	  printf "anomaly: %s@." (Printexc.to_string e); 
 	  exit 1
 
-  let compute ?(stop=false) ?(port=51000) () = 
-    let sock = socket PF_INET SOCK_STREAM 0 in
-    let sockaddr = Unix.ADDR_INET (inet_addr_any, port) in
-    setsockopt sock SO_REUSEADDR true;
-    bind sock sockaddr;
-    listen sock 3;
-    if stop then
+  (* sockets are allocated lazily *)
+  let sockets = Hashtbl.create 17
+
+(*   let () =  *)
+(*     at_exit  *)
+(*       (fun () -> *)
+(* 	 Hashtbl.iter *)
+(* 	   (fun _ s ->  *)
+(* 	      begin try  *)
+(* 		shutdown s SHUTDOWN_ALL *)
+(* 	      with e ->  *)
+(* 		eprintf "cannot shutdown socket: %s@." (Printexc.to_string e)  *)
+(* 	      end) *)
+(* 	   sockets) *)
+      
+  let get_socket port =
+    try
+      Hashtbl.find sockets port
+    with Not_found ->
+      let sock = socket PF_INET SOCK_STREAM 0 in
+      let sockaddr = Unix.ADDR_INET (inet_addr_any, port) in
+      setsockopt sock SO_REUSEADDR true;
+      bind sock sockaddr;
+      listen sock 3;
       let s, _ = Unix.accept sock in 
+      Hashtbl.add sockets port (sock, s);
+      sock, s
+
+  let compute ?(stop=false) ?(port=51000) () = 
+    let _, s = get_socket port in
+    if stop then begin
       let inchan = Unix.in_channel_of_descr s 
       and outchan = Unix.out_channel_of_descr s in 
-      let r = server_fun inchan outchan in
-      begin try 
-	shutdown s SHUTDOWN_ALL
-      with e -> 
-	eprintf "cannot shutdown socket: %s@." (Printexc.to_string e) 
-      end;
-      r
-    else begin
+      server_fun inchan outchan 
+    end else begin
       while true do
-	let (s, _) = Unix.accept sock in 
 	match Unix.fork() with
 	  | 0 -> 
 	      if Unix.fork() <> 0 then exit 0; 
@@ -124,7 +140,7 @@ module Worker = struct
               exit 0
 	  | id -> 
 	      Unix.close s; 
-	      ignore(Unix.waitpid [] id)
+	      ignore (Unix.waitpid [] id)
       done;
       assert false
     end
@@ -148,7 +164,21 @@ type logical_worker = {
 let workers = ref []
 let logical_workers = ref []
 
-let declare_workers a n = 
+let create_sock_addr name port =
+  let addr = 
+    try  
+      inet_addr_of_string name
+    with Failure "inet_addr_of_string" -> 
+      try 
+	(gethostbyname name).h_addr_list.(0) 
+      with Not_found ->
+	eprintf "%s : Unknown server@." name ;
+	exit 2
+  in
+  ADDR_INET (addr, port) 
+
+let declare_workers ?(port=51000) ?(n=1) s = 
+  let a = create_sock_addr s port in
   let w = { sockaddr = a; connected = false; fdin = stdin; fdout = stdout } in
   workers := w :: !workers;
   for i = 1 to n do 
