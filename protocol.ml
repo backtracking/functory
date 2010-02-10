@@ -57,15 +57,15 @@ module Master = struct
   type t = 
     | Assign of int * string * string (* id, function * argument *)
     | Kill of int                     (* id *)
-    | Stop
+    | Stop of string
 
   let print fmt = function
     | Assign (id, f, a) ->
 	fprintf fmt "assign %d f=%S a=%S" id f a
     | Kill id ->
 	fprintf fmt "kill %d" id
-    | Stop ->
-	fprintf fmt "stop"
+    | Stop s ->
+	fprintf fmt "stop result=%S" s
 
   let buf b = function
     | Assign (id, f, a) -> 
@@ -78,9 +78,10 @@ module Master = struct
 	buf_int31 b !magic_number;
 	buf_int8 b 2; (* 2 = kill *)
 	buf_int31 b id
-    | Stop ->
+    | Stop s ->
 	buf_int31 b !magic_number;
-	buf_int8 b 3 (* 3 = stop *)
+	buf_int8 b 3; (* 3 = stop *)
+	buf_string b s
 
   let send = generic_send buf
 
@@ -97,7 +98,8 @@ module Master = struct
 	  let id, pos = get_int31 s pos in
 	  Kill id, pos
       | 3 (* stop *) ->
-	  Stop, pos
+	  let r, pos = get_string s pos in
+	  Stop r, pos
       | _ ->
 	  raise BadProtocol
 

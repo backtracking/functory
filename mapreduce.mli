@@ -52,7 +52,7 @@ module Network : sig
 
     val register_computation : string -> (string -> string) -> unit
 
-    val compute : ?stop:bool -> ?port:int -> unit -> unit
+    val compute : ?stop:bool -> ?port:int -> unit -> string
 
   end
 

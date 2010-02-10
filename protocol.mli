@@ -15,7 +15,7 @@ module Master : sig
   type t = 
     | Assign of int * string * string (* id, function, argument *)
     | Kill of int                     (* id *)
-    | Stop
+    | Stop of string
 
   val send : Unix.file_descr -> t -> unit
 

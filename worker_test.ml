@@ -17,7 +17,7 @@ let compute s =
 
 let () = Network.Worker.register_computation "f" compute
 
-let () = Network.Worker.compute ~stop:true ~port ()
+let _ = Network.Worker.compute ~stop:true ~port ()
 
 let () = printf "it works!@."
 
