@@ -48,16 +48,30 @@ module Network : sig
 
   val map : (string -> string) -> string list -> string list
 
+  module Worker : sig
+
+    val register_computation : string -> (string -> string) -> unit
+
+    val compute : ?stop:bool -> ?port:int -> unit -> unit
+
+  end
+
 end
+
+
+
+
+(****
 
 module Protocol : sig
 
   module Master : sig
     
     type t = 
-      | Assign of int * string (* id, task *)
-      | Kill of int            (* id *)
-	  
+      | Assign of int * string * string 
+      | Kill of int                     
+      | Stop
+
     val send : Unix.file_descr -> t -> unit
       
     val receive : Unix.file_descr -> t
@@ -83,6 +97,7 @@ module Protocol : sig
 
 end
 
+****)
 
 module Control : sig
 

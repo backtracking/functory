@@ -1,7 +1,7 @@
 
 open Format
 open Unix
-open Mapreduce.Protocol
+open Mapreduce
 
 let port = ref 51000
 let () = 
@@ -9,6 +9,19 @@ let () =
     ["-port", Arg.Set_int port, "<n>  sets the port number"]
     (fun _ -> ())
     "worker_test: usage:"
+let port = !port
+
+let compute s = 
+  let rec fib n = if n <= 1 then 1 else fib (n-1) + fib (n-2) in
+  string_of_int (fib (int_of_string s))
+
+let () = Network.Worker.register_computation "f" compute
+
+let () = Network.Worker.compute ~stop:true ~port ()
+
+let () = printf "it works!@."
+
+(****
 
 let sock = socket PF_INET SOCK_STREAM 0
 
@@ -17,10 +30,6 @@ let () =
   setsockopt sock SO_REUSEADDR true;
   bind sock sockaddr;
   listen sock 3
-
-let compute s = 
-  let rec fib n = if n <= 1 then 1 else fib (n-1) + fib (n-2) in
-  string_of_int (fib (int_of_string s))
 
 type running_task = {
   pid : int;
@@ -63,6 +72,8 @@ let server_fun cin cout =
 	    with Not_found ->
 	      () (* ignored Kill *)
 	  end
+      | Master.Stop ->
+	  exit 0
   in
   let wait_for_completed_task id t =
     match waitpid [WNOHANG] t.pid with
@@ -107,3 +118,4 @@ let () =
       | id -> 
 	  Unix.close s; ignore(Unix.waitpid [] id)
   done 
+****)

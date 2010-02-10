@@ -32,7 +32,7 @@ let (++) = Int64.add
 let () = 
   Network.declare_workers sockaddr 4;
   let l = 
-    Network.map (fun _ -> "") ["10"; "45"; "20"; "30"; "15"] 
+    Network.map (fun _ -> "") ["10"; "20"; "15"] 
   in
   let v = List.fold_left (fun acc s -> acc ++ Int64.of_string s) 0L l  in
   printf "total = %Ld@." v

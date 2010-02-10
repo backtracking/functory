@@ -55,25 +55,32 @@ exception BadProtocol
 module Master = struct
 
   type t = 
-    | Assign of int * string (* id, task *)
-    | Kill of int            (* id *)
+    | Assign of int * string * string (* id, function * argument *)
+    | Kill of int                     (* id *)
+    | Stop
 
   let print fmt = function
-    | Assign (id, s) ->
-	fprintf fmt "assign %d s=%S" id s
+    | Assign (id, f, a) ->
+	fprintf fmt "assign %d f=%S a=%S" id f a
     | Kill id ->
 	fprintf fmt "kill %d" id
+    | Stop ->
+	fprintf fmt "stop"
 
   let buf b = function
-    | Assign (id, s) -> 
+    | Assign (id, f, a) -> 
 	buf_int31 b !magic_number;
 	buf_int8 b 1; (* 1 = assign *)
 	buf_int31 b id;
-	buf_string b s
+	buf_string b f;
+	buf_string b a
     | Kill id ->
 	buf_int31 b !magic_number;
 	buf_int8 b 2; (* 2 = kill *)
 	buf_int31 b id
+    | Stop ->
+	buf_int31 b !magic_number;
+	buf_int8 b 3 (* 3 = stop *)
 
   let send = generic_send buf
 
@@ -83,11 +90,14 @@ module Master = struct
     match c with
       | 1 (* assign *) -> 
 	  let id, pos = get_int31 s pos in
-	  let s, pos = get_string s pos in
-	  Assign (id, s), pos
+	  let f, pos = get_string s pos in
+	  let a, pos = get_string s pos in
+	  Assign (id, f, a), pos
       | 2 (* kill *) ->
 	  let id, pos = get_int31 s pos in
 	  Kill id, pos
+      | 3 (* stop *) ->
+	  Stop, pos
       | _ ->
 	  raise BadProtocol
 

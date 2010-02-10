@@ -50,6 +50,7 @@ CMXA = mapreduce.cmxa
 all: $(OCAMLBEST)
 byte: $(CMA) worker_test.byte master_test.byte
 opt: $(CMA) $(CMXA) worker_test.opt master_test.opt
+	cp worker_test.opt ~
 
 # bytecode and native-code compilation
 ######################################

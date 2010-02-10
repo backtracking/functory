@@ -13,8 +13,9 @@ exception BadProtocol
 module Master : sig
 
   type t = 
-    | Assign of int * string (* id, task *)
-    | Kill of int            (* id *)
+    | Assign of int * string * string (* id, function, argument *)
+    | Kill of int                     (* id *)
+    | Stop
 
   val send : Unix.file_descr -> t -> unit
 
