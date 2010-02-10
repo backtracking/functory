@@ -13,9 +13,9 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(* open Mapreduce.Cores *)
-(* let () = set_number_of_cores 2 *)
-open Mapreduce.Simple
+open Mapreduce.Cores
+let () = set_number_of_cores 2
+(* open Mapreduce.Simple *)
 
 let f x = x+1
 
@@ -24,10 +24,10 @@ let reduce = (+)
 let () =
   let l = [1;2;3;4;5] and r = 20 in
   assert (map f l = [2;3;4;5;6]);
-  assert (map_local_reduce ~map:f ~reduce 0 l = r);
+(*   assert (map_local_reduce ~map:f ~reduce 0 l = r); *)
   assert (map_remote_reduce ~map:f ~reduce 0 l = r);
-  assert (map_reduce_ac ~map:f ~reduce 0 l = r);
-  assert (map_reduce_a ~map:f ~reduce 0 l = r);
+(*   assert (map_reduce_ac ~map:f ~reduce 0 l = r); *)
+(*   assert (map_reduce_a ~map:f ~reduce 0 l = r); *)
   ()
 
 let f s = s ^ "."
@@ -46,10 +46,10 @@ let () =
 	 String.sub r i n = x && r.[i + n] = '.')
       l
   in
-  assert (check (map_local_reduce ~map:f ~reduce "" l));
+(*   assert (check (map_local_reduce ~map:f ~reduce "" l)); *)
   assert (check (map_remote_reduce ~map:f ~reduce "" l));
-  assert (check (map_reduce_ac ~map:f ~reduce "" l));
-  assert (map_reduce_a ~map:f ~reduce "" l = "a.bb.ccc.dddd.");
+(*   assert (check (map_reduce_ac ~map:f ~reduce "" l)); *)
+(*   assert (map_reduce_a ~map:f ~reduce "" l = "a.bb.ccc.dddd."); *)
   ()
 
 

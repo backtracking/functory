@@ -46,7 +46,7 @@ let rec listij acc i j = if i > j then acc else listij (j :: acc) i (j-1)
 let workers () = listij [] 1 !ncores
 
 (* the generic master *)
-let master ~(f : 'a -> 'b) ~(handle : 'a job -> 'b -> 'a list) tasks =
+let master ~(f : 'a -> 'b) ~(handle : 'a -> 'b -> 'a list) tasks =
   let jobs = Hashtbl.create 17 in (* PID -> job *)
   Master.run
     ~create_job:(fun w t ->
@@ -60,7 +60,7 @@ let master ~(f : 'a -> 'b) ~(handle : 'a job -> 'b -> 'a list) tasks =
 		 let c = in_channel_of_descr j.file in
 		 let r : 'b = input_value c in
 		 close_in c;
-		 let l = handle j r in j.worker, l
+		 let l = handle j.task r in j.worker, l
 	     | p, _ ->
 		 Format.eprintf "master: ** PID %d killed or stopped! **@." p;
 		 exit 1)
@@ -74,7 +74,7 @@ let map f l =
   let results = Hashtbl.create 17 in (* index -> 'b *)
   master 
     ~f:(fun (_,x) -> f x)
-    ~handle:(fun {task=i,_} r -> Hashtbl.add results i r; [])
+    ~handle:(fun (i,_) r -> Hashtbl.add results i r; [])
     tasks;
   List.map (fun (i,_) -> Hashtbl.find results i) tasks
 
@@ -90,26 +90,33 @@ type ('a, 'b) map_reduce =
   | Map of 'a
   | Reduce of 'b
 
-let map_reduce ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l =
+let map_remote_reduce ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l =
   let acc = ref (Some acc) in
   let pending = Stack.create () in
-  let do_reduce () = assert false (* TODO *) in
   master 
     ~f:(function
-	  | Map x -> map x
-	  | Reduce x -> begin match !acc with
-	      | Some v -> acc := None; reduce v x
-	      | None -> assert false
-	    end)
-    ~handle:(fun j r -> match j.task with
-	       | Map _ -> begin match !acc with
-		   | None -> Stack.push r pending; do_reduce ()
-		   | Some _ -> [Reduce r]
+	  | Map x -> Map (map x)
+	  | Reduce (v, x) -> Reduce (reduce v x))
+    ~handle:(fun _ r -> match r with
+	       | Map r -> begin match !acc with
+		   | None -> Stack.push r pending; []
+		   | Some v -> acc := None; [Reduce (v, r)]
 		 end
-	       | Reduce _ -> begin match !acc with
-		   | None -> acc := Some r; do_reduce ()
-		   | Some _ -> assert false
+	       | Reduce r -> begin match !acc with
+		   | None -> 
+		       if not (Stack.is_empty pending) then
+			 [Reduce (r, Stack.pop pending)]
+		       else begin
+			 acc := Some r;
+			 []
+		       end
+		   | Some _ -> 
+		       assert false
 		 end)
     (List.map (fun x -> Map x) l);
-  !acc
+  (* we are done; the accumulator must exist *)
+  match !acc with
+    | Some r -> r
+    | None -> assert false
+
 

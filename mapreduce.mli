@@ -41,8 +41,8 @@ module Cores : sig
 
   val map : ('a -> 'b) -> 'a list -> 'b list
     
-  val fold : 
-    map:('a -> 'b list) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+  val map_remote_reduce :
+    map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
 end
 
