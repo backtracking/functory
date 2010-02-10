@@ -74,46 +74,6 @@ module Network : sig
 end
 
 
-
-
-(****
-
-module Protocol : sig
-
-  module Master : sig
-    
-    type t = 
-      | Assign of int * string * string 
-      | Kill of int                     
-      | Stop
-
-    val send : Unix.file_descr -> t -> unit
-      
-    val receive : Unix.file_descr -> t
-      
-    val print : Format.formatter -> t -> unit
-      
-  end
-
-  module Worker : sig
-    
-    type t =
-      | Started of int            (* id *)
-      | Completed of int * string (* id, result *)
-      | Aborted of int            (* id *)
-	  
-    val send : Unix.file_descr -> t -> unit
-      
-    val receive : Unix.file_descr -> t
-      
-    val print : Format.formatter -> t -> unit
-
-  end
-
-end
-
-****)
-
 module Control : sig
 
   val set_debug : bool -> unit

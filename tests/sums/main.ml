@@ -14,6 +14,7 @@
 (**************************************************************************)
 
 open Mapreduce.Cores
+let () = Mapreduce.Control.set_debug true
 let () = set_number_of_cores 2
 (* open Mapreduce.Simple *)
 

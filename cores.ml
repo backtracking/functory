@@ -78,6 +78,7 @@ let map f l =
     tasks;
   List.map (fun (i,_) -> Hashtbl.find results i) tasks
 
+(*
 let fold ~(map : 'a -> 'b list) ~(reduce : 'c -> 'b -> 'c) acc l =
   let acc = ref acc in
   master 
@@ -85,6 +86,7 @@ let fold ~(map : 'a -> 'b list) ~(reduce : 'c -> 'b -> 'c) acc l =
     ~handle:(fun _ r -> acc := List.fold_left reduce !acc r; [])
     l;
   !acc
+*)
 
 let map_local_reduce ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l =
   let acc = ref acc in
