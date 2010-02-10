@@ -1,7 +1,7 @@
 
 open Format
 open Unix
-
+open Control
 
 module Worker = struct
 
@@ -19,13 +19,13 @@ module Worker = struct
   exception ExitOnStop of string
 
   let server_fun cin cout =
-    printf "new connection@.";
+    dprintf "new connection@.";
     let fdin = descr_of_in_channel cin in
     let fdout = descr_of_out_channel cout in
     let pids = Hashtbl.create 17 in (* ID -> running_task *)
     let handle_message_from_master _ = 
       let m = Master.receive fdin in
-      printf "received: %a@." Master.print m;
+      dprintf "received: %a@." Master.print m;
       match m with
 	| Master.Assign (id, f, a) ->
 	    if Hashtbl.mem computations f then begin
@@ -36,11 +36,11 @@ module Worker = struct
 		| 0 -> 
 		    close fin;
 		    (* perform computation *)
-		    eprintf "  id %d: computation is running...@." id;
+		    dprintf "  id %d: computation is running...@." id;
 		    let r = f a in
 		    let c = out_channel_of_descr fout in
 		    output_value c r;
-		    eprintf "  id %d: computation done@." id;
+		    dprintf "  id %d: computation done@." id;
 		    exit 0
 		| pid -> 
 		    close fout;
@@ -84,13 +84,13 @@ module Worker = struct
       assert false
     with 
       | End_of_file -> 
-	  printf "master disconnected@."; 
+	  dprintf "master disconnected@."; 
 	  Hashtbl.iter (fun _ t -> kill t.pid Sys.sigkill) pids;
 	  exit 0 
       | ExitOnStop r ->
 	  r
       | e -> 
-	  printf "anomaly: %s@." (Printexc.to_string e); 
+	  eprintf "anomaly: %s@." (Printexc.to_string e); 
 	  exit 1
 
   (* sockets are allocated lazily *)
@@ -173,7 +173,7 @@ let create_sock_addr name port =
 	(gethostbyname name).h_addr_list.(0) 
       with Not_found ->
 	eprintf "%s : Unknown server@." name ;
-	exit 2
+	exit 1
   in
   ADDR_INET (addr, port) 
 
@@ -214,7 +214,7 @@ let wait continuation =
     let l,_,_ = select [w.fdin] [] [] 0.1 in
     if l = [] then raise Exit;
     let m = Protocol.Worker.receive w.fdin in
-    eprintf "received from %a: %a@." print_sockaddr w.sockaddr
+    dprintf "received from %a: %a@." print_sockaddr w.sockaddr
       Protocol.Worker.print m;
     match m with
       | Protocol.Worker.Started _ ->
@@ -235,6 +235,7 @@ let wait continuation =
   loop !workers
 
 let master ~(f : 'a -> 'b) ~(handle : 'a -> 'b -> 'a list) tasks =
+  List.iter connect_worker !workers;
   Master.run
     ~create_job
     ~wait:(fun () -> wait handle)
@@ -259,7 +260,7 @@ let map f l =
   if is_worker then begin
     Worker.register_computation "f" f;
     let r = Worker.compute ~stop:true () in
-    eprintf "worker: result is %S@." r;
+    dprintf "worker: result is %S@." r;
     decode_string_list r
   end else begin
     let tasks = let i = ref 0 in List.map (fun x -> incr i; !i,"f",x) l in
@@ -276,31 +277,3 @@ let map f l =
     r
   end
 
-
-
-(**** test **************************************************)
-
-(****
-let master_test () =
-  let ic,oc = open_connection sockaddr in
-  at_exit (fun () -> shutdown_connection ic);
-  let fdin = descr_of_in_channel ic in
-  let fdout = descr_of_out_channel oc in
-  let id = ref 0 in
-  while true do
-    incr id;
-    let msg = "hello " ^ string_of_int (Random.int 1000) in
-    Protocol.Master.send fdout (Protocol.Master.Assign (!id, msg));
-    let l,_,_ = select [fdin] [] [] 1. in
-    List.iter
-      (fun _ -> 
-	 let m = Protocol.Worker.receive fdin in
-	 eprintf "received: %a@." Protocol.Worker.print m) l;
-  done;
-(*   Master.send fdout (Master.Kill 3); *)
-(*    *)
-  ()
-
-
-
-****)
