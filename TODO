@@ -1,0 +1,29 @@
+
+- minimal API (map, fold, etc.)
+
+  . map : ...
+ 
+  . reduce : (a -> b) -> (c -> b -> c) -> c -> a list -> c
+
+    assumption : the order of elements in the list is irrelevant
+    variants   : local/remote reduce
+
+  . reduce2 : (a -> b) -> (b -> b -> b) -> b -> a list -> b list
+
+    assumption : reduce is AC
+    variant    : reduce is A but not C 
+                 (still we can parallelize some adjacent reductions)
+
+- refactor map, etc. in Cores/Network
+
+- make the master more robust [fault tolerance]
+  - pinging workers (a separate list for not responding workers)
+  - (re-)scheduling heuristics
+
+BUGS ?
+
+- using localhost as a worker
+
+- do we need to shutdown sockets eventually?
+  (currently we don't do it, because we don't know when to do it,
+  unless we are using at_exit --- but we can't use at_exit!)

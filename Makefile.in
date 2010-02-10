@@ -113,8 +113,8 @@ version.ml: Makefile
 #######
 
 test: tests/n-queens/a.out tests/sums/a.out
-	tests/n-queens/a.out
 	tests/sums/a.out
+#	tests/n-queens/a.out
 
 tests/%/a.out: tests/%/main.ml mapreduce.cmxa
 	cd tests/$*; $(OCAMLOPT) -I ../.. unix.cmxa mapreduce.cmxa main.ml

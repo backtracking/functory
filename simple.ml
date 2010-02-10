@@ -15,9 +15,14 @@
 
 (** Sequential implementation *)
 
-let map_reduce ~map ~reduce acc l =
-  List.fold_left 
-    (fun acc x -> List.fold_left reduce acc (map x))
-    acc l
-
 let map = List.map
+
+let map_local_reduce ~map ~reduce acc l =
+  List.fold_left (fun acc x -> reduce acc (map x)) acc l
+
+let map_remote_reduce = map_local_reduce
+
+let map_reduce_ac = map_local_reduce
+
+let map_reduce_a = map_local_reduce
+
