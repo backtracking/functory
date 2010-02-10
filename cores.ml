@@ -127,4 +127,55 @@ let map_remote_reduce ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l =
     | Some r -> r
     | None -> assert false
 
+let map_reduce_ac ~(map : 'a -> 'b) ~(reduce : 'b -> 'b -> 'b) acc l =
+  let acc = ref (Some acc) in
+  master 
+    ~f:(function
+	  | Map x -> map x
+	  | Reduce (v, x) -> reduce v x)
+    ~handle:(fun _ r -> match !acc with
+	       | None -> acc := Some r; []
+	       | Some v -> acc := None; [Reduce (v, r)])
+    (List.map (fun x -> Map x) l);
+  (* we are done; the accumulator must exist *)
+  match !acc with
+    | Some r -> r
+    | None -> assert false
+
+
+let map_reduce_a ~(map : 'a -> 'b) ~(reduce : 'b -> 'b -> 'b) acc l =
+  let tasks = let i = ref 0 in List.map (fun x -> incr i; !i,x) l in
+  (* results maps i and j to (i,j,r) for each completed reduction
+     of the interval i..j with result r *)
+  let results = Hashtbl.create 17 in 
+  let merge i j r = 
+    if Hashtbl.mem results (i-1) then begin
+      let l, h, x = Hashtbl.find results (i-1) in
+      assert (h = i-1);
+      Hashtbl.remove results l; 
+      Hashtbl.remove results h;
+      [Reduce (l, i, x, r)]
+    end else if Hashtbl.mem results (j+1) then begin
+      let l, h, x = Hashtbl.find results (j+1) in
+      assert (l = j+1);
+      Hashtbl.remove results h; 
+      Hashtbl.remove results l;
+      [Reduce (i, h, r, x)]
+    end else begin
+      Hashtbl.add results i (i,j,r);
+      Hashtbl.add results j (i,j,r);
+      []
+    end
+  in
+  master 
+    ~f:(function
+	  | Map (_,x) -> map x
+	  | Reduce (_, _, x1, x2) -> reduce x1 x2)
+    ~handle:(fun x r -> match x with
+	       | Map (i, _) -> merge i i r
+	       | Reduce (i, j, _, _) -> merge i j r)
+    (List.map (fun x -> Map x) tasks);
+  (* we are done; results must contain 2 mappings only, for 1 and n *)
+  let _,_,r = Hashtbl.find results 1 in
+  r
 
