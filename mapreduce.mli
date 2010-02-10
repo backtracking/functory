@@ -41,6 +41,9 @@ module Cores : sig
 
   val map : ('a -> 'b) -> 'a list -> 'b list
     
+  val map_local_reduce :
+    map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+
   val map_remote_reduce :
     map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 

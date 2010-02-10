@@ -86,6 +86,14 @@ let fold ~(map : 'a -> 'b list) ~(reduce : 'c -> 'b -> 'c) acc l =
     l;
   !acc
 
+let map_local_reduce ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l =
+  let acc = ref acc in
+  master 
+    ~f:map
+    ~handle:(fun _ r -> acc := reduce !acc r; [])
+    l;
+  !acc 
+
 type ('a, 'b) map_reduce =
   | Map of 'a
   | Reduce of 'b
