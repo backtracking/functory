@@ -19,6 +19,11 @@ let () = declare_workers ~n:2 "129.175.4.107"
 
 let rec compute x = if x <= 1 then 1 else x * compute (x-1)
 
+let n = map_remote_reduce ~map:compute ~reduce:(+) 0 [1;2;3;4] 
+
+let () = printf "%d@." n; exit 0
+
+
 let l = map compute [1;2;3;4]
 
 let () = List.iter (fun s -> printf "%d@." s) l; printf "---@."

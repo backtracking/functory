@@ -70,6 +70,9 @@ module Network : sig
   val map_local_reduce :
     map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
+  val map_remote_reduce :
+    map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+
   (** Monomorphic functions.
       These functions should be used when master and workers are compiled
       from the same source. *)
@@ -81,6 +84,11 @@ module Network : sig
     val map_local_reduce :
       map:(string -> string) -> reduce:(string -> string -> string) -> 
       string -> string list -> string
+
+    val map_remote_reduce :
+      map:(string -> string) -> reduce:(string -> string -> string) ->
+      string -> string list -> string
+
   end
 
   module Worker : sig
