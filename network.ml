@@ -370,6 +370,39 @@ let map_remote_reduce ~map ~reduce acc l =
   generic_map_remote_reduce poly_marshaller poly_marshaller poly_marshaller 
     ~map ~reduce acc l
 
+let generic_map_reduce_ac 
+  (mabb : ('a, 'b * 'b) map_reduce marshaller) 
+  (mb : 'b marshaller)
+  ~(map : 'a -> 'b) ~(reduce : 'b -> 'b -> 'b) acc l 
+=
+  if is_worker then begin
+    Worker.register_computation "f" 
+      (fun s -> match mabb.marshal_from s with
+	 | Map x -> mb.marshal_to (map x)
+	 | Reduce (v, x) -> mb.marshal_to (reduce v x));
+    (run_worker mb : 'b)
+  end else begin
+    let acc = ref (Some acc) in
+    master 
+      ~handle:(fun _ r -> 
+		 let r = mb.marshal_from r in
+		 match !acc with
+		 | None -> 
+		     acc := Some r; []
+		 | Some v -> 
+		     acc := None; 
+		     [(), "f", mabb.marshal_to (Reduce (v, r))])
+      (List.map (fun x -> (), "f", mabb.marshal_to (Map x)) l);
+    (* we are done; the accumulator must exist *)
+    match !acc with
+      | Some r -> send_result mb r
+      | None -> assert false
+  end
+
+let map_reduce_ac ~map ~reduce acc l = 
+  generic_map_reduce_ac poly_marshaller poly_marshaller 
+    ~map ~reduce acc l
+
 (** Monomorphic functions. *)
 
 let id_marshaller = {

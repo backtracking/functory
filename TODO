@@ -14,6 +14,8 @@
     variant    : reduce is A but not C 
                  (still we can parallelize some adjacent reductions)
 
+- make Str generic wrt a type t together with 2 functions to/from_string
+
 - refactor map, etc. in Cores/Network
 
 - make the master more robust [fault tolerance]

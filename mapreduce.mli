@@ -73,6 +73,10 @@ module Network : sig
   val map_remote_reduce :
     map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
+  val map_reduce_ac :
+    map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+
+
   (** Monomorphic functions.
       These functions should be used when master and workers are compiled
       from the same source. *)
