@@ -36,7 +36,7 @@ let l = map compute ["10"; "20"; "15"]
 
 let () = List.iter (fun s -> printf "%s@." s) l; printf "---@."
 
-let l = String.map compute ["10"; "20"; "15"] 
+let l = Str.map compute ["10"; "20"; "15"] 
 
 let () = List.iter (fun s -> printf "%s@." s) l; printf "---@."
 

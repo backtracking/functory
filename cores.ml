@@ -69,7 +69,7 @@ let master ~(f : 'a -> 'b) ~(handle : 'a -> 'b -> 'a list) tasks =
 
 (* and its instances *)
 
-let map f l =
+let map ~f l =
   let tasks = let i = ref 0 in List.map (fun x -> incr i; !i,x) l in
   let results = Hashtbl.create 17 in (* index -> 'b *)
   master 

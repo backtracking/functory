@@ -18,7 +18,7 @@
 (** The sequential implementation (to be used as a reference) *)
 module Simple : sig
 
-  val map : ('a -> 'b) -> 'a list -> 'b list
+  val map : f:('a -> 'b) -> 'a list -> 'b list
 
   val map_local_reduce :
     map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
@@ -39,7 +39,7 @@ module Cores : sig
 
   val set_number_of_cores : int -> unit
 
-  val map : ('a -> 'b) -> 'a list -> 'b list
+  val map : f:('a -> 'b) -> 'a list -> 'b list
     
   val map_local_reduce :
     map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
@@ -61,12 +61,26 @@ module Network : sig
     (** [declare_workers s] declares workers on machine [s];
         the number of workers is [n] and defaults to 1 *)
 
-  val map : ('a -> 'b) -> 'a list -> 'b list
+  (** Polymorphic functions.
+      These functions are to be used only when master and worker are
+      *exactly* the same binaries. *)
 
-  module String : sig
+  val map : f:('a -> 'b) -> 'a list -> 'b list
 
-    val map : (string -> string) -> string list -> string list
+  val map_local_reduce :
+    map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
+  (** Monomorphic functions.
+      These functions should be used when master and workers are compiled
+      from the same source. *)
+
+  module Str : sig
+
+    val map : f:(string -> string) -> string list -> string list
+
+    val map_local_reduce :
+      map:(string -> string) -> reduce:(string -> string -> string) -> 
+      string -> string list -> string
   end
 
   module Worker : sig

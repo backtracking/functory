@@ -15,7 +15,7 @@
 
 (** Sequential implementation *)
 
-let map = List.map
+let map ~f l = List.map f l
 
 let map_local_reduce ~map ~reduce acc l =
   List.fold_left (fun acc x -> reduce acc (map x)) acc l

@@ -277,7 +277,7 @@ let marshal_wrapper ma mb f s =
 
 let generic_map
   (ma : 'a marshaller) (mb : 'b marshaller) (mres : 'b list marshaller)
-  (f : 'a -> 'b) (l : 'a list) : 'b list 
+  ~(f : 'a -> 'b) (l : 'a list) : 'b list 
 =
   if is_worker then begin
     Worker.register_computation "f" (marshal_wrapper ma mb f);
@@ -296,22 +296,27 @@ let generic_map
     send_result mres r
   end
 
-(* polymorphic map *)
-let map f l = generic_map poly_marshaller poly_marshaller poly_marshaller f l
+let map ~f l = generic_map poly_marshaller poly_marshaller poly_marshaller ~f l
 
-(***
-let map_local_reduce ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l =
+let generic_map_local_reduce 
+  (ma : 'a marshaller) (mb : 'b marshaller) (mres : 'c marshaller)
+  ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l 
+=
   if is_worker then begin
-    Worker.register_computation "map" (marshal_wrapper map);
-    (run_worker () : 'b list)
+    Worker.register_computation "map" (marshal_wrapper ma mb map);
+    (run_worker mres : 'c)
   end else begin
     let acc = ref acc in
     master 
-      ~handle:(unmarshal_result (fun _ r -> acc := reduce !acc r; []))
-      (List.map (fun x -> (), "map", x) l);
-    send_result !acc 
+      ~handle:(fun _ r -> 
+		 let r = mb.marshal_from r in acc := reduce !acc r; [])
+      (List.map (fun x -> (), "map", ma.marshal_to x) l);
+    send_result mres !acc 
   end
-***)
+
+let map_local_reduce ~map ~reduce acc l = 
+  generic_map_local_reduce poly_marshaller poly_marshaller poly_marshaller 
+    ~map ~reduce acc l
 
 (** Monomorphic functions. *)
 
@@ -320,7 +325,7 @@ let id_marshaller = {
   marshal_from = (fun x -> x);
 }
 
-module String = struct
+module Str = struct
 
   let encode_string_list l =
     let buf = Buffer.create 1024 in
@@ -336,7 +341,25 @@ module String = struct
     marshal_from = decode_string_list;
   }
 
-  let map f l = 
-    generic_map id_marshaller id_marshaller string_list_marshaller f l
+  let map ~f l = 
+    generic_map id_marshaller id_marshaller string_list_marshaller ~f l
+
+  let encode_string s =
+    let buf = Buffer.create 1024 in
+    Binary.buf_string buf s;
+    Buffer.contents buf
+
+  let decode_string s =
+    let s, _ = Binary.get_string s 0 in 
+    s
+
+  let string_marshaller = {
+    marshal_to = encode_string;
+    marshal_from = decode_string;
+  }
+
+  let map_local_reduce ~map ~reduce acc l =
+    generic_map_local_reduce id_marshaller id_marshaller string_marshaller
+      ~map ~reduce acc l
 
 end
