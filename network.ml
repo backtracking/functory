@@ -251,6 +251,11 @@ type 'a marshaller = {
   marshal_from : string -> 'a;
 }
 
+let poly_marshaller = {
+  marshal_to = (fun x -> Marshal.to_string x []);
+  marshal_from = (fun s -> Marshal.from_string s 0);
+}
+
 let run_worker mres =
   let r = Worker.compute ~stop:true () in
   dprintf "worker: result is %S@." r;
@@ -267,6 +272,8 @@ let send_result mres r =
 let marshal_wrapper ma mb f s =
   let x : 'a = ma.marshal_from s in
   mb.marshal_to (f x)
+
+(** Polymorphic functions. *)
 
 let generic_map
   (ma : 'a marshaller) (mb : 'b marshaller) (mres : 'b list marshaller)
@@ -289,11 +296,7 @@ let generic_map
     send_result mres r
   end
 
-let poly_marshaller = {
-  marshal_to = (fun x -> Marshal.to_string x []);
-  marshal_from = (fun s -> Marshal.from_string s 0);
-}
-
+(* polymorphic map *)
 let map f l = generic_map poly_marshaller poly_marshaller poly_marshaller f l
 
 (***
@@ -310,7 +313,7 @@ let map_local_reduce ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l =
   end
 ***)
 
-(* and its instances *)
+(** Monomorphic functions. *)
 
 let id_marshaller = {
   marshal_to = (fun x -> x);
