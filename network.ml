@@ -506,4 +506,10 @@ module Str = struct
       string_marshaller
       ~map ~reduce acc l
 
+  let map_reduce_ac ~map ~reduce acc l =
+    generic_map_reduce_ac
+      string_string_pair_map_reduce_marshaller
+      string_marshaller
+      ~map ~reduce acc l
+
 end

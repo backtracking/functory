@@ -93,6 +93,10 @@ module Network : sig
       map:(string -> string) -> reduce:(string -> string -> string) ->
       string -> string list -> string
 
+    val map_reduce_ac :
+      map:(string -> string) -> reduce:(string -> string -> string) ->
+      string -> string list -> string
+
   end
 
   module Worker : sig

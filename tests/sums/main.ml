@@ -58,6 +58,7 @@ let () =
   assert (check (map_remote_reduce ~map:f ~reduce "" l));
   assert (check (Str.map_remote_reduce ~map:f ~reduce "" l));
   assert (check (map_reduce_ac ~map:f ~reduce "" l));
+  assert (check (Str.map_reduce_ac ~map:f ~reduce "" l));
 (*   assert (map_reduce_a ~map:f ~reduce "" l = "a.bb.ccc.dddd."); *)
   ()
 
