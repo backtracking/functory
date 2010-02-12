@@ -61,7 +61,13 @@ module Network : sig
     (** [declare_workers s] declares workers on machine [s];
         the number of workers is [n] and defaults to 1 *)
 
-  val map : (string -> string) -> string list -> string list
+  val map : ('a -> 'b) -> 'a list -> 'b list
+
+  module String : sig
+
+    val map : (string -> string) -> string list -> string list
+
+  end
 
   module Worker : sig
 

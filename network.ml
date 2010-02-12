@@ -197,83 +197,143 @@ let connect_worker w =
 
 let next_id = let r = ref 0 in fun () -> incr r; !r
 
-let running_tasks = Hashtbl.create 17
-
-let create_job lw ((_,f,a) as task) =
-  connect_worker lw.worker;
-  let id = next_id () in
-  Protocol.Master.send lw.worker.fdout (Protocol.Master.Assign (id, f, a));
-  Hashtbl.add running_tasks id (lw, task)
-
 let print_sockaddr fmt = function
   | ADDR_UNIX s -> fprintf fmt "%s" s
   | ADDR_INET (ia, port) -> fprintf fmt "%s:%d" (string_of_inet_addr ia) port
 
-let wait continuation =
-  let listen_for_worker w =
-    let l,_,_ = select [w.fdin] [] [] 0.1 in
-    if l = [] then raise Exit;
-    let m = Protocol.Worker.receive w.fdin in
-    dprintf "received from %a: %a@." print_sockaddr w.sockaddr
-      Protocol.Worker.print m;
-    match m with
-      | Protocol.Worker.Started _ ->
-	  raise Exit
-      | Protocol.Worker.Completed (id, r) ->
-	  let lw, task = Hashtbl.find running_tasks id in
-	  Hashtbl.remove running_tasks id;
-	  lw, continuation task r
-      | Protocol.Worker.Aborted id ->
-	  let lw, task = Hashtbl.find running_tasks id in
-	  Hashtbl.remove running_tasks id;
-	  lw, [task]
+let master 
+  ~(handle : 'a * string * string -> string -> ('a * string * string) list) 
+  (tasks : ('a * string * string) list)
+=
+  let running_tasks = Hashtbl.create 17 in
+  let create_job lw ((_,f,a) as task) =
+    connect_worker lw.worker;
+    let id = next_id () in
+    Protocol.Master.send lw.worker.fdout (Protocol.Master.Assign (id, f, a));
+    Hashtbl.add running_tasks id (lw, task)
   in
-  let rec loop = function
-    | [] -> loop !workers
-    | w :: wl -> try listen_for_worker w with Exit -> loop wl
+  let wait continuation =
+    let listen_for_worker w =
+      let l,_,_ = select [w.fdin] [] [] 0.1 in
+      if l = [] then raise Exit;
+      let m = Protocol.Worker.receive w.fdin in
+      dprintf "received from %a: %a@." print_sockaddr w.sockaddr
+	Protocol.Worker.print m;
+      match m with
+	| Protocol.Worker.Started _ ->
+	    raise Exit
+	| Protocol.Worker.Completed (id, r) ->
+	    let lw, task = Hashtbl.find running_tasks id in
+	    Hashtbl.remove running_tasks id;
+	    lw, continuation task r
+	| Protocol.Worker.Aborted id ->
+	    let lw, task = Hashtbl.find running_tasks id in
+	    Hashtbl.remove running_tasks id;
+	    lw, [task]
+    in
+    let rec loop = function
+      | [] -> loop !workers
+      | w :: wl -> try listen_for_worker w with Exit -> loop wl
+    in
+    loop !workers
   in
-  loop !workers
-
-let master ~(f : 'a -> 'b) ~(handle : 'a -> 'b -> 'a list) tasks =
   List.iter connect_worker !workers;
   Master.run
     ~create_job
     ~wait:(fun () -> wait handle)
     !logical_workers tasks
 
+let is_worker = 
+  try ignore (Sys.getenv "WORKER"); true with Not_found -> false 
+
+type 'a marshaller = {
+  marshal_to : 'a -> string;
+  marshal_from : string -> 'a;
+}
+
+let run_worker mres =
+  let r = Worker.compute ~stop:true () in
+  dprintf "worker: result is %S@." r;
+  mres.marshal_from r
+
+(* marshal and send result to all workers *)
+let send_result mres r =
+  let res = mres.marshal_to r in
+  List.iter
+    (fun w -> Protocol.Master.send w.fdout (Protocol.Master.Stop res))
+    !workers;
+  r
+
+let marshal_wrapper ma mb f s =
+  let x : 'a = ma.marshal_from s in
+  mb.marshal_to (f x)
+
+let generic_map
+  (ma : 'a marshaller) (mb : 'b marshaller) (mres : 'b list marshaller)
+  (f : 'a -> 'b) (l : 'a list) : 'b list 
+=
+  if is_worker then begin
+    Worker.register_computation "f" (marshal_wrapper ma mb f);
+    (run_worker mres : 'b list)
+  end else begin
+    let tasks = 
+      let i = ref 0 in 
+      List.map (fun x -> incr i; !i, "f", ma.marshal_to x) l 
+    in
+    let results = Hashtbl.create 17 in (* index -> 'b *)
+    master 
+      ~handle:(fun (i,_,_) r -> 
+		 let r = mb.marshal_from r in Hashtbl.add results i r; [])
+      tasks;
+    let r = List.map (fun (i,_,_) -> Hashtbl.find results i) tasks in
+    send_result mres r
+  end
+
+let poly_marshaller = {
+  marshal_to = (fun x -> Marshal.to_string x []);
+  marshal_from = (fun s -> Marshal.from_string s 0);
+}
+
+let map f l = generic_map poly_marshaller poly_marshaller poly_marshaller f l
+
+(***
+let map_local_reduce ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l =
+  if is_worker then begin
+    Worker.register_computation "map" (marshal_wrapper map);
+    (run_worker () : 'b list)
+  end else begin
+    let acc = ref acc in
+    master 
+      ~handle:(unmarshal_result (fun _ r -> acc := reduce !acc r; []))
+      (List.map (fun x -> (), "map", x) l);
+    send_result !acc 
+  end
+***)
 
 (* and its instances *)
 
-let encode_string_list l =
-  let buf = Buffer.create 1024 in
-  Binary.buf_string_list buf l;
-  Buffer.contents buf
+let id_marshaller = {
+  marshal_to = (fun x -> x);
+  marshal_from = (fun x -> x);
+}
 
-let decode_string_list s =
-  let l, _ = Binary.get_string_list s 0 in 
-  l
+module String = struct
 
-let map f l =
-  let is_worker = 
-    try ignore (Sys.getenv "WORKER"); true with Not_found -> false 
-  in
-  if is_worker then begin
-    Worker.register_computation "f" f;
-    let r = Worker.compute ~stop:true () in
-    dprintf "worker: result is %S@." r;
-    decode_string_list r
-  end else begin
-    let tasks = let i = ref 0 in List.map (fun x -> incr i; !i,"f",x) l in
-    let results = Hashtbl.create 17 in (* index -> 'b *)
-    master 
-      ~f:(fun (_,_,x) -> f x)
-      ~handle:(fun (i,_,_) r -> Hashtbl.add results i r; [])
-      tasks;
-    let r = List.map (fun (i,_,_) -> Hashtbl.find results i) tasks in
-    let res = encode_string_list r in
-    List.iter
-      (fun w -> Protocol.Master.send w.fdout (Protocol.Master.Stop res))
-      !workers;
-    r
-  end
+  let encode_string_list l =
+    let buf = Buffer.create 1024 in
+    Binary.buf_string_list buf l;
+    Buffer.contents buf
 
+  let decode_string_list s =
+    let l, _ = Binary.get_string_list s 0 in 
+    l
+
+  let string_list_marshaller = {
+    marshal_to = encode_string_list;
+    marshal_from = decode_string_list;
+  }
+
+  let map f l = 
+    generic_map id_marshaller id_marshaller string_list_marshaller f l
+
+end
