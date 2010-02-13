@@ -4,6 +4,9 @@
 open Format
 
 open Mapreduce.Simple
+open Mapreduce.Cores
+let () = Mapreduce.Control.set_debug true
+let () = Mapreduce.Cores.set_number_of_cores 2
 
 let p = int_of_string Sys.argv.(1) (* number of parts *)
 let n = int_of_string Sys.argv.(2) (* number of strings in each part *)
@@ -34,20 +37,21 @@ let () = printf "done@."
 
 let cmp = String.compare
 
-let merge = List.merge cmp
+(* let merge = List.merge cmp *)
 
-(*
 let merge l1 l2 =
+  printf "merging %d %d...@." (List.length l1) (List.length l2);
   let rec merge acc = function
     | [], l | l, [] -> 
-	List.rev_append l acc
-    | x1 :: r1, (x2 :: _ as l2) when cmp x1 x2 >= 0 -> 
+	List.rev_append acc l
+    | x1 :: r1, (x2 :: _ as l2) when cmp x1 x2 <= 0 -> 
 	merge (x1 :: acc) (r1, l2)
     | l1, x2 :: r2 ->
 	merge (x2 :: acc) (l1, r2)
   in
-  merge [] (l1, l2)
-*)
+  let r = merge [] (l1, l2) in
+  printf "done@.";
+  r
 
 (* sort a list of strings in reverse order *)
 
@@ -56,7 +60,7 @@ let sort l = List.sort cmp l
 (* sorting the lists of lists using map/reduce *)
 
 let l = map_reduce_ac ~map:sort ~reduce:merge [] lists
-let () = List.iter (fun s -> printf "%s@." s) l
+(* let () = List.iter (fun s -> printf "%s@." s) l *)
 let () = 
   let rec check = function
     | [] | [_] -> ()
