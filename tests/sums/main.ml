@@ -17,12 +17,12 @@
 
 let () = Mapreduce.Control.set_debug true
 
-(* open Mapreduce.Cores *)
-(* let () = set_number_of_cores 2 *)
+open Mapreduce.Cores
+let () = set_number_of_cores 2
 
-open Mapreduce.Network
-let () = declare_workers ~n:4 "moloch"
-let () = declare_workers ~n:2 "129.175.4.107"
+(* open Mapreduce.Network *)
+(* let () = declare_workers ~n:4 "moloch" *)
+(* let () = declare_workers ~n:2 "129.175.4.107" *)
 
 let f x = x+1
 
@@ -54,12 +54,12 @@ let () =
       l
   in
   assert (check (map_local_reduce ~map:f ~reduce "" l));
-  assert (check (Str.map_local_reduce ~map:f ~reduce "" l));
+(*   assert (check (Str.map_local_reduce ~map:f ~reduce "" l)); *)
   assert (check (map_remote_reduce ~map:f ~reduce "" l));
-  assert (check (Str.map_remote_reduce ~map:f ~reduce "" l));
+(*   assert (check (Str.map_remote_reduce ~map:f ~reduce "" l)); *)
   assert (check (map_reduce_ac ~map:f ~reduce "" l));
-  assert (check (Str.map_reduce_ac ~map:f ~reduce "" l));
-(*   assert (map_reduce_a ~map:f ~reduce "" l = "a.bb.ccc.dddd."); *)
+(*   assert (check (Str.map_reduce_ac ~map:f ~reduce "" l)); *)
+  assert (map_reduce_a ~map:f ~reduce "" l = "a.bb.ccc.dddd.");
   ()
 
 

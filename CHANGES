@@ -1,0 +1,3 @@
+
+o Cores: switched to local files (instead of pipes) due to low size limit
+  (8 * 512 bytes)

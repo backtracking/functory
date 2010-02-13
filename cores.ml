@@ -16,6 +16,7 @@
 open Control
 open Unix
 
+(***
 type 'a job = {
   worker : int;
   pid : int;
@@ -38,6 +39,28 @@ let create_worker w (f : 'a -> 'b) (x : 'a) : 'a job =
 	  pid = pid;
 	  file = fin;
 	  task = x }
+***)
+
+type 'a job = {
+  worker : int;
+  pid : int;
+  file : string;
+  task : 'a; 
+}
+let create_worker w (f : 'a -> 'b) (x : 'a) : 'a job =
+  let file = Filename.temp_file "mapreduce" "output" in
+  match fork () with
+    | 0 -> (* child *)
+	let r = f x in
+	let c = open_out file in
+	output_value c r;
+	exit 0
+    | pid -> (* parent *)
+	{ worker = w;
+	  pid = pid;
+	  file = file;
+	  task = x }
+
 
 let ncores = ref 1
 let set_number_of_cores n = ncores := n
@@ -57,9 +80,10 @@ let master ~(f : 'a -> 'b) ~(handle : 'a -> 'b -> 'a list) tasks =
 	     | p, WEXITED e -> 
 		 let j = Hashtbl.find jobs p in
 		 dprintf "master: got result from worker %d@." j.worker;
-		 let c = in_channel_of_descr j.file in
+		 let c = open_in (*in_channel_of_descr *) j.file in
 		 let r : 'b = input_value c in
 		 close_in c;
+		 Sys.remove j.file;
 		 let l = handle j.task r in j.worker, l
 	     | p, _ ->
 		 Format.eprintf "master: ** PID %d killed or stopped! **@." p;
