@@ -1,36 +1,32 @@
 
-(* sorting lists of strings *)
+(* sorting a file using map/reduce *)
 
 open Format
 
-open Mapreduce.Simple
+(* let () = Mapreduce.Control.set_debug true *)
+
+(* open Mapreduce.Simple *)
 open Mapreduce.Cores
-let () = Mapreduce.Control.set_debug true
 let () = Mapreduce.Cores.set_number_of_cores 2
 
-let n = int_of_string Sys.argv.(1) (* total number of strings *)
-let k = int_of_string Sys.argv.(2) (* length of each string *)
-let s = int_of_string Sys.argv.(3) (* chunk size *)
+let file = Sys.argv.(1)
+let s = int_of_string Sys.argv.(2) (* chunk size *)
 
 let () = 
-  printf "sorting a list of %d strings (each string has length %d)@." n k;
-  printf "using chunks of size %d@." s;
-  printf "creating list...@?"
+  printf "reading file '%s'... @?" file
 
-let create_string () =
-  let s = String.create k in
-  for i = 0 to k-1 do
-    s.[i] <- Char.chr (97 + Random.int 26)
-  done;
-  s
+let list =
+  let c = open_in file in
+  let rec read acc =
+    let l = try Some (input_line c) with End_of_file -> None in
+    match l with None -> close_in c; List.rev acc | Some l -> read (l :: acc)
+  in
+  read []
 
-let rec create_list acc i = 
-  if i = 0 then acc else create_list (create_string () :: acc) (i-1)
+let n = List.length list
+let () = printf "done@.%d lines@." n
 
-let list = create_list [] n
-let () = printf "done@."
-
-(* splitting into chunks *)
+(* splitting list into chunks *)
 
 let rec create_chunk acc i = function
   | [] -> acc, []
