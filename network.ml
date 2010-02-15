@@ -3,17 +3,23 @@ open Format
 open Unix
 open Control
 
+let encode_string_pair (s1, s2) =
+  let buf = Buffer.create 1024 in
+  Binary.buf_string buf s1;
+  Binary.buf_string buf s2;
+  Buffer.contents buf
+    
+let decode_string_pair s =
+  let s1, pos = Binary.get_string s 0 in 
+  let s2, _ = Binary.get_string s pos in 
+  s1, s2
+
 module Worker = struct
 
   let computations : (string, (string -> string)) Hashtbl.t = Hashtbl.create 17
 
   let register_computation = Hashtbl.add computations
     
-  let decode_string_pair s =
-    let s1, pos = Binary.get_string s 0 in 
-    let s2, _ = Binary.get_string s pos in 
-    s1, s2
-
   let register_computation2 n f =
     register_computation n
       (fun s -> let x, y = decode_string_pair s in f x y)
@@ -135,14 +141,25 @@ module Worker = struct
       Hashtbl.add sockets port sock;
       sock
 
-  let compute ?(stop=false) ?(port=51000) () = 
+  let sockets_fd = Hashtbl.create 17
+
+  let get_socket_fd port =
     let sock = get_socket port in
+    try
+      Hashtbl.find sockets_fd port
+    with Not_found -> 
+      let s,_ = Unix.accept sock in
+      Hashtbl.add sockets_fd port s;
+      s
+
+  let compute ?(stop=false) ?(port=51000) () = 
     if stop then begin
-      let s, _ = Unix.accept sock in 
+      let s = get_socket_fd port in
       let inchan = Unix.in_channel_of_descr s 
       and outchan = Unix.out_channel_of_descr s in 
       server_fun inchan outchan 
     end else begin
+      let sock = get_socket port in
       while true do
 	let s, _ = Unix.accept sock in 
 	match Unix.fork() with
@@ -289,6 +306,11 @@ let marshal_wrapper ma mb f s =
   let x : 'a = ma.marshal_from s in
   mb.marshal_to (f x)
 
+let marshal_wrapper2 ma mb mc f s1 s2 =
+  let x : 'a = ma.marshal_from s1 in
+  let y : 'b = mb.marshal_from s2 in
+  mc.marshal_to (f x y)
+
 (** Polymorphic functions. *)
 
 let generic_map
@@ -315,19 +337,19 @@ let generic_map
 let map ~f l = generic_map poly_marshaller poly_marshaller poly_marshaller ~f l
 
 let generic_map_local_reduce 
-  (ma : 'a marshaller) (mb : 'b marshaller) (mres : 'c marshaller)
+  (ma : 'a marshaller) (mb : 'b marshaller) (mc : 'c marshaller)
   ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l 
 =
   if is_worker then begin
     Worker.register_computation "map" (marshal_wrapper ma mb map);
-    (run_worker mres : 'c)
+    (run_worker mc : 'c)
   end else begin
     let acc = ref acc in
     master 
       ~handle:(fun _ r -> 
 		 let r = mb.marshal_from r in acc := reduce !acc r; [])
       (List.map (fun x -> (), "map", ma.marshal_to x) l);
-    send_result mres !acc 
+    send_result mc !acc 
   end
 
 let map_local_reduce ~map ~reduce acc l = 
@@ -419,6 +441,59 @@ let map_reduce_ac ~map ~reduce acc l =
   generic_map_reduce_ac poly_marshaller poly_marshaller 
     ~map ~reduce acc l
 
+let generic_map_reduce_a 
+  (ma : 'a marshaller) (mb : 'b marshaller)
+  ~(map : 'a -> 'b) ~(reduce : 'b -> 'b -> 'b) acc l 
+=
+  if is_worker then begin
+    Worker.register_computation "map" (marshal_wrapper ma mb map);
+    Worker.register_computation2 "reduce" (marshal_wrapper2 mb mb mb reduce);
+    (run_worker mb : 'b)
+  end else begin
+    let tasks = 
+      let i = ref 0 in 
+      List.map (fun x -> incr i; (!i, !i), "map", ma.marshal_to x) l 
+    in
+    (* results maps i and j to (i,j,r) for each completed reduction of
+       the interval i..j with result r *)
+    let results = Hashtbl.create 17 in 
+    let merge i j r = 
+      if Hashtbl.mem results (i-1) then begin
+	let l, h, x = Hashtbl.find results (i-1) in
+	assert (h = i-1);
+	Hashtbl.remove results l; 
+	Hashtbl.remove results h;
+	[(l, j), "reduce", encode_string_pair (x, r)]
+      end else if Hashtbl.mem results (j+1) then begin
+	let l, h, x = Hashtbl.find results (j+1) in
+	assert (l = j+1);
+	Hashtbl.remove results h; 
+	Hashtbl.remove results l;
+	[(i, h), "reduce", encode_string_pair (r, x)]
+      end else begin
+	Hashtbl.add results i (i,j,r);
+	Hashtbl.add results j (i,j,r);
+	[]
+      end
+    in
+    master 
+      ~handle:(fun x r -> match x with
+		 | (i, _), "map", _ -> merge i i r
+		 | (i, j), "reduce", _ -> merge i j r
+		 | _ -> assert false)
+      tasks;
+    (* we are done; results must contain 2 mappings only, for 1 and n *)
+    let res = 
+      try let _,_,r = Hashtbl.find results 1 in mb.marshal_from r 
+      with Not_found -> acc
+    in
+    send_result mb res
+  end
+
+let map_reduce_a ~map ~reduce acc l = 
+  generic_map_reduce_a poly_marshaller poly_marshaller 
+    ~map ~reduce acc l
+
 (** Monomorphic functions. *)
 
 let id_marshaller = {
@@ -491,14 +566,6 @@ module Str = struct
     marshal_from = decode_string_string_map_reduce; 
   }
 
-  let encode_string_pair (s1, s2) =
-    let buf = Buffer.create 1024 in
-    Binary.buf_string buf s1;
-    Binary.buf_string buf s2;
-    Buffer.contents buf
-
-  let decode_string_pair = Worker.decode_string_pair
-
   let string_string_pair_map_reduce_marshaller = {
     marshal_to = (fun r -> 
 		    let r = match r with
@@ -523,6 +590,10 @@ module Str = struct
     generic_map_reduce_ac
       string_string_pair_map_reduce_marshaller
       string_marshaller
+      ~map ~reduce acc l
+
+  let map_reduce_a ~map ~reduce acc l =
+    generic_map_reduce_a string_marshaller string_marshaller
       ~map ~reduce acc l
 
 end
@@ -555,13 +626,13 @@ module Master = struct
 		     | None -> Stack.push r pending; []
 		     | Some v -> 
 			 acc := None; 
-			 [(), "reduce", Str.encode_string_pair (v, r)]
+			 [(), "reduce", encode_string_pair (v, r)]
 		   end
 		 | "reduce" -> begin match !acc with
 		     | None -> 
 			 if not (Stack.is_empty pending) then
 			   [(), "reduce", 
-			    Str.encode_string_pair (r, Stack.pop pending)]
+			    encode_string_pair (r, Stack.pop pending)]
 			 else begin
 			   acc := Some r;
 			   []
@@ -585,7 +656,7 @@ module Master = struct
 		     acc := Some r; []
 		 | Some v -> 
 		     acc := None; 
-		     [(), "reduce", Str.encode_string_pair (v, r)])
+		     [(), "reduce", encode_string_pair (v, r)])
       (List.map (fun x -> (), "map", x) l);
     (* we are done; the accumulator must exist *)
     match !acc with
@@ -603,13 +674,13 @@ module Master = struct
 	assert (h = i-1);
 	Hashtbl.remove results l; 
 	Hashtbl.remove results h;
-	[(l, i), "reduce", Str.encode_string_pair (x, r)]
+	[(l, i), "reduce", encode_string_pair (x, r)]
       end else if Hashtbl.mem results (j+1) then begin
 	let l, h, x = Hashtbl.find results (j+1) in
 	assert (l = j+1);
 	Hashtbl.remove results h; 
 	Hashtbl.remove results l;
-	[(i, h), "reduce", Str.encode_string_pair (r, x)]
+	[(i, h), "reduce", encode_string_pair (r, x)]
       end else begin
 	Hashtbl.add results i (i,j,r);
 	Hashtbl.add results j (i,j,r);

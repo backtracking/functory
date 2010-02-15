@@ -13,6 +13,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
+open Format
 open Control
 open Unix
 
@@ -160,24 +161,26 @@ let map_reduce_ac ~(map : 'a -> 'b) ~(reduce : 'b -> 'b -> 'b) acc l =
 
 
 let map_reduce_a ~(map : 'a -> 'b) ~(reduce : 'b -> 'b -> 'b) acc l =
-  let tasks = let i = ref 0 in List.map (fun x -> incr i; !i,x) l in
+  let tasks = let i = ref 0 in List.map (fun x -> incr i; !i, x) l in
   (* results maps i and j to (i,j,r) for each completed reduction
      of the interval i..j with result r *)
   let results = Hashtbl.create 17 in 
   let merge i j r = 
+    assert (i <= j);
     if Hashtbl.mem results (i-1) then begin
       let l, h, x = Hashtbl.find results (i-1) in
-      assert (h = i-1);
+      assert (l <= h && h = i-1);
       Hashtbl.remove results l; 
       Hashtbl.remove results h;
-      [Reduce (l, i, x, r)]
+      [Reduce (l, j, x, r)]
     end else if Hashtbl.mem results (j+1) then begin
       let l, h, x = Hashtbl.find results (j+1) in
-      assert (l = j+1);
+      assert (l <= h && l = j+1);
       Hashtbl.remove results h; 
       Hashtbl.remove results l;
       [Reduce (i, h, r, x)]
     end else begin
+      printf "not merging %d..%d@." i j;
       Hashtbl.add results i (i,j,r);
       Hashtbl.add results j (i,j,r);
       []
