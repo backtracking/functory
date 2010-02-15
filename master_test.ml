@@ -30,7 +30,7 @@ let () =
 
 let (++) = Int64.add
 
-let () = Network.declare_workers ~n:4 "moloch"
+let () = Network.declare_workers ~n:4 !server
 
 let () =
   let l = 

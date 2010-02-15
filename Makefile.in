@@ -112,9 +112,13 @@ version.ml: Makefile
 # tests
 #######
 
-test: test.opt
+test: test.opt 
 	WORKER=yes xterm -e "./test.opt" &
 	sleep 1 && ./test.opt
+
+test2: master_test.opt worker_test.opt
+	./worker_test.opt &
+	sleep 1 && ./master_test.opt && killall -9 worker_test.opt
 
 install-test: tests/n-queens/a.out tests/sums/a.out tests/sort/a.out \
               tests/sort-nfs/a.out
