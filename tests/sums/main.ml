@@ -13,7 +13,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(* open Mapreduce.Simple *)
+(* open Mapreduce.Sequential *)
 
 let () = Mapreduce.Control.set_debug true
 

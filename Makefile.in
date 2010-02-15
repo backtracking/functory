@@ -55,7 +55,7 @@ opt: $(CMA) $(CMXA) worker_test.opt master_test.opt test.opt
 # bytecode and native-code compilation
 ######################################
 
-CMO = control.cmo simple.cmo master.cmo cores.cmo binary.cmo protocol.cmo \
+CMO = control.cmo sequential.cmo master.cmo cores.cmo binary.cmo protocol.cmo \
       network.cmo
 CMX = $(CMO:.cmo=.cmx)
 
@@ -112,9 +112,9 @@ version.ml: Makefile
 # tests
 #######
 
-test: tests/n-queens/a.out tests/sums/a.out
-	tests/sums/a.out
-#	tests/n-queens/a.out
+test: test.opt
+	WORKER=yes xterm -e "./test.opt" &
+	sleep 1 && ./test.opt
 
 install-test: tests/n-queens/a.out tests/sums/a.out tests/sort/a.out \
               tests/sort-nfs/a.out

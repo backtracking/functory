@@ -22,62 +22,94 @@ let () =
     (fun _ -> ())
     "test: usage:"
 
-(* open Mapreduce.Simple *)
+module type MR = sig
+  type t
+  val map : f:(t -> t) -> t list -> t list
+  val map_local_reduce : 
+    map:(t -> t) -> reduce:(t -> t -> t) -> t -> t list -> t
+  val map_remote_reduce :
+    map:(t -> t) -> reduce:(t -> t -> t) -> t -> t list -> t
+  val map_reduce_ac :
+    map:(t -> t) -> reduce:(t -> t -> t) -> t -> t list -> t
+  val map_reduce_a :
+    map:(t -> t) -> reduce:(t -> t -> t) -> t -> t list -> t
+end
 
-(* open Mapreduce.Cores *)
-(* let () = set_number_of_cores 4 *)
+module TestInt(X : MR with type t = int) = struct
+  open X
 
-open Mapreduce.Network
-let () = declare_workers ~n:4 "moloch"
-let () = declare_workers ~n:2 "orcus"
+  let f x = x+1
 
-let f x = x+1
+  let reduce = (+)
 
-let reduce = (+)
+  let () =
+    let l = [1;2;3;4;5] and r = 20 in
+    printf "  map@.";
+    assert (map f l = [2;3;4;5;6]);
+    printf "  map_local_reduce@.";
+    assert (map_local_reduce ~map:f ~reduce 0 l = r);
+    printf "  map_remote_reduce@.";
+    assert (map_remote_reduce ~map:f ~reduce 0 l = r);
+    printf "  map_reduce_ac@.";
+    assert (map_reduce_ac ~map:f ~reduce 0 l = r);
+    printf "  map_reduce_a@.";
+    assert (map_reduce_a ~map:f ~reduce 0 l = r);
+    ()
 
-let () =
-  let l = [1;2;3;4;5] and r = 20 in
-  printf "map@.";
-  assert (map f l = [2;3;4;5;6]);
-  printf "map_local_reduce@.";
-  assert (map_local_reduce ~map:f ~reduce 0 l = r);
-  printf "map_remote_reduce@.";
-  assert (map_remote_reduce ~map:f ~reduce 0 l = r);
-  printf "map_reduce_ac@.";
-  assert (map_reduce_ac ~map:f ~reduce 0 l = r);
-  printf "map_reduce_a@.";
-  assert (map_reduce_a ~map:f ~reduce 0 l = r);
-  ()
+end
 
-let f s = s ^ "."
+module TestString(X : MR with type t = string) = struct
+  open X
 
-let reduce = (^)
-
-let () =
-  let l = ["a"; "bb"; "ccc"; "dddd"] in
-  assert (map f l = ["a."; "bb."; "ccc."; "dddd."]);
-  let check r = 
-    String.length r = 14 &&
-    List.for_all 
+  let f s = s ^ "."
+    
+  let reduce = (^)
+    
+  let () =
+    let l = ["a"; "bb"; "ccc"; "dddd"] in
+    assert (map f l = ["a."; "bb."; "ccc."; "dddd."]);
+    let check r = 
+      String.length r = 14 &&
+      List.for_all 
       (fun x -> 
 	 let i = String.index r x.[0] in 
 	 let n = String.length x in 
 	 String.sub r i n = x && r.[i + n] = '.')
       l
-  in
-  printf "map_local_reduce@.";
-  assert (check (map_local_reduce ~map:f ~reduce "" l));
-  assert (check (Str.map_local_reduce ~map:f ~reduce "" l));
-  printf "map_remote_reduce@.";
-  assert (check (map_remote_reduce ~map:f ~reduce "" l));
-  assert (check (Str.map_remote_reduce ~map:f ~reduce "" l));
-  printf "map_reduce_ac@.";
-  assert (check (map_reduce_ac ~map:f ~reduce "" l));
-  assert (check (Str.map_reduce_ac ~map:f ~reduce "" l));
-  printf "map_reduce_a@.";
-  assert (map_reduce_a ~map:f ~reduce "" l = "a.bb.ccc.dddd.");
-  assert (Str.map_reduce_a ~map:f ~reduce "" l = "a.bb.ccc.dddd.");
-  ()
+    in
+    printf "  map_local_reduce@.";
+    assert (check (map_local_reduce ~map:f ~reduce "" l));
+    printf "  map_remote_reduce@.";
+    assert (check (map_remote_reduce ~map:f ~reduce "" l));
+    printf "  map_reduce_ac@.";
+    assert (check (map_reduce_ac ~map:f ~reduce "" l));
+    printf "  map_reduce_a@.";
+    assert (map_reduce_a ~map:f ~reduce "" l = "a.bb.ccc.dddd.");
+    ()
+end
+
+let () = printf "Sequential@."
+module TestIntSeq = 
+  TestInt(struct type t = int include Mapreduce.Sequential end)
+module TestStringSeq = 
+  TestString(struct type t = string include Mapreduce.Sequential end)
+
+let () = printf "Cores@."
+let () = Mapreduce.Cores.set_number_of_cores 2
+module TestIntCores = 
+  TestInt(struct type t = int include Mapreduce.Cores end)
+module TestStringCores = 
+  TestString(struct type t = string include Mapreduce.Cores end)
+
+let () = printf "Network@."
+let () = Mapreduce.Network.declare_workers ~n:2 "localhost"
+module TestIntNetwork = 
+  TestInt(struct type t = int include Mapreduce.Network end)
+module TestStringNetwork = 
+  TestString(struct type t = string include Mapreduce.Network end)
+module TestStringNetworkStr = 
+  TestString(struct type t = string include Mapreduce.Network.Str end)
+
 
 
 (***********

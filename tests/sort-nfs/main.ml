@@ -19,7 +19,7 @@ open Format
 
 (* let () = Mapreduce.Control.set_debug true *)
 
-open Mapreduce.Simple
+open Mapreduce.Sequential
 
 (* open Mapreduce.Cores *)
 (* let () = Mapreduce.Cores.set_number_of_cores 10 *)

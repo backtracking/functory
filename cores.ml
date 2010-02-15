@@ -180,7 +180,6 @@ let map_reduce_a ~(map : 'a -> 'b) ~(reduce : 'b -> 'b -> 'b) acc l =
       Hashtbl.remove results l;
       [Reduce (i, h, r, x)]
     end else begin
-      printf "not merging %d..%d@." i j;
       Hashtbl.add results i (i,j,r);
       Hashtbl.add results j (i,j,r);
       []

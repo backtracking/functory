@@ -17,7 +17,7 @@
 
 open Mapreduce.Cores
 let () = set_number_of_cores 2
-(* open Mapreduce.Simple *)
+(* open Mapreduce.Sequential *)
 
 let rec t a b c count =
   if a > 0 then

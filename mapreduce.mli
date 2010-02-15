@@ -16,7 +16,7 @@
 (** Map/Reduce Paradigm *)
 
 (** The sequential implementation (to be used as a reference) *)
-module Simple : sig
+module Sequential : sig
 
   val map : f:('a -> 'b) -> 'a list -> 'b list
       (** same result as [List.map] *)
