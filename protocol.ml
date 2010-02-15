@@ -37,7 +37,8 @@ let rec read_n_bytes fd s ofs len =
   (* eprintf "read: len=%d got=%d@." len n; *)
   if n < 0 then begin eprintf "read_n_bytes: couldn't read@."; exit 1 end;
   if n = 0 then raise End_of_file;
-  assert (n = len) (* FIXME: wait for other bytes to be available *)
+  if n < len then read_n_bytes fd s (ofs + n) (len -n)
+(*   assert (n = len) (\* FIXME: wait for other bytes to be available *\) *)
 
 let generic_receive get fd = 
   read_n_bytes fd read_buffer 0 4;

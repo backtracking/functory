@@ -5,9 +5,14 @@ open Format
 
 (* let () = Mapreduce.Control.set_debug true *)
 
-(* open Mapreduce.Simple *)
-open Mapreduce.Cores
-let () = Mapreduce.Cores.set_number_of_cores 2
+open Mapreduce.Simple
+
+(* open Mapreduce.Cores *)
+(* let () = Mapreduce.Cores.set_number_of_cores 10 *)
+
+(* open Mapreduce.Network *)
+(* let () = declare_workers ~n:4 "moloch" *)
+(* let () = declare_workers ~n:2 "orcus" *)
 
 let file = Sys.argv.(1)
 let s = int_of_string Sys.argv.(2) (* chunk size *)

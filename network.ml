@@ -9,6 +9,15 @@ module Worker = struct
 
   let register_computation = Hashtbl.add computations
     
+  let decode_string_pair s =
+    let s1, pos = Binary.get_string s 0 in 
+    let s2, _ = Binary.get_string s pos in 
+    s1, s2
+
+  let register_computation2 n f =
+    register_computation n
+      (fun s -> let x, y = decode_string_pair s in f x y)
+
   type running_task = {
     pid : int;
     file : file_descr;
@@ -90,10 +99,16 @@ module Worker = struct
       | ExitOnStop r ->
 	  r
       | e -> 
-	  eprintf "anomaly: %s@." (Printexc.to_string e); 
+	  let s = match e with
+	    | Unix_error (e, f, x) -> 
+		sprintf "%s (%s, %s)" (error_message e) f x
+	    | e -> 
+		Printexc.to_string e
+	  in
+	  eprintf "anomaly: %s@." s; 
 	  exit 1
 
-  (* sockets are allocated lazily *)
+  (* sockets are allocated lazily; this table maps port numbers to sockets *)
   let sockets = Hashtbl.create 17
 
 (*   let () =  *)
@@ -117,18 +132,19 @@ module Worker = struct
       setsockopt sock SO_REUSEADDR true;
       bind sock sockaddr;
       listen sock 3;
-      let s, _ = Unix.accept sock in 
-      Hashtbl.add sockets port (sock, s);
-      sock, s
+      Hashtbl.add sockets port sock;
+      sock
 
   let compute ?(stop=false) ?(port=51000) () = 
-    let _, s = get_socket port in
+    let sock = get_socket port in
     if stop then begin
+      let s, _ = Unix.accept sock in 
       let inchan = Unix.in_channel_of_descr s 
       and outchan = Unix.out_channel_of_descr s in 
       server_fun inchan outchan 
     end else begin
       while true do
+	let s, _ = Unix.accept sock in 
 	match Unix.fork() with
 	  | 0 -> 
 	      if Unix.fork() <> 0 then exit 0; 
@@ -139,7 +155,7 @@ module Worker = struct
               close_out outchan;
               exit 0
 	  | id -> 
-	      Unix.close s; 
+	      Unix.close s;
 	      ignore (Unix.waitpid [] id)
       done;
       assert false
@@ -481,10 +497,7 @@ module Str = struct
     Binary.buf_string buf s2;
     Buffer.contents buf
 
-  let decode_string_pair s =
-    let s1, pos = Binary.get_string s 0 in 
-    let s2, _ = Binary.get_string s pos in 
-    s1, s2
+  let decode_string_pair = Worker.decode_string_pair
 
   let string_string_pair_map_reduce_marshaller = {
     marshal_to = (fun r -> 
@@ -513,3 +526,104 @@ module Str = struct
       ~map ~reduce acc l
 
 end
+
+(** Master *)
+
+module Master = struct
+
+  let map (l : string list) : string list =
+    let tasks = let i = ref 0 in List.map (fun x -> incr i; !i, "f", x) l in
+    let results = Hashtbl.create 17 in (* index -> 'b *)
+    master 
+      ~handle:(fun (i,_,_) r -> Hashtbl.add results i r; [])
+      tasks;
+    List.map (fun (i,_,_) -> Hashtbl.find results i) tasks
+
+  let map_local_reduce ~(reduce : 'c -> 'b -> 'c) acc l =
+    let acc = ref acc in
+    master 
+      ~handle:(fun _ r -> acc := reduce !acc r; [])
+      (List.map (fun x -> (), "map", x) l);
+    !acc 
+
+  let map_remote_reduce acc l =
+    let acc = ref (Some acc) in
+    let pending = Stack.create () in
+    master 
+      ~handle:(fun (_,f,_) r -> match f with
+		 | "map" -> begin match !acc with
+		     | None -> Stack.push r pending; []
+		     | Some v -> 
+			 acc := None; 
+			 [(), "reduce", Str.encode_string_pair (v, r)]
+		   end
+		 | "reduce" -> begin match !acc with
+		     | None -> 
+			 if not (Stack.is_empty pending) then
+			   [(), "reduce", 
+			    Str.encode_string_pair (r, Stack.pop pending)]
+			 else begin
+			   acc := Some r;
+			   []
+			 end
+		     | Some _ -> 
+			 assert false
+		   end
+		 | _ ->
+		     assert false)
+      (List.map (fun x -> (), "map", x) l);
+    (* we are done; the accumulator must exist *)
+    match !acc with
+      | Some r -> r
+      | None -> assert false
+
+  let map_reduce_ac acc l =
+    let acc = ref (Some acc) in
+    master 
+      ~handle:(fun _ r -> match !acc with
+		 | None -> 
+		     acc := Some r; []
+		 | Some v -> 
+		     acc := None; 
+		     [(), "reduce", Str.encode_string_pair (v, r)])
+      (List.map (fun x -> (), "map", x) l);
+    (* we are done; the accumulator must exist *)
+    match !acc with
+      | Some r -> r
+      | None -> assert false
+
+  let map_reduce_a acc l =
+    let tasks = let i = ref 0 in List.map (fun x -> incr i; !i,x) l in
+    (* results maps i and j to (i,j,r) for each completed reduction of
+       the interval i..j with result r *)
+    let results = Hashtbl.create 17 in 
+    let merge i j r = 
+      if Hashtbl.mem results (i-1) then begin
+	let l, h, x = Hashtbl.find results (i-1) in
+	assert (h = i-1);
+	Hashtbl.remove results l; 
+	Hashtbl.remove results h;
+	[(l, i), "reduce", Str.encode_string_pair (x, r)]
+      end else if Hashtbl.mem results (j+1) then begin
+	let l, h, x = Hashtbl.find results (j+1) in
+	assert (l = j+1);
+	Hashtbl.remove results h; 
+	Hashtbl.remove results l;
+	[(i, h), "reduce", Str.encode_string_pair (r, x)]
+      end else begin
+	Hashtbl.add results i (i,j,r);
+	Hashtbl.add results j (i,j,r);
+	[]
+      end
+    in
+    master 
+      ~handle:(fun x r -> match x with
+		 | (i, _), "map", _ -> merge i i r
+		 | (i, j), "reduce", _ -> merge i j r
+		 | _ -> assert false)
+      (List.map (fun (i,x) -> (i,i), "map", x) tasks);
+    (* we are done; results must contain 2 mappings only, for 1 and n *)
+  try let _,_,r = Hashtbl.find results 1 in r with Not_found -> acc
+
+end
+

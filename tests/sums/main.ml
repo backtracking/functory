@@ -20,9 +20,9 @@ let () = Mapreduce.Control.set_debug true
 open Mapreduce.Cores
 let () = set_number_of_cores 2
 
-(* open Mapreduce.Network *)
-(* let () = declare_workers ~n:4 "moloch" *)
-(* let () = declare_workers ~n:2 "129.175.4.107" *)
+open Mapreduce.Network
+let () = declare_workers ~n:4 "moloch"
+let () = declare_workers ~n:2 "orcus"
 
 let f x = x+1
 

@@ -10,16 +10,16 @@ let () =
 
 (* open Mapreduce.Simple *)
 
-(* open Mapreduce.Cores *)
-(* let () = set_number_of_cores 4 *)
+open Mapreduce.Cores
+let () = set_number_of_cores 4
 
-open Mapreduce.Network
-let () = declare_workers ~n:4 "moloch"
-let () = declare_workers ~n:2 "129.175.4.107"
+(* open Mapreduce.Network *)
+(* let () = declare_workers ~n:4 "moloch" *)
+(* let () = declare_workers ~n:2 "orcus" *)
 
 let rec compute x = if x <= 1 then 1 else x * compute (x-1)
 
-let n = map_remote_reduce ~map:compute ~reduce:(+) 0 [1;2;3;4] 
+let n = map_reduce_a ~map:compute ~reduce:(+) 0 [1;2;3;4]
 
 let () = printf "%d@." n; exit 0
 
@@ -41,7 +41,7 @@ let l = map compute ["10"; "20"; "15"]
 
 let () = List.iter (fun s -> printf "%s@." s) l; printf "---@."
 
-let l = Str.map compute ["10"; "20"; "15"] 
+let l = map compute ["10"; "20"; "15"] 
 
 let () = List.iter (fun s -> printf "%s@." s) l; printf "---@."
 

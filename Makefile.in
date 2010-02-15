@@ -116,11 +116,12 @@ test: tests/n-queens/a.out tests/sums/a.out
 	tests/sums/a.out
 #	tests/n-queens/a.out
 
-install-test: tests/n-queens/a.out tests/sums/a.out
-	cp tests/sums/a.out ~
+install-test: tests/n-queens/a.out tests/sums/a.out tests/sort/a.out \
+              tests/sort-nfs/a.out
+	cp tests/sort-nfs/a.out ~
 
 tests/%/a.out: tests/%/main.ml mapreduce.cmxa
-	cd tests/$*; $(OCAMLOPT) -I ../.. unix.cmxa mapreduce.cmxa main.ml
+	$(OCAMLOPT) unix.cmxa mapreduce.cmxa tests/$*/main.ml -o $@
 
 wc:
 	ocamlwc -p *.ml* tests/*/*.ml*

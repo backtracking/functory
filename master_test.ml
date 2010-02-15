@@ -16,11 +16,30 @@ let () =
 
 let (++) = Int64.add
 
-let () = 
-  Network.declare_workers ~n:4 "moloch";
+let () = Network.declare_workers ~n:4 "moloch"
+
+let () =
   let l = 
-    Network.map (fun _ -> "") ["10"; "20"; "15"] 
+    Network.Master.map ["10"; "20"; "15"] 
   in
-  let v = List.fold_left (fun acc s -> acc ++ Int64.of_string s) 0L l  in
+  let v = List.fold_left (fun acc s -> acc ++ Int64.of_string s) 0L l in
   printf "total = %Ld@." v
+
+let () =
+  let s = 
+    Network.Master.map_local_reduce ~reduce:(^) "" ["10"; "20"; "15"] 
+  in
+  printf "s = %s@." s
+
+let () =
+  let s = 
+    Network.Master.map_remote_reduce "" ["10"; "20"; "15"] 
+  in
+  printf "s = %s@." s
+
+let () =
+  let s = 
+    Network.Master.map_reduce_a "" ["10"; "20"; "15"]
+  in
+  printf "s = %s@." s
 

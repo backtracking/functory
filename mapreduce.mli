@@ -19,18 +19,27 @@
 module Simple : sig
 
   val map : f:('a -> 'b) -> 'a list -> 'b list
+      (** same result as [List.map] *)
 
   val map_local_reduce :
     map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+      (** [map_local_reduce map reduce acc l] computes
+	  [reduce ... (reduce (reduce acc (map x1)) (map x2)) ... (map xn)]
+	  for some permutation [x1,x2,...,xn] of [l] *)
 
   val map_remote_reduce :
     map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+      (** same result *)
 
   val map_reduce_ac :
     map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
-
+      (** same result, assuming [reduce] is an associative and commutative
+	  operation with neutral element [acc] *)
+    
   val map_reduce_a :
     map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+      (** same result, assuming [reduce] is an associative
+	  operation with neutral element [acc] *)
 
 end
 
@@ -99,11 +108,57 @@ module Network : sig
 
   end
 
+
+  (** General case: master and workers are developped independently *)
+
+  module Master : sig
+
+    val map : string list -> string list
+      (** [map l] is returning [List.map f l] where
+	  [f : string -> string] is a function registered under name "f" *)
+
+    val map_local_reduce :
+      reduce:(string -> string -> string) ->
+      string -> string list -> string
+      (** [map_local_reduce reduce acc l] is returning 
+	  [map_local_reduce map reduce acc l] where [map : string -> string]
+	  is a function registered under name "map" *)
+
+    val map_remote_reduce : string -> string list -> string
+      (** [map_remote_reduce acc l] is returning 
+	  [map_remote_reduce map reduce acc l] where [map : string -> string]
+	  and [reduce : string -> string -> string]
+	  are functions respectively registered under names "map" and
+          "reduce" *)
+
+    val map_reduce_ac : string -> string list -> string
+      (** workers should provide a "map" function and a "reduce" function *)
+
+    val map_reduce_a : string -> string list -> string
+      (** workers should provide a "map" function and a "reduce" function *)
+
+   end
+
   module Worker : sig
 
     val register_computation : string -> (string -> string) -> unit
+      (** [register_computation n f] registers function [f] with name [n] *)
+
+    val register_computation2 : string -> (string -> string -> string) -> unit
+      (** [register_computation2 n f] registers the two arguments 
+	  function [f] with name [n] *)
 
     val compute : ?stop:bool -> ?port:int -> unit -> string
+      (** [compute ()] starts the worker loop, listening on port [port]
+	  (default is 51000). 
+
+	  When [stop] is set to [true], which is the defautl,
+	  the worker will stop whenever it receives
+	  the Stop command from the master and will then return the result
+	  provided by the master.
+	  
+	  Whenever [stop] is set to [false], [compute] never returns
+	  and accept several parallel connections from masters. *)
 
   end
 

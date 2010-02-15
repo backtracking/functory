@@ -192,6 +192,5 @@ let map_reduce_a ~(map : 'a -> 'b) ~(reduce : 'b -> 'b -> 'b) acc l =
 	       | Reduce (i, j, _, _) -> merge i j r)
     (List.map (fun x -> Map x) tasks);
   (* we are done; results must contain 2 mappings only, for 1 and n *)
-  let _,_,r = Hashtbl.find results 1 in
-  r
+  try let _,_,r = Hashtbl.find results 1 in r with Not_found -> acc
 
