@@ -358,49 +358,43 @@ let map_local_reduce ~map ~reduce acc l =
 
 let uncurry f (x,y) = f x y
 
-type ('a, 'b) map_reduce =
-  | Map of 'a
-  | Reduce of 'b
-
 let generic_map_remote_reduce 
-  (macb : ('a, 'c * 'b) map_reduce marshaller) 
-  (mbc : ('b, 'c) map_reduce marshaller)
-  (mc : 'c marshaller)
+  (ma : 'a marshaller) (mb : 'b marshaller) (mc : 'c marshaller)
   ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l 
 =
   if is_worker then begin
-    Worker.register_computation "f" 
-      (fun s -> match macb.marshal_from s with
-	 | Map x -> mbc.marshal_to (Map (map x))
-	 | Reduce (v, x) -> mbc.marshal_to (Reduce (reduce v x)));
+    Worker.register_computation "map" (marshal_wrapper ma mb map);
+    Worker.register_computation2 "reduce" (marshal_wrapper2 mc mb mc reduce);
     (run_worker mc : 'c)
   end else begin
-    let acc = ref (Some acc) in
+    let acc = ref (Some (mc.marshal_to acc)) in
     let pending = Stack.create () in
     master 
-      ~handle:(fun _ r -> match mbc.marshal_from r with
-		 | Map r -> begin match !acc with
+      ~handle:(fun x r -> match x with
+		 | _,"map",_ -> begin match !acc with
 		     | None -> Stack.push r pending; []
 		     | Some v -> 
 			 acc := None; 
-			 [(), "f", macb.marshal_to (Reduce (v, r))]
+			 [(), "reduce", encode_string_pair (v, r)]
 		   end
-		 | Reduce r -> begin match !acc with
+		 | _,"reduce",_ -> begin match !acc with
 		     | None -> 
 			 if not (Stack.is_empty pending) then
-			   [(), "f", macb.marshal_to 
-			      (Reduce (r, Stack.pop pending))]
+			   [(), "reduce", 
+			    encode_string_pair (r, Stack.pop pending)]
 			 else begin
 			   acc := Some r;
 			   []
 			 end
 		     | Some _ -> 
 			 assert false
-		   end)
-      (List.map (fun x -> (), "f", macb.marshal_to (Map x)) l);
+		   end
+		 | _ -> 
+		     assert false)
+      (List.map (fun x -> (), "map", ma.marshal_to x) l);
     (* we are done; the accumulator must exist *)
     match !acc with
-      | Some r -> send_result mc r
+      | Some r -> send_result mc (mc.marshal_from r)
       | None -> assert false
   end
 
@@ -409,31 +403,27 @@ let map_remote_reduce ~map ~reduce acc l =
     ~map ~reduce acc l
 
 let generic_map_reduce_ac 
-  (mabb : ('a, 'b * 'b) map_reduce marshaller) 
-  (mb : 'b marshaller)
+  (ma : 'a marshaller) (mb : 'b marshaller)
   ~(map : 'a -> 'b) ~(reduce : 'b -> 'b -> 'b) acc l 
 =
   if is_worker then begin
-    Worker.register_computation "f" 
-      (fun s -> match mabb.marshal_from s with
-	 | Map x -> mb.marshal_to (map x)
-	 | Reduce (v, x) -> mb.marshal_to (reduce v x));
+    Worker.register_computation "map" (marshal_wrapper ma mb map);
+    Worker.register_computation2 "reduce" (marshal_wrapper2 mb mb mb reduce);
     (run_worker mb : 'b)
   end else begin
-    let acc = ref (Some acc) in
+    let acc = ref (Some (mb.marshal_to acc)) in
     master 
-      ~handle:(fun _ r -> 
-		 let r = mb.marshal_from r in
+      ~handle:(fun x r -> 
 		 match !acc with
 		 | None -> 
 		     acc := Some r; []
 		 | Some v -> 
 		     acc := None; 
-		     [(), "f", mabb.marshal_to (Reduce (v, r))])
-      (List.map (fun x -> (), "f", mabb.marshal_to (Map x)) l);
+		     [(), "reduce", encode_string_pair (v, r)])
+      (List.map (fun x -> (), "map", ma.marshal_to x) l);
     (* we are done; the accumulator must exist *)
     match !acc with
-      | Some r -> send_result mb r
+      | Some r -> send_result mb (mb.marshal_from r)
       | None -> assert false
   end
 
@@ -538,58 +528,14 @@ module Str = struct
     generic_map_local_reduce id_marshaller id_marshaller string_marshaller
       ~map ~reduce acc l
 
-  let encode_string_string_map_reduce x =
-    let buf = Buffer.create 1024 in
-    begin match x with
-      | Map s ->
-	  Binary.buf_int8 buf 0; (* 0 = Map *)
-	  Binary.buf_string buf s
-      | Reduce s ->
-	  Binary.buf_int8 buf 1; (* 1 = Reduce *)
-	  Binary.buf_string buf s
-    end;
-    Buffer.contents buf
-
-  let decode_string_string_map_reduce s =
-    let i, pos = Binary.get_uint8 s 0 in 
-    match i with
-      | 0 (* Map *) ->
-	  let s, _ = Binary.get_string s pos in Map s
-      | 1 (* Reduce *) ->
-	  let s, _ = Binary.get_string s pos in 
-	  Reduce s
-      | _ -> 
-	  assert false
-
-  let string_string_map_reduce_marshaller = { 
-    marshal_to = encode_string_string_map_reduce;
-    marshal_from = decode_string_string_map_reduce; 
-  }
-
-  let string_string_pair_map_reduce_marshaller = {
-    marshal_to = (fun r -> 
-		    let r = match r with
-		      | Map s -> Map s
-		      | Reduce p -> Reduce (encode_string_pair p)
-		    in
-		    encode_string_string_map_reduce r);
-    marshal_from = (fun s ->
-		      match decode_string_string_map_reduce s with
-			| Map _ as r -> r
-			| Reduce p -> Reduce (decode_string_pair p))
-  }
-
   let map_remote_reduce ~map ~reduce acc l =
     generic_map_remote_reduce 
-      string_string_pair_map_reduce_marshaller
-      string_string_map_reduce_marshaller
-      string_marshaller
+      string_marshaller string_marshaller string_marshaller
       ~map ~reduce acc l
 
   let map_reduce_ac ~map ~reduce acc l =
     generic_map_reduce_ac
-      string_string_pair_map_reduce_marshaller
-      string_marshaller
+      string_marshaller string_marshaller
       ~map ~reduce acc l
 
   let map_reduce_a ~map ~reduce acc l =
