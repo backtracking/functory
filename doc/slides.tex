@@ -52,6 +52,11 @@
   \end{center}
 \end{frame}
 
+\begin{frame}\frametitle{}
+  TODO: introduce cores/network idea
+\end{frame}
+
+
 \begin{frame}\frametitle{Two Ideas}
   \begin{enumerate}
   \item polymorphic map/fold instead of map/reduce
@@ -66,23 +71,23 @@
   \end{enumerate}
 \end{frame}
 
-\begin{frame}[fragile]\frametitle{API}
+\begin{frame}\frametitle{API}
 %\footnotesize
   \begin{itemize}
   \item traditional \texttt{List.map}
-\begin{verbatim}
+\begin{ocaml}
   val map : 
     f:('a -> 'b) -> 'a list -> 'b list
-\end{verbatim}
+\end{ocaml}
 
     \bigskip
   \item traditional combination of \texttt{List.fold} and \texttt{List.map}
   
-\begin{verbatim}
+\begin{ocaml}
   val map_reduce :
     map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
     'c -> 'a list -> 'c
-\end{verbatim}
+\end{ocaml}
     \begin{displaymath}
       \mathtt{map\_reduce}~f~g~c~l
       \begin{array}[t]{l}
@@ -90,46 +95,136 @@
         = \mathtt{fold}~(\mathtt{fun}~c~x\rightarrow g~c~(f~x))~c~l\\
       \end{array}
     \end{displaymath}
+    assuming $g$ is not sensitive to element ordering
   \end{itemize}
+
+  example :
+  \begin{displaymath}
+    \sum_{x\in l}f(x) = \mathtt{map\_reduce}~f~(+)~0~l
+  \end{displaymath}
 \end{frame}
 
-\begin{frame}[fragile]\frametitle{}
-\begin{verbatim}
+\begin{frame}\frametitle{Special Case}
+  \emph{idea}: reduce as early as possible, as in
+  \begin{displaymath}
+    \sum_{x\in l}f(x) = \mathtt{map\_reduce}~f~(+)~0~l
+  \end{displaymath}
+  in this case, + is \emph{associative / commutative}, so reductions are
+  order-insensitive and can be performed as soon as two intermediate
+  results are available
+
+
+  \begin{ocaml}
 val map_reduce_ac :
   map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
   'b -> 'a list -> 'b
-    
+  \end{ocaml}
+\end{frame}
+
+\begin{frame}\frametitle{Special Case 2}
+
+  \emph{order-sensitive} computation:
+  \begin{displaymath}
+    \mathtt{map\_reduce}~\mathtt{String.uppercase}~(\texttt{\^{}})~\texttt{""}~
+    \texttt{["h"; "e"; "l"; "l"; "o"]}
+  \end{displaymath}
+
+  operation is only \emph{associative}, yet we can reduce as soon as
+  adjacent intermediate results are available
+
+
+
+\begin{ocaml}
 val map_reduce_a :
   map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
   'b -> 'a list -> 'b
-\end{verbatim}
+\end{ocaml}
 \end{frame}
 
-\begin{frame}\frametitle{Options}
+\begin{frame}\frametitle{Local/Remote reductions}
+  reductions can be performed either by the master (local) or by the
+  workers (remote)
+
+  \bigskip
+  remote reductions allow other computations to be performed in parallel
+
+
+  \texttt{map\_reduce} takes the following forms
+  \begin{ocaml}
+val map_local_reduce :
+  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+  'c -> 'a list -> 'c
+val map_remote_reduce :
+  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+  'c -> 'a list -> 'c
+  \end{ocaml}
+\end{frame}
+
+\begin{frame}\frametitle{API Summary}
+  \begin{ocaml}
+val map : 
+  f:('a -> 'b) -> 'a list -> 'b list
+val map_local_reduce :
+  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+  'c -> 'a list -> 'c
+val map_remote_reduce :
+  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+  'c -> 'a list -> 'c
+val map_reduce_ac :
+  map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
+  'b -> 'a list -> 'b
+val map_reduce_a :
+  map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
+  'b -> 'a list -> 'b
+  \end{ocaml}
+\end{frame}
+
+
+\begin{frame}\frametitle{Library Options}
+  
+  3 modules, with 5 functions each
+
   \begin{center}
-    \begin{tabular}{|c|c|c|c|c|c|}
+    \begin{tabular}{|l|c|c|c|c|c|}
       \hline
                  & \multicolumn{2}{|c|}{map} &
                  \multicolumn{3}{|c|}{map/reduce} \\\cline{2-6}
-                 & map & local & remote & ac & a \\\hline\hline
-      sequential & & & & & \\\hline
-      cores      & & & & & \\\hline
-      network    & & & & & \\\hline
+                 & map & local & remote & ~ac~ & ~~a~~ \\\hline\hline
+      \texttt{Sequential} & & & \multicolumn{3}{|c|}{(no difference)} \\\hline
+      \texttt{Cores}      & & & & & \\\hline
+      \texttt{Network}    & & & & & \\\hline
     \end{tabular}
   \end{center}
+  % TODO: fill the cells
 \end{frame}
 
-
-\begin{frame}\frametitle{}
-  first demo
+\begin{frame}\frametitle{Demo}
+  \emph{demo}: solving the $n$-queens puzzle
 \end{frame}
 
-\begin{frame}\frametitle{}
-  detailed API
-\end{frame}
+\begin{frame}\frametitle{Demo}
+  \emph{demo}: solving the $n$-queens puzzle
 
-\begin{frame}\frametitle{}
-  another, more impressive demo ?
+
+
+  example: $n=16$
+  \begin{center}
+    \begin{tabular}{|l|r|}
+      \hline
+      sequential & 24.4 s \\\hline
+      2 cores    & 12.6 s \\\hline
+      12 cores on moloch & 3.0 s \\\hline
+    \end{tabular}
+  \end{center}
+
+  example: $n=17$
+  \begin{center}
+    \begin{tabular}{|l|r|}
+       \hline
+      sequential & 172.0 s \\\hline
+      moloch (12), orcus (4), localhost(1) & 11.7 s \\\hline
+    \end{tabular}
+  \end{center}
 \end{frame}
 
 \begin{frame}

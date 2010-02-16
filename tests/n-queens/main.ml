@@ -15,9 +15,15 @@
 
 (* Number of solutions to the n-queens puzzle using Map/Reduce *)
 
-open Mapreduce.Cores
-let () = set_number_of_cores 2
-(* open Mapreduce.Sequential *)
+open Mapreduce.Sequential
+
+(* open Mapreduce.Cores *)
+(* let () = set_number_of_cores 2 *)
+
+(* open Mapreduce.Network *)
+(* let () = declare_workers ~n:12 "moloch" *)
+(* let () = declare_workers ~n:4 "orcus" *)
+(* let () = declare_workers ~n:1 "localhost" *)
 
 let rec t a b c count =
   if a > 0 then
@@ -46,7 +52,7 @@ let test_n_queens q =
   let r = n_queens q in
   Format.printf "done (answer = %d)@." r
 
-let () = test_n_queens 12
+let () = test_n_queens (int_of_string Sys.argv.(1))
 
 (*
 Local Variables: 
