@@ -52,17 +52,73 @@
   \end{center}
 \end{frame}
 
-\begin{frame}\frametitle{}
-  two ideas
-  \begin{itemize}
+\begin{frame}\frametitle{Two Ideas}
+  \begin{enumerate}
   \item polymorphic map/fold instead of map/reduce
-  \item sequential / cores / network
+
+    \bigskip
+  \item several library options
+    \begin{itemize}
+    \item sequential 
+    \item several cores on the same machine
+    \item network
+    \end{itemize}
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}[fragile]\frametitle{API}
+%\footnotesize
+  \begin{itemize}
+  \item traditional \texttt{List.map}
+\begin{verbatim}
+  val map : 
+    f:('a -> 'b) -> 'a list -> 'b list
+\end{verbatim}
+
+    \bigskip
+  \item traditional combination of \texttt{List.fold} and \texttt{List.map}
+  
+\begin{verbatim}
+  val map_reduce :
+    map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+    'c -> 'a list -> 'c
+\end{verbatim}
+    \begin{displaymath}
+      \mathtt{map\_reduce}~f~g~c~l
+      \begin{array}[t]{l}
+        = \mathtt{fold}~g~c~(\mathtt{map}~f~l) \\
+        = \mathtt{fold}~(\mathtt{fun}~c~x\rightarrow g~c~(f~x))~c~l\\
+      \end{array}
+    \end{displaymath}
   \end{itemize}
 \end{frame}
 
-\begin{frame}\frametitle{}
-  brief overview of the API
+\begin{frame}[fragile]\frametitle{}
+\begin{verbatim}
+val map_reduce_ac :
+  map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
+  'b -> 'a list -> 'b
+    
+val map_reduce_a :
+  map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
+  'b -> 'a list -> 'b
+\end{verbatim}
 \end{frame}
+
+\begin{frame}\frametitle{Options}
+  \begin{center}
+    \begin{tabular}{|c|c|c|c|c|c|}
+      \hline
+                 & \multicolumn{2}{|c|}{map} &
+                 \multicolumn{3}{|c|}{map/reduce} \\\cline{2-6}
+                 & map & local & remote & ac & a \\\hline\hline
+      sequential & & & & & \\\hline
+      cores      & & & & & \\\hline
+      network    & & & & & \\\hline
+    \end{tabular}
+  \end{center}
+\end{frame}
+
 
 \begin{frame}\frametitle{}
   first demo
