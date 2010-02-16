@@ -271,17 +271,240 @@ let map_reduce_a = map_local_reduce
         push new pending tasks
   \end{lightblue-tt}
 
+
+  \begin{ocaml}
+master_loop : 
+  create_job:('worker -> 'task -> unit) -> 
+  wait:(unit -> 'worker * 'task list) -> 
+  'worker list -> 'task list -> unit
+  \end{ocaml}
+\end{frame}
+
+\begin{frame}\frametitle{Cores}
+  \begin{itemize}\item 
+    \texttt{create\_job} is achieved by \texttt{Unix.fork}, using a
+    local file to store the result (Unix pipes have size limitations)
+
+  \item 
+    \texttt{wait} is achieved using \texttt{Unix.wait}
+  \end{itemize}
+
+
+
+  Ocaml's marshalling is safely exploited to read/write values of any type
+
+
+  scheduling tasks to various cores is left to the OS
 \end{frame}
 
 
+\begin{frame}\frametitle{Network}
+  master and workers are the same program but distinguish using an
+  environment variable (\texttt{WORKER})
+
+  \begin{itemize}
+  \item a worker starts a server, waiting for tasks
+  \item the master connects to workers, sending tasks
+  \end{itemize}
+
+
+  simple, string-based protocol:
+  \begin{center}
+    \begin{tabular}{ccc}
+      \framebox{master} &  & \framebox{worker} \\
+      &     $\stackrel{\displaystyle connect}{\longrightarrow}$ &  \\
+      &     $\stackrel{\displaystyle\mathtt{Assign}~3~\mathtt{"f"}~\mathtt{"7"}}
+                      {\longrightarrow}$ &  \\
+      &     $\stackrel{\displaystyle \mathtt{Started}~3}
+                      {\longleftarrow}$ &  \\
+      &     $\stackrel{\displaystyle 
+                       \only<1>{\mathtt{Completed}~3~\mathtt{"42"}}
+                       \only<2>{\emph{\mathtt{Aborted}~3~}}
+                       \only<3>{\emph{\mathtt{Kill}~3}}}
+                      {\only<1-2>{\longleftarrow}
+                       \only<3>{\longrightarrow}}$ &  \\
+    \end{tabular}
+  \end{center}
+\end{frame}
+
+\begin{frame}\frametitle{Network: Polymorphic Map/Reduce}
+  if master and workers are \emph{exactly} the same executable, then
+  marshalling can still be used to pass values $\Rightarrow$
+  polymorphic map/reduce
+
+
+  if master and workers are compiled from the \emph{same source}, then
+  we are limited to strings $\Rightarrow$
+  monomorphic map/reduce
+
+  \footnotesize
+  \begin{ocaml}
+module Str : sig
+
+  val map : f:(string -> string) -> string list -> string list
+
+  val map_local_reduce :
+    map:(string -> string) -> 
+    reduce:(string -> string -> string) -> 
+    string -> string list -> string
+  ...
+  \end{ocaml}
+\end{frame}
+
+\begin{frame}\frametitle{Master}
+  whatever the implementation is (cores or network), we now 
+  provide the same generic master loop
+
+
+  \begin{ocaml}
+    master : (task -> task_result) -> 
+             (task -> task_result -> task list) ->
+             task list -> 
+             unit
+  \end{ocaml}
+
+
+  (the notion of workers is no more explicit)
+\end{frame}
+
+\begin{frame}\frametitle{Implementing \texttt{map}}
+  \begin{ocaml}
+val map : f:('a -> 'b) -> 'a list -> 'b list
+  \end{ocaml}
+
+
+
+  \begin{enumerate}
+  \item initially, the $i$-th element $x_i$ of the list is the task $(i,x_i)$
+  \item when task $(i,x_i)$ completes, store the result $f(x_i)$ in a table
+  \item when done, rebuild the list from the table contents
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}\frametitle{Implementing \texttt{map\_local\_reduce}}
+  \begin{ocaml}
+ val map_local_reduce :
+  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+  'c -> 'a list -> 'c
+  \end{ocaml}
+
+
+
+  \begin{enumerate}
+  \item initially, each element $x_i$ of the list is a task
+  \item when task $x_i$ completes, the result $f(x_i)$ is
+    \emph{locally} combined with the current accumulator (a local reference)
+  \item when done, return the accumulator
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}\frametitle{Implementing \texttt{map\_remote\_reduce}}
+  \begin{ocaml}
+val map_remote_reduce :
+  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+  'c -> 'a list -> 'c
+  \end{ocaml}
+
+
+
+  \begin{enumerate}
+  \item initially, each element $x_i$ in the list is a task $Map(x_i)$
+  \item when a task is completed with result $r$,
+    \begin{itemize}
+    \item either it is $Map(x_i)$,
+      \begin{itemize}
+      \item if accumulator is $\texttt{Some}~v$, generate the task
+        $Reduce(v,r)$ and set accumulator to \texttt{None}
+      \item if accumulator is \texttt{None}, push $r$ into $\mathit{stack}_r$
+      \end{itemize}
+    \item or it is $Reduce(r',v')$
+      \begin{itemize}
+      \item if $\mathit{stack}_r$ is empty, the accumulator is now
+        $\texttt{Some}~r$ 
+      \item otherwise, pop $v$ from $\mathit{stack}_r$, and generate
+        $Reduce(r,v)$ 
+      \end{itemize}
+    \end{itemize}
+  \item when done, return the accumulator
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}\frametitle{Implementing \texttt{map\_reduce\_ac}}
+  \begin{ocaml}
+val map_reduce_ac :
+  map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
+  'b -> 'a list -> 'b
+  \end{ocaml}
+
+
+
+  \begin{enumerate}
+  \item initially, each element $x_i$ in the list is a task $Map(x_i)$
+  \item when a task is completed with result $r$,
+    \begin{itemize}
+    \item if the accumulator is \texttt{None}, store $r$ in the accumulator
+    \item else, combine $r$ with the accumulator $v$ into a new task
+      $Reduce(v, r)$ and set accumulator to \texttt{None}
+    \end{itemize}
+  \item when done, return the accumulator
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}\frametitle{Implementing \texttt{map\_reduce\_a}}
+  \begin{ocaml}
+val map_reduce_a :
+  map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
+  'b -> 'a list -> 'b
+  \end{ocaml}
+
+
+  \begin{enumerate}
+  \item initially, each element $x_i$ in the list is a task $(i,i,Map(x_i))$
+  \item when a task $(i,j)$ is completed with result $r$,
+    \begin{itemize}
+    \item if there is some result adjacent to $(i,j)$ available,
+      merge them into a new reduce task
+    \item else, store it
+    \end{itemize}
+  \item when done, return the only remaining result
+  \end{enumerate}
+\end{frame}
+
+
+\begin{frame}\frametitle{Independent Master and Workers}
+  the library actually provides tools for independent development of
+  master \small
+
+  \begin{ocaml}
+module Master : sig
+  ...
+  val map_remote_reduce : string -> string list -> string
+  ...
+end
+  \end{ocaml}
+
+and workers\small
+
+  \begin{ocaml}
+module Worker : sig
+  val register_computation : 
+    string -> (string -> string) -> unit
+  val register_computation2 : 
+    string -> (string -> string -> string) -> unit
+  val compute : 
+    ?stop:bool -> ?port:int -> unit -> string
+end
+  \end{ocaml}
+\end{frame}
+
+\begin{frame}\frametitle{Future Work}
+  
+\end{frame}
+
 \begin{frame}\frametitle{}
-  common part between cores and network
-
-  output/input\_value on core
-
-  architecture-independent protocol for network
-
-  same program for master and workers
+  \begin{center}
+    \emph{thank you!}
+  \end{center}
 \end{frame}
 
 

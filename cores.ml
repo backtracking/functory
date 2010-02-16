@@ -127,17 +127,14 @@ let map_remote_reduce ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l =
 		   | None -> Stack.push r pending; []
 		   | Some v -> acc := None; [Reduce (v, r)]
 		 end
-	       | Reduce r -> begin match !acc with
-		   | None -> 
-		       if not (Stack.is_empty pending) then
-			 [Reduce (r, Stack.pop pending)]
-		       else begin
-			 acc := Some r;
-			 []
-		       end
-		   | Some _ -> 
-		       assert false
-		 end)
+	       | Reduce r -> 
+		   assert (!acc = None);
+		   if not (Stack.is_empty pending) then
+		     [Reduce (r, Stack.pop pending)]
+		   else begin
+		     acc := Some r;
+		     []
+		   end)
     (List.map (fun x -> Map x) l);
   (* we are done; the accumulator must exist *)
   match !acc with

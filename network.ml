@@ -391,18 +391,15 @@ let generic_map_remote_reduce
 			 acc := None; 
 			 [(), "reduce", encode_string_pair (v, r)]
 		   end
-		 | _,"reduce",_ -> begin match !acc with
-		     | None -> 
-			 if not (Stack.is_empty pending) then
-			   [(), "reduce", 
-			    encode_string_pair (r, Stack.pop pending)]
-			 else begin
-			   acc := Some r;
-			   []
-			 end
-		     | Some _ -> 
-			 assert false
-		   end
+		 | _,"reduce",_ -> 
+		     assert (!acc = None);
+		     if not (Stack.is_empty pending) then
+		       [(), "reduce", 
+			encode_string_pair (r, Stack.pop pending)]
+		     else begin
+		       acc := Some r;
+		       []
+		     end
 		 | _ -> 
 		     assert false)
       (List.map (fun x -> (), "map", ma.marshal_to x) l);
