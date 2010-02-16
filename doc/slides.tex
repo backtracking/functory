@@ -234,6 +234,46 @@ val map_reduce_a :
   \end{center}
 \end{frame}
 
+\begin{frame}\frametitle{Sequential}
+the sequential implementation is obvious
+
+  \begin{ocaml}
+let map ~f l = List.map f l
+
+let map_local_reduce ~map ~reduce acc l =
+  List.fold_left (fun a x -> reduce a (map x)) acc l
+
+let map_remote_reduce = map_local_reduce
+
+let map_reduce_ac = map_local_reduce
+
+let map_reduce_a = map_local_reduce
+  \end{ocaml}
+\end{frame}
+
+\begin{frame}\frametitle{Cores / Network}
+
+  \texttt{Cores} and \texttt{Network} share a main routine
+
+  abstract notions of \emph{workers} and \emph{tasks}; we can
+  \begin{enumerate}
+  \item assign a task to a worker
+  \item wait for a completed job, which may generate new tasks
+  \end{enumerate}
+
+
+  so the main loop is
+  \begin{lightblue-tt}
+    while pending tasks || pending jobs
+      while pending tasks && idle workers
+        assign any task to any idle worker
+      wait for any completed job
+        push new pending tasks
+  \end{lightblue-tt}
+
+\end{frame}
+
+
 \begin{frame}\frametitle{}
   common part between cores and network
 
