@@ -37,19 +37,103 @@
 \end{frame}
 
 \begin{frame}\frametitle{Google's Map/Reduce}
-  what it is
+  \begin{itemize}
+  \item 
+    what it is
+    \begin{itemize}
+    \item a paradigm for distributed computing at Google
+    \end{itemize}
 
-  what it offers
+    \bigskip
+  \item 
+    what it offers
+    \begin{itemize}
+    \item abstraction to hide parallelization and distribution from
+      user level code
+    \end{itemize}
 
-  application domains
+    \bigskip
+  \item 
+    application domains
+    \begin{itemize}
+    \item large scale data processing
+    \end{itemize}
+  \end{itemize}
 
+  \vfill
+  [MapReduce: Simplified Data Processing on Large Clusters. \par
+  J. Dean and S. Ghemawat. OSDI 2004]
 \end{frame}
+
+\begin{frame}\frametitle{Main Idea}
+  the user provides two functions
+  \begin{itemize}
+  \item \emph{map}: takes a key/value pair and returns a list of key/value
+    pairs
+    \begin{ocaml}
+    map : k1 * v1 -> (k2 * v2) list
+    \end{ocaml}
+
+
+
+  \item \emph{reduce}: takes a list of values for one key and returns
+    another list for that key
+    \begin{ocaml}
+    reduce : k2 * v2 list -> v2 list
+    \end{ocaml}
+  \end{itemize}
+
+
+
+  and the library takes care of the rest
+\end{frame}
+
+\begin{frame}\frametitle{}
+  \begin{center}
+    \includegraphics[width=\textwidth]{mrwordcount}
+  \end{center}
+\end{frame}
+
+\begin{frame}\frametitle{}
+  \begin{center}
+    \includegraphics[width=\textwidth]{mrfigure}
+  \end{center}
+\end{frame}
+
 
 \begin{frame}
   \begin{center}
     \hrulefill\\
     \emph{Ocaml's Map/Reduce}
   \end{center}
+\end{frame}
+
+\begin{frame}\frametitle{Ocaml's Map/Reduce}
+  \begin{itemize}
+  \item 
+    what it is
+    \begin{itemize}
+    \item a distributed computing library for Ocaml users
+    \end{itemize}
+
+    \bigskip
+  \item 
+    what it offers
+    \begin{itemize}
+    \item abstraction to hide parallelization and distribution from
+      user level code
+    \item \emph{polymorphism}
+    \item \emph{multi-cores or clusters}
+    \end{itemize}
+
+    \bigskip
+  \item 
+    application domains
+    \begin{itemize}
+    \item large scale data processing
+    \item \emph{and much more}
+    \end{itemize}
+  \end{itemize}
 \end{frame}
 
 \begin{frame}\frametitle{}
@@ -498,7 +582,14 @@ end
 \end{frame}
 
 \begin{frame}\frametitle{Future Work}
-  
+  \begin{itemize}
+  \item fault tolerance
+    \begin{itemize}
+    \item blacklist faulty workers
+    \item ping workers periodically
+    \end{itemize}
+  \item use idle workers to speedup remaining tasks
+  \end{itemize}
 \end{frame}
 
 \begin{frame}\frametitle{}
@@ -515,3 +606,5 @@ end
 %%% mode: latex
 %%% TeX-master: t
 %%% End: 
+
+% LocalWords:  parallelization Google
