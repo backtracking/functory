@@ -100,6 +100,11 @@
   \end{center}
 \end{frame}
 
+\begin{frame}\frametitle{}
+  \begin{center}
+    \includegraphics[width=\textwidth]{mr-new}
+  \end{center}
+\end{frame}
 
 \begin{frame}
   \begin{center}
@@ -136,8 +141,25 @@
   \end{itemize}
 \end{frame}
 
-\begin{frame}\frametitle{}
-  TODO: introduce cores/network idea
+\begin{frame}\frametitle{Cores \& Networks}
+  Our map/reduce library works seemlessly across
+
+  \bigskip
+  \begin{itemize}
+  \item multiple processor cores on the same (module \texttt{Cores})
+    machine
+    \begin{itemize}
+    \item user just needs to specify the number of cores to be used
+    \item uses Ocaml's \texttt{Unix} module
+    \end{itemize}
+
+    \bigskip
+  \item networked cluster of machines (module \texttt{Network})
+    \begin{itemize}
+    \item user specifies the machine name(s) to be used
+    \item relies on OCaml's \texttt{Unix} and \texttt{Marshal} modules
+    \end{itemize}
+  \end{itemize}
 \end{frame}
 
 
@@ -160,17 +182,17 @@
   \begin{itemize}
   \item traditional \texttt{List.map}
 \begin{ocaml}
-  val map : 
-    f:('a -> 'b) -> 'a list -> 'b list
+ val map : 
+  f:('a -> 'b) -> 'a list -> 'b list
 \end{ocaml}
 
     \bigskip
   \item traditional combination of \texttt{List.fold} and \texttt{List.map}
   
 \begin{ocaml}
-  val map_reduce :
-    map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
-    'c -> 'a list -> 'c
+ val map_reduce :
+  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+  'c -> 'a list -> 'c
 \end{ocaml}
     \begin{displaymath}
       \mathtt{map\_reduce}~f~g~c~l
