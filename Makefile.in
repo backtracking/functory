@@ -53,7 +53,6 @@ TESTS := $(patsubst %, tests/%/a.out, $(TESTDIRS))
 all: $(OCAMLBEST) $(TESTS)
 byte: $(CMA) worker_test.byte master_test.byte test.byte
 opt: $(CMA) $(CMXA) worker_test.opt master_test.opt test.opt
-	cp worker_test.opt test.opt ~
 
 # bytecode and native-code compilation
 ######################################
@@ -123,8 +122,8 @@ test2: master_test.opt worker_test.opt
 	./worker_test.opt &
 	sleep 1 && ./master_test.opt && killall -9 worker_test.opt
 
-install-test: tests/n-queens/a.out tests/sums/a.out tests/sort/a.out \
-              tests/sort-nfs/a.out
+install-test: $(TESTS)
+	cp worker_test.opt test.opt ~
 	cp tests/n-queens/a.out ~
 
 tests/%/a.out: tests/%/main.ml mapreduce.cmxa
