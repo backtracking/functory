@@ -122,7 +122,7 @@ test2: master_test.opt worker_test.opt
 
 install-test: tests/n-queens/a.out tests/sums/a.out tests/sort/a.out \
               tests/sort-nfs/a.out
-	cp tests/sort-nfs/a.out ~
+	cp tests/n-queens/a.out ~
 
 tests/%/a.out: tests/%/main.ml mapreduce.cmxa
 	$(OCAMLOPT) unix.cmxa mapreduce.cmxa tests/$*/main.ml -o $@
