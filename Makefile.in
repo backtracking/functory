@@ -47,7 +47,10 @@ NAME = mapreduce
 CMA  = mapreduce.cma
 CMXA = mapreduce.cmxa
 
-all: $(OCAMLBEST)
+TESTDIRS = n-queens sums sort sort-nfs
+TESTS := $(patsubst %, tests/%/a.out, $(TESTDIRS))
+
+all: $(OCAMLBEST) $(TESTS)
 byte: $(CMA) worker_test.byte master_test.byte test.byte
 opt: $(CMA) $(CMXA) worker_test.opt master_test.opt test.opt
 	cp worker_test.opt test.opt ~
