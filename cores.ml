@@ -113,7 +113,7 @@ let map_local_fold ~(map : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
 
 type ('a, 'b) map_fold =
   | Map of 'a
-  | Reduce of 'b
+  | Fold of 'b
 
 let map_remote_fold ~(map : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
   let acc = ref (Some acc) in
@@ -121,16 +121,16 @@ let map_remote_fold ~(map : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
   master 
     ~f:(function
 	  | Map x -> Map (map x)
-	  | Reduce (v, x) -> Reduce (fold v x))
+	  | Fold (v, x) -> Fold (fold v x))
     ~handle:(fun _ r -> match r with
 	       | Map r -> begin match !acc with
 		   | None -> Stack.push r pending; []
-		   | Some v -> acc := None; [Reduce (v, r)]
+		   | Some v -> acc := None; [Fold (v, r)]
 		 end
-	       | Reduce r -> 
+	       | Fold r -> 
 		   assert (!acc = None);
 		   if not (Stack.is_empty pending) then
-		     [Reduce (r, Stack.pop pending)]
+		     [Fold (r, Stack.pop pending)]
 		   else begin
 		     acc := Some r;
 		     []
@@ -146,10 +146,10 @@ let map_fold_ac ~(map : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l =
   master 
     ~f:(function
 	  | Map x -> map x
-	  | Reduce (v, x) -> fold v x)
+	  | Fold (v, x) -> fold v x)
     ~handle:(fun _ r -> match !acc with
 	       | None -> acc := Some r; []
-	       | Some v -> acc := None; [Reduce (v, r)])
+	       | Some v -> acc := None; [Fold (v, r)])
     (List.map (fun x -> Map x) l);
   (* we are done; the accumulator must exist *)
   match !acc with
@@ -169,13 +169,13 @@ let map_fold_a ~(map : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l =
       assert (l <= h && h = i-1);
       Hashtbl.remove results l; 
       Hashtbl.remove results h;
-      [Reduce (l, j, x, r)]
+      [Fold (l, j, x, r)]
     end else if Hashtbl.mem results (j+1) then begin
       let l, h, x = Hashtbl.find results (j+1) in
       assert (l <= h && l = j+1);
       Hashtbl.remove results h; 
       Hashtbl.remove results l;
-      [Reduce (i, h, r, x)]
+      [Fold (i, h, r, x)]
     end else begin
       Hashtbl.add results i (i,j,r);
       Hashtbl.add results j (i,j,r);
@@ -185,11 +185,52 @@ let map_fold_a ~(map : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l =
   master 
     ~f:(function
 	  | Map (_,x) -> map x
-	  | Reduce (_, _, x1, x2) -> fold x1 x2)
+	  | Fold (_, _, x1, x2) -> fold x1 x2)
     ~handle:(fun x r -> match x with
 	       | Map (i, _) -> merge i i r
-	       | Reduce (i, j, _, _) -> merge i j r)
+	       | Fold (i, j, _, _) -> merge i j r)
     (List.map (fun x -> Map x) tasks);
   (* we are done; results must contain 2 mappings only, for 1 and n *)
   try let _,_,r = Hashtbl.find results 1 in r with Not_found -> acc
+
+type ('a, 'b) map_reduce =
+  | Map of 'a
+  | Reduce of 'b
+
+let map_reduce ~map ~reduce l =
+  let results = Hashtbl.create 17 in 
+  let to_reduce = Hashtbl.create 17 in
+  let add k2 v2l =
+    try 
+      let l = Hashtbl.find results k2 in
+      Hashtbl.replace results k2 (List.rev_append v2l l);
+      Hashtbl.replace to_reduce k2 ()
+    with Not_found ->
+      Hashtbl.add results k2 v2l
+  in
+  let reduce_tasks () = 
+    let tl = 
+      Hashtbl.fold 
+	(fun k2 _ acc -> (Reduce (k2, Hashtbl.find results k2)) :: acc) 
+	to_reduce []
+    in
+    Hashtbl.iter (fun x _ -> Hashtbl.remove results x) to_reduce;
+    Hashtbl.clear to_reduce;
+    tl
+  in
+  master
+    ~f:(function
+	  | Map v1 -> Map (map v1)
+	  | Reduce (k2, v2l) -> Reduce (reduce k2 v2l))
+    ~handle:(fun x r -> 
+	       match x, r with
+		 | Map _, Map r -> 
+		     List.iter (fun (k2, v2) -> add k2 [v2]) r; reduce_tasks ()
+		 | Reduce (k2, _), Reduce r -> 
+		     add k2 r; reduce_tasks ()
+		 | _ ->
+		     assert false)
+    (List.map (fun x -> Map x) l);
+  Hashtbl.fold (fun k2 v2l res -> (k2, v2l) :: res) results []
+
 

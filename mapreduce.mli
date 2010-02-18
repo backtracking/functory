@@ -41,6 +41,12 @@ module Sequential : sig
       (** same result, assuming [fold] is an associative
 	  operation with neutral element [acc] *)
 
+  val map_reduce :
+    map:('v1 -> ('k2 * 'v2) list) -> reduce:('k2 -> 'v2 list -> 'v2 list) ->
+    'v1 list -> ('k2 * 'v2 list) list
+      (** map/reduce a la Google
+          uses [Hashtbl.hash] and [Pervasives.compare] on keys of type ['k2] *)
+
 end
 
 (** Several cores on the same machine *)
@@ -61,6 +67,10 @@ module Cores : sig
 
   val map_fold_a :
     map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+
+  val map_reduce :
+    map:('v1 -> ('k2 * 'v2) list) -> reduce:('k2 -> 'v2 list -> 'v2 list) ->
+    'v1 list -> ('k2 * 'v2 list) list
 
 end
 

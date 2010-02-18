@@ -22,7 +22,7 @@ let () =
     (fun _ -> ())
     "test: usage:"
 
-module type MR = sig
+module type MF = sig
   type t
   val map : f:(t -> t) -> t list -> t list
   val map_local_fold : 
@@ -35,7 +35,7 @@ module type MR = sig
     map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
 end
 
-module TestInt(X : MR with type t = int) = struct
+module TestInt(X : MF with type t = int) = struct
   open X
 
   let f x = x+1
@@ -58,7 +58,7 @@ module TestInt(X : MR with type t = int) = struct
 
 end
 
-module TestString(X : MR with type t = string) = struct
+module TestString(X : MF with type t = string) = struct
   open X
 
   let f s = s ^ "."
@@ -88,11 +88,69 @@ module TestString(X : MR with type t = string) = struct
     ()
 end
 
+module TestMR(X : 
+  sig 
+    val map_reduce :
+      map:('v1 -> ('k2 * 'v2) list) -> reduce:('k2 -> 'v2 list -> 'v2 list) ->
+      'v1 list -> ('k2 * 'v2 list) list
+  end) = struct
+
+  let text = "En l'année 1872, la maison portant le numéro 7 de Saville-row, Burlington Gardens -- maison dans laquelle Sheridan mourut en 1814 --, était habitée par Phileas Fogg, esq., l'un des membres les plus singuliers et les plus remarqués du Reform-Club de Londres, bien qu'il semblât prendre à tâche de ne rien faire qui pût attirer l'attention.
+
+A l'un des plus grands orateurs qui honorent l'Angleterre, succédait donc ce Phileas Fogg, personnage énigmatique, dont on ne savait rien, sinon que c'était un fort galant homme et l'un des plus beaux gentlemen de la haute société anglaise."  
+
+  let is_char j = match text.[j] with
+    | ' ' | ',' | '.' | '\'' | '-' -> false
+    | _ -> true
+
+  let words =
+    let n = String.length text in
+    let rec split acc i =
+      let rec next j = 
+	if j = n || not (is_char j) then 
+	  j, String.sub text i (j - i)
+	else 
+	  next (j + 1)
+      in
+      let rec adv i = if i < n && not (is_char i) then adv (i+1) else i in
+      if i = n then acc else let i, s = next i in split (s :: acc) (adv i)
+    in
+    split [] 0
+
+  let chunk_size = List.length words / 3
+
+  let rec create_chunk acc i = function
+    | [] -> acc, []
+    | l when i = 0 -> acc, l
+    | x :: l -> create_chunk (x :: acc) (i - 1) l
+
+  let rec split acc l =
+    if l = [] then acc 
+    else let c, l = create_chunk [] chunk_size l in split (c :: acc) l
+					     
+  let chunks = split [] words
+
+  let () = printf "  map_reduce@."
+
+  let wc =
+    X.map_reduce 
+      (fun w -> List.map (fun x -> x,1) w)
+      (fun _ l -> [List.fold_left (+) 0 l]) 
+      chunks
+
+  let () = 
+    assert (List.assoc "l" wc = [6]);
+    assert (List.assoc "Fogg" wc = [2])
+
+end
+
 let () = printf "Sequential@."
 module TestIntSeq = 
   TestInt(struct type t = int include Mapreduce.Sequential end)
 module TestStringSeq = 
   TestString(struct type t = string include Mapreduce.Sequential end)
+module TestMRSeq = 
+  TestMR(Mapreduce.Sequential)
 
 let () = printf "Cores@."
 let () = Mapreduce.Cores.set_number_of_cores 2
@@ -100,6 +158,8 @@ module TestIntCores =
   TestInt(struct type t = int include Mapreduce.Cores end)
 module TestStringCores = 
   TestString(struct type t = string include Mapreduce.Cores end)
+module TestMRCores = 
+  TestMR(Mapreduce.Cores)
 
 let () = printf "Network@."
 let () = Mapreduce.Network.declare_workers ~n:2 "localhost"
