@@ -21,24 +21,24 @@ module Sequential : sig
   val map : f:('a -> 'b) -> 'a list -> 'b list
       (** same result as [List.map] *)
 
-  val map_local_reduce :
-    map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
-      (** [map_local_reduce map reduce acc l] computes
-	  [reduce ... (reduce (reduce acc (map x1)) (map x2)) ... (map xn)]
+  val map_local_fold :
+    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+      (** [map_local_fold map fold acc l] computes
+	  [fold ... (fold (fold acc (map x1)) (map x2)) ... (map xn)]
 	  for some permutation [x1,x2,...,xn] of [l] *)
 
-  val map_remote_reduce :
-    map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+  val map_remote_fold :
+    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
       (** same result *)
 
-  val map_reduce_ac :
-    map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
-      (** same result, assuming [reduce] is an associative and commutative
+  val map_fold_ac :
+    map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+      (** same result, assuming [fold] is an associative and commutative
 	  operation with neutral element [acc] *)
     
-  val map_reduce_a :
-    map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
-      (** same result, assuming [reduce] is an associative
+  val map_fold_a :
+    map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+      (** same result, assuming [fold] is an associative
 	  operation with neutral element [acc] *)
 
 end
@@ -50,17 +50,17 @@ module Cores : sig
 
   val map : f:('a -> 'b) -> 'a list -> 'b list
     
-  val map_local_reduce :
-    map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+  val map_local_fold :
+    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
-  val map_remote_reduce :
-    map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+  val map_remote_fold :
+    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
-  val map_reduce_ac :
-    map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+  val map_fold_ac :
+    map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 
-  val map_reduce_a :
-    map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+  val map_fold_a :
+    map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 
 end
 
@@ -76,17 +76,17 @@ module Network : sig
 
   val map : f:('a -> 'b) -> 'a list -> 'b list
 
-  val map_local_reduce :
-    map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+  val map_local_fold :
+    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
-  val map_remote_reduce :
-    map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+  val map_remote_fold :
+    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
-  val map_reduce_ac :
-    map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+  val map_fold_ac :
+    map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 
-  val map_reduce_a :
-    map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+  val map_fold_a :
+    map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 
   (** Monomorphic functions.
       These functions should be used when master and workers are compiled
@@ -96,20 +96,20 @@ module Network : sig
 
     val map : f:(string -> string) -> string list -> string list
 
-    val map_local_reduce :
-      map:(string -> string) -> reduce:(string -> string -> string) -> 
+    val map_local_fold :
+      map:(string -> string) -> fold:(string -> string -> string) -> 
       string -> string list -> string
 
-    val map_remote_reduce :
-      map:(string -> string) -> reduce:(string -> string -> string) ->
+    val map_remote_fold :
+      map:(string -> string) -> fold:(string -> string -> string) ->
       string -> string list -> string
 
-    val map_reduce_ac :
-      map:(string -> string) -> reduce:(string -> string -> string) ->
+    val map_fold_ac :
+      map:(string -> string) -> fold:(string -> string -> string) ->
       string -> string list -> string
 
-    val map_reduce_a :
-      map:(string -> string) -> reduce:(string -> string -> string) ->
+    val map_fold_a :
+      map:(string -> string) -> fold:(string -> string -> string) ->
       string -> string list -> string
 
   end
@@ -123,25 +123,25 @@ module Network : sig
       (** [map l] is returning [List.map f l] where
 	  [f : string -> string] is a function registered under name "f" *)
 
-    val map_local_reduce :
-      reduce:(string -> string -> string) ->
+    val map_local_fold :
+      fold:(string -> string -> string) ->
       string -> string list -> string
-      (** [map_local_reduce reduce acc l] is returning 
-	  [map_local_reduce map reduce acc l] where [map : string -> string]
+      (** [map_local_fold fold acc l] is returning 
+	  [map_local_fold map fold acc l] where [map : string -> string]
 	  is a function registered under name "map" *)
 
-    val map_remote_reduce : string -> string list -> string
-      (** [map_remote_reduce acc l] is returning 
-	  [map_remote_reduce map reduce acc l] where [map : string -> string]
-	  and [reduce : string -> string -> string]
+    val map_remote_fold : string -> string list -> string
+      (** [map_remote_fold acc l] is returning 
+	  [map_remote_fold map fold acc l] where [map : string -> string]
+	  and [fold : string -> string -> string]
 	  are functions respectively registered under names "map" and
-          "reduce" *)
+          "fold" *)
 
-    val map_reduce_ac : string -> string list -> string
-      (** workers should provide a "map" function and a "reduce" function *)
+    val map_fold_ac : string -> string list -> string
+      (** workers should provide a "map" function and a "fold" function *)
 
-    val map_reduce_a : string -> string list -> string
-      (** workers should provide a "map" function and a "reduce" function *)
+    val map_fold_a : string -> string list -> string
+      (** workers should provide a "map" function and a "fold" function *)
 
    end
 

@@ -41,19 +41,19 @@ let () =
 
 let () =
   let s = 
-    Network.Master.map_local_reduce ~reduce:(^) "" ["10"; "20"; "15"] 
+    Network.Master.map_local_fold ~fold:(^) "" ["10"; "20"; "15"] 
   in
   printf "s = %s@." s
 
 let () =
   let s = 
-    Network.Master.map_remote_reduce "" ["10"; "20"; "15"] 
+    Network.Master.map_remote_fold "" ["10"; "20"; "15"] 
   in
   printf "s = %s@." s
 
 let () =
   let s = 
-    Network.Master.map_reduce_a "" ["10"; "20"; "15"]
+    Network.Master.map_fold_a "" ["10"; "20"; "15"]
   in
   printf "s = %s@." s
 

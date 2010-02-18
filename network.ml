@@ -350,9 +350,9 @@ let generic_map
 
 let map ~f l = generic_map poly_marshaller poly_marshaller poly_marshaller ~f l
 
-let generic_map_local_reduce 
+let generic_map_local_fold 
   (ma : 'a marshaller) (mb : 'b marshaller) (mc : 'c marshaller)
-  ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l 
+  ~(map : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l 
 =
   if is_worker then begin
     Worker.register_computation "map" (marshal_wrapper ma mb map);
@@ -361,24 +361,24 @@ let generic_map_local_reduce
     let acc = ref acc in
     master 
       ~handle:(fun _ r -> 
-		 let r = mb.marshal_from r in acc := reduce !acc r; [])
+		 let r = mb.marshal_from r in acc := fold !acc r; [])
       (List.map (fun x -> (), "map", ma.marshal_to x) l);
     send_result mc !acc 
   end
 
-let map_local_reduce ~map ~reduce acc l = 
-  generic_map_local_reduce poly_marshaller poly_marshaller poly_marshaller 
-    ~map ~reduce acc l
+let map_local_fold ~map ~fold acc l = 
+  generic_map_local_fold poly_marshaller poly_marshaller poly_marshaller 
+    ~map ~fold acc l
 
 let uncurry f (x,y) = f x y
 
-let generic_map_remote_reduce 
+let generic_map_remote_fold 
   (ma : 'a marshaller) (mb : 'b marshaller) (mc : 'c marshaller)
-  ~(map : 'a -> 'b) ~(reduce : 'c -> 'b -> 'c) acc l 
+  ~(map : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l 
 =
   if is_worker then begin
     Worker.register_computation "map" (marshal_wrapper ma mb map);
-    Worker.register_computation2 "reduce" (marshal_wrapper2 mc mb mc reduce);
+    Worker.register_computation2 "fold" (marshal_wrapper2 mc mb mc fold);
     (run_worker mc : 'c)
   end else begin
     let acc = ref (Some (mc.marshal_to acc)) in
@@ -389,12 +389,12 @@ let generic_map_remote_reduce
 		     | None -> Stack.push r pending; []
 		     | Some v -> 
 			 acc := None; 
-			 [(), "reduce", encode_string_pair (v, r)]
+			 [(), "fold", encode_string_pair (v, r)]
 		   end
-		 | _,"reduce",_ -> 
+		 | _,"fold",_ -> 
 		     assert (!acc = None);
 		     if not (Stack.is_empty pending) then
-		       [(), "reduce", 
+		       [(), "fold", 
 			encode_string_pair (r, Stack.pop pending)]
 		     else begin
 		       acc := Some r;
@@ -409,17 +409,17 @@ let generic_map_remote_reduce
       | None -> assert false
   end
 
-let map_remote_reduce ~map ~reduce acc l = 
-  generic_map_remote_reduce poly_marshaller poly_marshaller poly_marshaller 
-    ~map ~reduce acc l
+let map_remote_fold ~map ~fold acc l = 
+  generic_map_remote_fold poly_marshaller poly_marshaller poly_marshaller 
+    ~map ~fold acc l
 
-let generic_map_reduce_ac 
+let generic_map_fold_ac 
   (ma : 'a marshaller) (mb : 'b marshaller)
-  ~(map : 'a -> 'b) ~(reduce : 'b -> 'b -> 'b) acc l 
+  ~(map : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l 
 =
   if is_worker then begin
     Worker.register_computation "map" (marshal_wrapper ma mb map);
-    Worker.register_computation2 "reduce" (marshal_wrapper2 mb mb mb reduce);
+    Worker.register_computation2 "fold" (marshal_wrapper2 mb mb mb fold);
     (run_worker mb : 'b)
   end else begin
     let acc = ref (Some (mb.marshal_to acc)) in
@@ -430,7 +430,7 @@ let generic_map_reduce_ac
 		     acc := Some r; []
 		 | Some v -> 
 		     acc := None; 
-		     [(), "reduce", encode_string_pair (v, r)])
+		     [(), "fold", encode_string_pair (v, r)])
       (List.map (fun x -> (), "map", ma.marshal_to x) l);
     (* we are done; the accumulator must exist *)
     match !acc with
@@ -438,17 +438,17 @@ let generic_map_reduce_ac
       | None -> assert false
   end
 
-let map_reduce_ac ~map ~reduce acc l = 
-  generic_map_reduce_ac poly_marshaller poly_marshaller 
-    ~map ~reduce acc l
+let map_fold_ac ~map ~fold acc l = 
+  generic_map_fold_ac poly_marshaller poly_marshaller 
+    ~map ~fold acc l
 
-let generic_map_reduce_a 
+let generic_map_fold_a 
   (ma : 'a marshaller) (mb : 'b marshaller)
-  ~(map : 'a -> 'b) ~(reduce : 'b -> 'b -> 'b) acc l 
+  ~(map : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l 
 =
   if is_worker then begin
     Worker.register_computation "map" (marshal_wrapper ma mb map);
-    Worker.register_computation2 "reduce" (marshal_wrapper2 mb mb mb reduce);
+    Worker.register_computation2 "fold" (marshal_wrapper2 mb mb mb fold);
     (run_worker mb : 'b)
   end else begin
     let tasks = 
@@ -464,13 +464,13 @@ let generic_map_reduce_a
 	assert (h = i-1);
 	Hashtbl.remove results l; 
 	Hashtbl.remove results h;
-	[(l, j), "reduce", encode_string_pair (x, r)]
+	[(l, j), "fold", encode_string_pair (x, r)]
       end else if Hashtbl.mem results (j+1) then begin
 	let l, h, x = Hashtbl.find results (j+1) in
 	assert (l = j+1);
 	Hashtbl.remove results h; 
 	Hashtbl.remove results l;
-	[(i, h), "reduce", encode_string_pair (r, x)]
+	[(i, h), "fold", encode_string_pair (r, x)]
       end else begin
 	Hashtbl.add results i (i,j,r);
 	Hashtbl.add results j (i,j,r);
@@ -480,7 +480,7 @@ let generic_map_reduce_a
     master 
       ~handle:(fun x r -> match x with
 		 | (i, _), "map", _ -> merge i i r
-		 | (i, j), "reduce", _ -> merge i j r
+		 | (i, j), "fold", _ -> merge i j r
 		 | _ -> assert false)
       tasks;
     (* we are done; results must contain 2 mappings only, for 1 and n *)
@@ -491,9 +491,9 @@ let generic_map_reduce_a
     send_result mb res
   end
 
-let map_reduce_a ~map ~reduce acc l = 
-  generic_map_reduce_a poly_marshaller poly_marshaller 
-    ~map ~reduce acc l
+let map_fold_a ~map ~fold acc l = 
+  generic_map_fold_a poly_marshaller poly_marshaller 
+    ~map ~fold acc l
 
 (** Monomorphic functions. *)
 
@@ -535,23 +535,23 @@ module Str = struct
     marshal_from = decode_string;
   }
 
-  let map_local_reduce ~map ~reduce acc l =
-    generic_map_local_reduce id_marshaller id_marshaller string_marshaller
-      ~map ~reduce acc l
+  let map_local_fold ~map ~fold acc l =
+    generic_map_local_fold id_marshaller id_marshaller string_marshaller
+      ~map ~fold acc l
 
-  let map_remote_reduce ~map ~reduce acc l =
-    generic_map_remote_reduce 
+  let map_remote_fold ~map ~fold acc l =
+    generic_map_remote_fold 
       string_marshaller string_marshaller string_marshaller
-      ~map ~reduce acc l
+      ~map ~fold acc l
 
-  let map_reduce_ac ~map ~reduce acc l =
-    generic_map_reduce_ac
+  let map_fold_ac ~map ~fold acc l =
+    generic_map_fold_ac
       string_marshaller string_marshaller
-      ~map ~reduce acc l
+      ~map ~fold acc l
 
-  let map_reduce_a ~map ~reduce acc l =
-    generic_map_reduce_a string_marshaller string_marshaller
-      ~map ~reduce acc l
+  let map_fold_a ~map ~fold acc l =
+    generic_map_fold_a string_marshaller string_marshaller
+      ~map ~fold acc l
 
 end
 
@@ -567,14 +567,14 @@ module Master = struct
       tasks;
     List.map (fun (i,_,_) -> Hashtbl.find results i) tasks
 
-  let map_local_reduce ~(reduce : 'c -> 'b -> 'c) acc l =
+  let map_local_fold ~(fold : 'c -> 'b -> 'c) acc l =
     let acc = ref acc in
     master 
-      ~handle:(fun _ r -> acc := reduce !acc r; [])
+      ~handle:(fun _ r -> acc := fold !acc r; [])
       (List.map (fun x -> (), "map", x) l);
     !acc 
 
-  let map_remote_reduce acc l =
+  let map_remote_fold acc l =
     let acc = ref (Some acc) in
     let pending = Stack.create () in
     master 
@@ -583,12 +583,12 @@ module Master = struct
 		     | None -> Stack.push r pending; []
 		     | Some v -> 
 			 acc := None; 
-			 [(), "reduce", encode_string_pair (v, r)]
+			 [(), "fold", encode_string_pair (v, r)]
 		   end
-		 | "reduce" -> begin match !acc with
+		 | "fold" -> begin match !acc with
 		     | None -> 
 			 if not (Stack.is_empty pending) then
-			   [(), "reduce", 
+			   [(), "fold", 
 			    encode_string_pair (r, Stack.pop pending)]
 			 else begin
 			   acc := Some r;
@@ -605,7 +605,7 @@ module Master = struct
       | Some r -> r
       | None -> assert false
 
-  let map_reduce_ac acc l =
+  let map_fold_ac acc l =
     let acc = ref (Some acc) in
     master 
       ~handle:(fun _ r -> match !acc with
@@ -613,14 +613,14 @@ module Master = struct
 		     acc := Some r; []
 		 | Some v -> 
 		     acc := None; 
-		     [(), "reduce", encode_string_pair (v, r)])
+		     [(), "fold", encode_string_pair (v, r)])
       (List.map (fun x -> (), "map", x) l);
     (* we are done; the accumulator must exist *)
     match !acc with
       | Some r -> r
       | None -> assert false
 
-  let map_reduce_a acc l =
+  let map_fold_a acc l =
     let tasks = let i = ref 0 in List.map (fun x -> incr i; !i,x) l in
     (* results maps i and j to (i,j,r) for each completed reduction of
        the interval i..j with result r *)
@@ -631,13 +631,13 @@ module Master = struct
 	assert (h = i-1);
 	Hashtbl.remove results l; 
 	Hashtbl.remove results h;
-	[(l, i), "reduce", encode_string_pair (x, r)]
+	[(l, i), "fold", encode_string_pair (x, r)]
       end else if Hashtbl.mem results (j+1) then begin
 	let l, h, x = Hashtbl.find results (j+1) in
 	assert (l = j+1);
 	Hashtbl.remove results h; 
 	Hashtbl.remove results l;
-	[(i, h), "reduce", encode_string_pair (r, x)]
+	[(i, h), "fold", encode_string_pair (r, x)]
       end else begin
 	Hashtbl.add results i (i,j,r);
 	Hashtbl.add results j (i,j,r);
@@ -647,7 +647,7 @@ module Master = struct
     master 
       ~handle:(fun x r -> match x with
 		 | (i, _), "map", _ -> merge i i r
-		 | (i, j), "reduce", _ -> merge i j r
+		 | (i, j), "fold", _ -> merge i j r
 		 | _ -> assert false)
       (List.map (fun (i,x) -> (i,i), "map", x) tasks);
     (* we are done; results must contain 2 mappings only, for 1 and n *)

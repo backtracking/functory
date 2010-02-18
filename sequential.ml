@@ -17,12 +17,12 @@
 
 let map ~f l = List.map f l
 
-let map_local_reduce ~map ~reduce acc l =
-  List.fold_left (fun acc x -> reduce acc (map x)) acc l
+let map_local_fold ~map ~fold acc l =
+  List.fold_left (fun acc x -> fold acc (map x)) acc l
 
-let map_remote_reduce = map_local_reduce
+let map_remote_fold = map_local_fold
 
-let map_reduce_ac = map_local_reduce
+let map_fold_ac = map_local_fold
 
-let map_reduce_a = map_local_reduce
+let map_fold_a = map_local_fold
 

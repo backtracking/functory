@@ -190,12 +190,12 @@
   \item traditional combination of \texttt{List.fold} and \texttt{List.map}
   
 \begin{ocaml}
- val map_reduce :
-  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+ val map_fold :
+  map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
   'c -> 'a list -> 'c
 \end{ocaml}
     \begin{displaymath}
-      \mathtt{map\_reduce}~f~g~c~l
+      \mathtt{map\_fold}~f~g~c~l
       \begin{array}[t]{l}
         = \mathtt{fold}~g~c~(\mathtt{map}~f~l) \\
         = \mathtt{fold}~(\mathtt{fun}~c~x\rightarrow g~c~(f~x))~c~l\\
@@ -206,14 +206,14 @@
 
   example :
   \begin{displaymath}
-    \sum_{x\in l}f(x) = \mathtt{map\_reduce}~f~(+)~0~l
+    \sum_{x\in l}f(x) = \mathtt{map\_fold}~f~(+)~0~l
   \end{displaymath}
 \end{frame}
 
 \begin{frame}\frametitle{Special Case}
-  \emph{idea}: reduce as early as possible, as in
+  \emph{idea}: fold as early as possible, as in
   \begin{displaymath}
-    \sum_{x\in l}f(x) = \mathtt{map\_reduce}~f~(+)~0~l
+    \sum_{x\in l}f(x) = \mathtt{map\_fold}~f~(+)~0~l
   \end{displaymath}
   in this case, + is \emph{associative / commutative}, so reductions are
   order-insensitive and can be performed as soon as two intermediate
@@ -221,8 +221,8 @@
 
 
   \begin{ocaml}
-val map_reduce_ac :
-  map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
+val map_fold_ac :
+  map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
   'b -> 'a list -> 'b
   \end{ocaml}
 \end{frame}
@@ -231,18 +231,18 @@ val map_reduce_ac :
 
   \emph{order-sensitive} computation:
   \begin{displaymath}
-    \mathtt{map\_reduce}~\mathtt{String.uppercase}~(\texttt{\^{}})~\texttt{""}~
+    \mathtt{map\_fold}~\mathtt{String.uppercase}~(\texttt{\^{}})~\texttt{""}~
     \texttt{["h"; "e"; "l"; "l"; "o"]}
   \end{displaymath}
 
-  operation is only \emph{associative}, yet we can reduce as soon as
+  operation is only \emph{associative}, yet we can fold as soon as
   adjacent intermediate results are available
 
 
 
 \begin{ocaml}
-val map_reduce_a :
-  map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
+val map_fold_a :
+  map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
   'b -> 'a list -> 'b
 \end{ocaml}
 \end{frame}
@@ -255,13 +255,13 @@ val map_reduce_a :
   remote reductions allow other computations to be performed in parallel
 
 
-  \texttt{map\_reduce} takes the following forms
+  \texttt{map\_fold} takes the following forms
   \begin{ocaml}
-val map_local_reduce :
-  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+val map_local_fold :
+  map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
   'c -> 'a list -> 'c
-val map_remote_reduce :
-  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+val map_remote_fold :
+  map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
   'c -> 'a list -> 'c
   \end{ocaml}
 \end{frame}
@@ -270,17 +270,17 @@ val map_remote_reduce :
   \begin{ocaml}
 val map : 
   f:('a -> 'b) -> 'a list -> 'b list
-val map_local_reduce :
-  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+val map_local_fold :
+  map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
   'c -> 'a list -> 'c
-val map_remote_reduce :
-  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+val map_remote_fold :
+  map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
   'c -> 'a list -> 'c
-val map_reduce_ac :
-  map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
+val map_fold_ac :
+  map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
   'b -> 'a list -> 'b
-val map_reduce_a :
-  map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
+val map_fold_a :
+  map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
   'b -> 'a list -> 'b
   \end{ocaml}
 \end{frame}
@@ -294,7 +294,7 @@ val map_reduce_a :
     \begin{tabular}{|l|c|c|c|c|c|}
       \hline
                  & \multicolumn{2}{|c|}{map} &
-                 \multicolumn{3}{|c|}{map/reduce} \\\cline{2-6}
+                 \multicolumn{3}{|c|}{map/fold} \\\cline{2-6}
                  & map & local & remote & ~ac~ & ~~a~~ \\\hline\hline
       \texttt{Sequential} & & & \multicolumn{3}{|c|}{(no difference)} \\\hline
       \texttt{Cores}      & & & & & \\\hline
@@ -346,14 +346,14 @@ the sequential implementation is obvious
   \begin{ocaml}
 let map ~f l = List.map f l
 
-let map_local_reduce ~map ~reduce acc l =
-  List.fold_left (fun a x -> reduce a (map x)) acc l
+let map_local_fold ~map ~fold acc l =
+  List.fold_left (fun a x -> fold a (map x)) acc l
 
-let map_remote_reduce = map_local_reduce
+let map_remote_fold = map_local_fold
 
-let map_reduce_ac = map_local_reduce
+let map_fold_ac = map_local_fold
 
-let map_reduce_a = map_local_reduce
+let map_fold_a = map_local_fold
   \end{ocaml}
 \end{frame}
 
@@ -449,9 +449,9 @@ module Str : sig
 
   val map : f:(string -> string) -> string list -> string list
 
-  val map_local_reduce :
+  val map_local_fold :
     map:(string -> string) -> 
-    reduce:(string -> string -> string) -> 
+    fold:(string -> string -> string) -> 
     string -> string list -> string
   ...
   \end{ocaml}
@@ -487,10 +487,10 @@ val map : f:('a -> 'b) -> 'a list -> 'b list
   \end{enumerate}
 \end{frame}
 
-\begin{frame}\frametitle{Implementing \texttt{map\_local\_reduce}}
+\begin{frame}\frametitle{Implementing \texttt{map\_local\_fold}}
   \begin{ocaml}
- val map_local_reduce :
-  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+ val map_local_fold :
+  map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
   'c -> 'a list -> 'c
   \end{ocaml}
 
@@ -504,10 +504,10 @@ val map : f:('a -> 'b) -> 'a list -> 'b list
   \end{enumerate}
 \end{frame}
 
-\begin{frame}\frametitle{Implementing \texttt{map\_remote\_reduce}}
+\begin{frame}\frametitle{Implementing \texttt{map\_remote\_fold}}
   \begin{ocaml}
-val map_remote_reduce :
-  map:('a -> 'b) -> reduce:('c -> 'b -> 'c) -> 
+val map_remote_fold :
+  map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
   'c -> 'a list -> 'c
   \end{ocaml}
 
@@ -520,25 +520,25 @@ val map_remote_reduce :
     \item either it is $Map(x_i)$,
       \begin{itemize}
       \item if accumulator is $\texttt{Some}~v$, generate the task
-        $Reduce(v,r)$ and set accumulator to \texttt{None}
+        $Fold(v,r)$ and set accumulator to \texttt{None}
       \item if accumulator is \texttt{None}, push $r$ into $\mathit{stack}_r$
       \end{itemize}
-    \item or it is $Reduce(r',v')$
+    \item or it is $Fold(r',v')$
       \begin{itemize}
       \item if $\mathit{stack}_r$ is empty, the accumulator is now
         $\texttt{Some}~r$ 
       \item otherwise, pop $v$ from $\mathit{stack}_r$, and generate
-        $Reduce(r,v)$ 
+        $Fold(r,v)$ 
       \end{itemize}
     \end{itemize}
   \item when done, return the accumulator
   \end{enumerate}
 \end{frame}
 
-\begin{frame}\frametitle{Implementing \texttt{map\_reduce\_ac}}
+\begin{frame}\frametitle{Implementing \texttt{map\_fold\_ac}}
   \begin{ocaml}
-val map_reduce_ac :
-  map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
+val map_fold_ac :
+  map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
   'b -> 'a list -> 'b
   \end{ocaml}
 
@@ -550,16 +550,16 @@ val map_reduce_ac :
     \begin{itemize}
     \item if the accumulator is \texttt{None}, store $r$ in the accumulator
     \item else, combine $r$ with the accumulator $v$ into a new task
-      $Reduce(v, r)$ and set accumulator to \texttt{None}
+      $Fold(v, r)$ and set accumulator to \texttt{None}
     \end{itemize}
   \item when done, return the accumulator
   \end{enumerate}
 \end{frame}
 
-\begin{frame}\frametitle{Implementing \texttt{map\_reduce\_a}}
+\begin{frame}\frametitle{Implementing \texttt{map\_fold\_a}}
   \begin{ocaml}
-val map_reduce_a :
-  map:('a -> 'b) -> reduce:('b -> 'b -> 'b) -> 
+val map_fold_a :
+  map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
   'b -> 'a list -> 'b
   \end{ocaml}
 
@@ -569,7 +569,7 @@ val map_reduce_a :
   \item when a task $(i,j)$ is completed with result $r$,
     \begin{itemize}
     \item if there is some result adjacent to $(i,j)$ available,
-      merge them into a new reduce task
+      merge them into a new fold task
     \item else, store it
     \end{itemize}
   \item when done, return the only remaining result
@@ -584,7 +584,7 @@ val map_reduce_a :
   \begin{ocaml}
 module Master : sig
   ...
-  val map_remote_reduce : string -> string list -> string
+  val map_remote_fold : string -> string list -> string
   ...
 end
   \end{ocaml}

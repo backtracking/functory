@@ -25,14 +25,14 @@ let () =
 module type MR = sig
   type t
   val map : f:(t -> t) -> t list -> t list
-  val map_local_reduce : 
-    map:(t -> t) -> reduce:(t -> t -> t) -> t -> t list -> t
-  val map_remote_reduce :
-    map:(t -> t) -> reduce:(t -> t -> t) -> t -> t list -> t
-  val map_reduce_ac :
-    map:(t -> t) -> reduce:(t -> t -> t) -> t -> t list -> t
-  val map_reduce_a :
-    map:(t -> t) -> reduce:(t -> t -> t) -> t -> t list -> t
+  val map_local_fold : 
+    map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
+  val map_remote_fold :
+    map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
+  val map_fold_ac :
+    map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
+  val map_fold_a :
+    map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
 end
 
 module TestInt(X : MR with type t = int) = struct
@@ -40,20 +40,20 @@ module TestInt(X : MR with type t = int) = struct
 
   let f x = x+1
 
-  let reduce = (+)
+  let fold = (+)
 
   let () =
     let l = [1;2;3;4;5] and r = 20 in
     printf "  map@.";
     assert (map f l = [2;3;4;5;6]);
-    printf "  map_local_reduce@.";
-    assert (map_local_reduce ~map:f ~reduce 0 l = r);
-    printf "  map_remote_reduce@.";
-    assert (map_remote_reduce ~map:f ~reduce 0 l = r);
-    printf "  map_reduce_ac@.";
-    assert (map_reduce_ac ~map:f ~reduce 0 l = r);
-    printf "  map_reduce_a@.";
-    assert (map_reduce_a ~map:f ~reduce 0 l = r);
+    printf "  map_local_fold@.";
+    assert (map_local_fold ~map:f ~fold 0 l = r);
+    printf "  map_remote_fold@.";
+    assert (map_remote_fold ~map:f ~fold 0 l = r);
+    printf "  map_fold_ac@.";
+    assert (map_fold_ac ~map:f ~fold 0 l = r);
+    printf "  map_fold_a@.";
+    assert (map_fold_a ~map:f ~fold 0 l = r);
     ()
 
 end
@@ -63,7 +63,7 @@ module TestString(X : MR with type t = string) = struct
 
   let f s = s ^ "."
     
-  let reduce = (^)
+  let fold = (^)
     
   let () =
     let l = ["a"; "bb"; "ccc"; "dddd"] in
@@ -77,14 +77,14 @@ module TestString(X : MR with type t = string) = struct
 	 String.sub r i n = x && r.[i + n] = '.')
       l
     in
-    printf "  map_local_reduce@.";
-    assert (check (map_local_reduce ~map:f ~reduce "" l));
-    printf "  map_remote_reduce@.";
-    assert (check (map_remote_reduce ~map:f ~reduce "" l));
-    printf "  map_reduce_ac@.";
-    assert (check (map_reduce_ac ~map:f ~reduce "" l));
-    printf "  map_reduce_a@.";
-    assert (map_reduce_a ~map:f ~reduce "" l = "a.bb.ccc.dddd.");
+    printf "  map_local_fold@.";
+    assert (check (map_local_fold ~map:f ~fold "" l));
+    printf "  map_remote_fold@.";
+    assert (check (map_remote_fold ~map:f ~fold "" l));
+    printf "  map_fold_ac@.";
+    assert (check (map_fold_ac ~map:f ~fold "" l));
+    printf "  map_fold_a@.";
+    assert (map_fold_a ~map:f ~fold "" l = "a.bb.ccc.dddd.");
     ()
 end
 
@@ -116,13 +116,13 @@ module TestStringNetworkStr =
 
 let rec compute x = if x <= 1 then 1 else x * compute (x-1)
 
-(* let n = map_reduce_a ~map:compute ~reduce:(+) 0 [1;2;3;4;5;6;7;8;9] *)
+(* let n = map_fold_a ~map:compute ~fold:(+) 0 [1;2;3;4;5;6;7;8;9] *)
 
 (* let () = printf "%d@." n *)
 
 let f x = sprintf ".%d." x
 
-let s = map_reduce_a ~map:f ~reduce:(^) "" [1;2;3;4;5;6;7]
+let s = map_fold_a ~map:f ~fold:(^) "" [1;2;3;4;5;6;7]
 
 let () = printf "%s@." s; exit 0
 

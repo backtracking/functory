@@ -84,7 +84,7 @@ let sort l = List.sort cmp l
 
 (* sorting the lists of lists using map/reduce *)
 
-let l = map_reduce_ac ~map:sort ~reduce:merge [] chunks
+let l = map_fold_ac ~map:sort ~fold:merge [] chunks
 (* let () = List.iter (fun s -> printf "%s@." s) l *)
 
 let () = assert (List.length l = n)
