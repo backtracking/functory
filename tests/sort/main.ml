@@ -58,7 +58,7 @@ let rec split acc l =
 
 let chunks = split [] list
 
-(* merging lists which are sorted in reverse order (into a sorted list) *)
+(* merging lists *)
 
 let cmp = String.compare
 

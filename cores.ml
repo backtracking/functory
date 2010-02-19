@@ -203,10 +203,10 @@ let map_reduce ~map ~reduce l =
   let add k2 v2l =
     try 
       let l = Hashtbl.find results k2 in
-      Hashtbl.replace results k2 (List.rev_append v2l l);
+      Hashtbl.replace results k2 (v2l :: l);
       Hashtbl.replace to_reduce k2 ()
     with Not_found ->
-      Hashtbl.add results k2 v2l
+      Hashtbl.add results k2 [v2l]
   in
   let reduce_tasks () = 
     let tl = 
@@ -231,6 +231,10 @@ let map_reduce ~map ~reduce l =
 		 | _ ->
 		     assert false)
     (List.map (fun x -> Map x) l);
-  Hashtbl.fold (fun k2 v2l res -> (k2, v2l) :: res) results []
+  Hashtbl.fold 
+    (fun k2 v2l res -> match v2l with
+       | [v2l] -> (k2, v2l) :: res
+       | _ -> assert false) 
+    results []
 
 

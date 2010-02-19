@@ -91,7 +91,8 @@ end
 module TestMR(X : 
   sig 
     val map_reduce :
-      map:('v1 -> ('k2 * 'v2) list) -> reduce:('k2 -> 'v2 list -> 'v2 list) ->
+      map:('v1 -> ('k2 * 'v2) list) -> 
+      reduce:('k2 -> 'v2 list list -> 'v2 list) ->
       'v1 list -> ('k2 * 'v2 list) list
   end) = struct
 
@@ -132,10 +133,21 @@ A l'un des plus grands orateurs qui honorent l'Angleterre, succédait donc ce Phi
 
   let () = printf "  map_reduce@."
 
+  let merge l1 l2 =
+    let rec merge acc = function
+      | [], l | l, [] -> 
+	  List.rev_append acc l
+      | x1 :: r1, (x2 :: _ as l2) when x1 <= x2 -> 
+	  merge (x1 :: acc) (r1, l2)
+      | l1, x2 :: r2 ->
+	  merge (x2 :: acc) (l1, r2)
+    in
+    merge [] (l1, l2)
+
   let wc =
     X.map_reduce 
-      (fun w -> List.map (fun x -> x,1) w)
-      (fun _ l -> [List.fold_left (+) 0 l]) 
+      ~map:(fun w -> List.map (fun x -> x,1) w)
+      ~reduce:(fun _ l -> [List.fold_left (+) 0 (List.flatten l)]) 
       chunks
 
   let () = 

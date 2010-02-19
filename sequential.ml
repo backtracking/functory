@@ -29,8 +29,8 @@ let map_fold_a = map_local_fold
 let map_reduce ~map ~reduce l =
   let h = Hashtbl.create 5003 in
   let add (k2, v2) =
-    try Hashtbl.replace h k2 (v2 :: Hashtbl.find h k2)
-    with Not_found -> Hashtbl.add h k2 [v2]
+    try Hashtbl.replace h k2 ([v2] :: Hashtbl.find h k2)
+    with Not_found -> Hashtbl.add h k2 [[v2]]
   in
   List.iter (fun v1 -> List.iter add (map v1)) l;
   Hashtbl.fold (fun k2 v2l res -> (k2, reduce k2 v2l) :: res) h []
