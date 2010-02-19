@@ -215,12 +215,32 @@
   \end{displaymath}
 \end{frame}
 
+\begin{frame}\frametitle{Local/Remote folds}
+  folds can be performed either by the master (local) or by the
+  workers (remote)
+
+  \bigskip
+  remote folds allow other computations to be performed in parallel
+
+
+  \texttt{map\_fold} takes the following forms
+  \begin{ocaml}
+val map_local_fold :
+  map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
+  'c -> 'a list -> 'c
+
+val map_remote_fold :
+  map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
+  'c -> 'a list -> 'c
+  \end{ocaml}
+\end{frame}
+
 \begin{frame}\frametitle{Special Case}
   \emph{idea}: fold as early as possible, as in
   \begin{displaymath}
     \sum_{x\in l}f(x) = \mathtt{map\_fold}~f~(+)~0~l
   \end{displaymath}
-  in this case, + is \emph{associative / commutative}, so reductions are
+  in this case, + is \emph{associative / commutative}, so folds are
   order-insensitive and can be performed as soon as two intermediate
   results are available
 
@@ -252,25 +272,6 @@ val map_fold_a :
 \end{ocaml}
 \end{frame}
 
-\begin{frame}\frametitle{Local/Remote reductions}
-  reductions can be performed either by the master (local) or by the
-  workers (remote)
-
-  \bigskip
-  remote reductions allow other computations to be performed in parallel
-
-
-  \texttt{map\_fold} takes the following forms
-  \begin{ocaml}
-val map_local_fold :
-  map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
-  'c -> 'a list -> 'c
-
-val map_remote_fold :
-  map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
-  'c -> 'a list -> 'c
-  \end{ocaml}
-\end{frame}
 
 \begin{frame}\frametitle{API Summary}
   \begin{ocaml}
@@ -302,10 +303,10 @@ val map_fold_a :
   \item \textcolor{orange}{locally} / \textcolor{red}{remotely}
   \end{itemize}
 
-    \newcommand{\Lo}{\colorbox{orange}{~~}\,}
-    \renewcommand{\Re}{\colorbox{red}{~~}\,}
-    \newcommand{\Se}{\colorbox{blue}{~~}\,}
-    \newcommand{\Pa}{\colorbox{kwblue}{~~}\,}
+    \newcommand{\Lo}{\colorbox{orange}{~\textcolor{white}{\small L}~}\,}
+    \renewcommand{\Re}{\colorbox{red}{~\textcolor{white}{\small R}~}\,}
+    \newcommand{\Se}{\colorbox{blue}{~\textcolor{white}{\small S}~}\,}
+    \newcommand{\Pa}{\colorbox{kwblue}{~\textcolor{white}{\small P}~}\,}
 
   \begin{center}
     \begin{tabular}{|l|c|c|c|c|c|}
@@ -444,6 +445,7 @@ master_loop :
   \begin{itemize}
   \item a worker starts a server, waiting for tasks
   \item the master connects to workers, sending tasks
+  \item when done, the master sends result to the workers
   \end{itemize}
 
 
@@ -452,22 +454,25 @@ master_loop :
     \begin{tabular}{ccc}
       \framebox{master} &  & \framebox{worker} \\
       &     $\stackrel{\displaystyle connect}{\longrightarrow}$ &  \\
-      &     $\stackrel{\displaystyle\mathtt{Assign}~3~\mathtt{"f"}~\mathtt{"7"}}
+      &     \pause $\stackrel{\displaystyle\mathtt{Assign}~3~\mathtt{"f"}~\mathtt{"7"}}
                       {\longrightarrow}$ &  \\
-      &     $\stackrel{\displaystyle \mathtt{Started}~3}
+      &     \pause $\stackrel{\displaystyle \mathtt{Started}~3}
                       {\longleftarrow}$ &  \\
-      &     $\stackrel{\displaystyle 
-                       \only<1>{\mathtt{Completed}~3~\mathtt{"42"}}
-                       \only<2>{\emph{\mathtt{Aborted}~3~}}
-                       \only<3>{\emph{\mathtt{Kill}~3}}}
-                      {\only<1-2>{\longleftarrow}
-                       \only<3>{\longrightarrow}}$ &  \\
+      &     \pause $\stackrel{\displaystyle 
+                       \only<4>{\mathtt{Completed}~3~\mathtt{"42"}}
+                       \only<5>{\mathtt{Result}~\mathtt{"89"}~}
+                       \only<6>{\emph{\mathtt{Aborted}~3~}}
+                       \only<7>{\emph{\mathtt{Kill}~3}}
+                      }
+                      {\only<4,6>{\longleftarrow}
+                       \only<5,7>{\longrightarrow}}$ &  \\
     \end{tabular}
   \end{center}
 \end{frame}
 
 \begin{frame}\frametitle{Network: Polymorphic Map/Reduce}
-  if master and workers are \emph{exactly} the same executable, then
+  if master and workers are compiled from the \emph{same source} using the
+  \emph{same Ocaml version}, then
   marshalling can still be used to pass values $\Rightarrow$
   polymorphic map/reduce
 
