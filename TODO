@@ -22,6 +22,8 @@
   - pinging workers (a separate list for not responding workers)
   - (re-)scheduling heuristics
 
+- how to change the port number (either Control.set_port / environment variable)
+
 BUGS ?
 
 - using localhost as a worker

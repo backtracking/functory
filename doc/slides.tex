@@ -155,23 +155,29 @@
   \end{enumerate}
 \end{frame}
 
-\begin{frame}\frametitle{Cores \& Networks}
-  Ocaml's map/reduce library works seemlessly across
+\begin{frame}\frametitle{Library Options}
+  % Ocaml's map/reduce library works seemlessly across
 
-  \bigskip
   \begin{itemize}
-  \item multiple processor cores on the same (module \texttt{Cores})
-    machine
-    \begin{itemize}
-    \item user just needs to specify the number of cores to be used
-    \item uses Ocaml's \texttt{Unix} module
+  \item \emph{module \texttt{Sequential}}: pure sequential evaluation
+    \begin{itemize}\item 
+      used as a reference
     \end{itemize}
 
     \bigskip
-  \item networked cluster of machines (module \texttt{Network})
+  \item \emph{module \texttt{Cores}}: multiple processor cores on the same 
+    machine
     \begin{itemize}
-    \item user specifies the machine name(s) to be used
-    \item relies on OCaml's \texttt{Unix} and \texttt{Marshal} modules
+    \item user just needs to specify the number of cores to be used
+    \item only uses Ocaml's \texttt{Unix} module
+    \end{itemize}
+
+    \bigskip
+  \item \emph{module \texttt{Network}}: networked cluster of machines
+    \begin{itemize}
+    \item user specifies the machine name(s) and number of cores on
+      each machine
+    \item only uses Ocaml's \texttt{Unix} module
     \end{itemize}
   \end{itemize}
 \end{frame}
@@ -190,8 +196,8 @@
   
 \begin{ocaml}
  val map_fold :
-  map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
-  'c -> 'a list -> 'c
+   map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
+   'c -> 'a list -> 'c
 \end{ocaml}
     \begin{displaymath}
       \mathtt{map\_fold}~f~g~c~l
@@ -259,6 +265,7 @@ val map_fold_a :
 val map_local_fold :
   map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
   'c -> 'a list -> 'c
+
 val map_remote_fold :
   map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
   'c -> 'a list -> 'c
@@ -284,20 +291,47 @@ val map_fold_a :
   \end{ocaml}
 \end{frame}
 
-
 \begin{frame}\frametitle{Library Options}
   
   3 modules, with 5 functions each
 
+
+
+  map/fold is performed 
+  \begin{itemize}
+  \item \textcolor{orange}{locally} / \textcolor{red}{remotely}
+  \end{itemize}
+
+    \newcommand{\Lo}{\colorbox{orange}{~~}\,}
+    \renewcommand{\Re}{\colorbox{red}{~~}\,}
+    \newcommand{\Se}{\colorbox{blue}{~~}\,}
+    \newcommand{\Pa}{\colorbox{kwblue}{~~}\,}
+
   \begin{center}
     \begin{tabular}{|l|c|c|c|c|c|}
       \hline
-                 & \multicolumn{2}{|c|}{map} &
-                 \multicolumn{3}{|c|}{map/fold} \\\cline{2-6}
-                 & map & local & remote & ~ac~ & ~~a~~ \\\hline\hline
-      \texttt{Sequential} & & & \multicolumn{3}{|c|}{(no difference)} \\\hline
-      \texttt{Cores}      & & & & & \\\hline
-      \texttt{Network}    & & & & & \\\hline
+        map    & map & local & remote & ac & a 
+            \\\hline\hline
+      \texttt{Sequential} & \Lo & \Lo & \Lo & \Lo & \Lo \\\hline
+      \texttt{Cores}   & \Re & \Re & \Re & \Re & \Re \\\hline
+      \texttt{Network}    & \Re & \Re & \Re & \Re & \Re \\\hline
+    \end{tabular} \\[1em]
+  \end{center}
+
+  \begin{itemize}
+    \item \textcolor{blue}{sequentially} / \textcolor{kwblue}{in parallel}
+  \end{itemize}
+
+  \begin{center}
+    \begin{tabular}{|l|c|c|c|c|}
+      \hline
+        fold    & local & remote & ac / a 
+            \\\hline\hline
+      \texttt{Sequential} & \Lo\Se & \Lo\Se & \Lo\Se  
+            \\\hline
+      \texttt{Cores}   & \Lo\Se & \Re\Se & \Re\Pa  
+            \\\hline
+      \texttt{Network}    & \Lo\Se & \Re\Se & \Re\Pa  \\\hline
     \end{tabular}
   \end{center}
   % TODO: fill the cells
@@ -404,7 +438,7 @@ master_loop :
 
 
 \begin{frame}\frametitle{Network}
-  master and workers are the same program but distinguish using an
+  master and workers are the same program but distinguished using an
   environment variable (\texttt{WORKER})
 
   \begin{itemize}
@@ -516,13 +550,13 @@ val map_remote_fold :
   \item initially, each element $x_i$ in the list is a task $Map(x_i)$
   \item when a task is completed with result $r$,
     \begin{itemize}
-    \item either it is $Map(x_i)$,
+    \item either it was $Map(x_i)$,
       \begin{itemize}
       \item if accumulator is $\texttt{Some}~v$, generate the task
         $Fold(v,r)$ and set accumulator to \texttt{None}
       \item if accumulator is \texttt{None}, push $r$ into $\mathit{stack}_r$
       \end{itemize}
-    \item or it is $Fold(r',v')$
+    \item or it was $Fold(r',v')$
       \begin{itemize}
       \item if $\mathit{stack}_r$ is empty, the accumulator is now
         $\texttt{Some}~r$ 
@@ -599,6 +633,17 @@ module Worker : sig
   val compute : 
     ?stop:bool -> ?port:int -> unit -> string
 end
+  \end{ocaml}
+\end{frame}
+
+\begin{frame}\frametitle{What about Map/Reduce a la Google?}
+  we also provide map/reduce a la Google
+
+  \begin{ocaml}
+  val map_reduce :
+    map:('v1 -> ('k2 * 'v2) list) ->
+    reduce:('k2 -> 'v2 list list -> 'v2 list) ->
+    'v1 list -> ('k2 * 'v2 list) list
   \end{ocaml}
 \end{frame}
 
