@@ -149,6 +149,12 @@ install-opt:
 	cp -f $(BUILD)mapreduce.cmi  $(BCMA) "$(LIBDIR)"
 	cp -f $(BCMXA) "$(LIBDIR)"
 
+ocamlfind-install:
+	ocamlfind install mapreduce META $(BUILD)mapreduce.cmi $(BCMA) $(BCMXA) $(BUILD)mapreduce.a
+
+ocamlfind-remove:
+	ocamlfind remove mapreduce
+
 # documentation
 ###############
 

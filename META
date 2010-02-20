@@ -1,0 +1,5 @@
+description = "OCaml Implementation of MapReduce"
+version = "0.1"
+archive(byte) = "mapreduce.cma"
+archive(native) = "mapreduce.cmxa"
+requires = "unix"
