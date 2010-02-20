@@ -85,9 +85,10 @@ let master ~(f : 'a -> 'b) ~(handle : 'a -> 'b -> 'a list) tasks =
           Sys.remove j.file;
           let l = handle j.task r in j.worker, l
         with Not_found -> 
-          (* If the pid is unknown to us, it's probably a process created by one
-             of the workers. In this case, simply continue to wait. *)
-          wait () end
+          (* If the pid is unknown to us, it's probably a process created
+	     by one of the workers. In this case, simply continue to wait. *)
+          wait () 
+	end
     | p, _ ->
         Format.eprintf "master: ** PID %d killed or stopped! **@." p;
         exit 1
