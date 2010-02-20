@@ -72,24 +72,32 @@ let workers () = listij [] 1 !ncores
 (* the generic master *)
 let master ~(f : 'a -> 'b) ~(handle : 'a -> 'b -> 'a list) tasks =
   let jobs = Hashtbl.create 17 in (* PID -> job *)
+  let rec wait () = 
+    match Unix.wait () with
+    | p, WEXITED e -> 
+        dprintf "master: got result from worker PID %d@." p;
+        begin try
+          let j = Hashtbl.find jobs p in
+          dprintf "master: got result from worker %d@." j.worker;
+          let c = open_in (*in_channel_of_descr *) j.file in
+          let r : 'b = input_value c in
+          close_in c;
+          Sys.remove j.file;
+          let l = handle j.task r in j.worker, l
+        with Not_found -> 
+          (* If the pid is unknown to us, it's probably a process created by one
+             of the workers. In this case, simply continue to wait. *)
+          wait () end
+    | p, _ ->
+        Format.eprintf "master: ** PID %d killed or stopped! **@." p;
+        exit 1
+  in
   Master.run
     ~create_job:(fun w t ->
 		   let j = create_worker w f t in
 		   dprintf "master: started worker %d (PID %d)@." w j.pid;
 		   Hashtbl.add jobs j.pid j)
-    ~wait:(fun () -> match Unix.wait () with
-	     | p, WEXITED e -> 
-		 let j = Hashtbl.find jobs p in
-		 dprintf "master: got result from worker %d@." j.worker;
-		 let c = open_in (*in_channel_of_descr *) j.file in
-		 let r : 'b = input_value c in
-		 close_in c;
-		 Sys.remove j.file;
-		 let l = handle j.task r in j.worker, l
-	     | p, _ ->
-		 Format.eprintf "master: ** PID %d killed or stopped! **@." p;
-		 exit 1)
-    (workers ()) tasks
+    ~wait (workers ()) tasks
 
 
 (* and its instances *)
