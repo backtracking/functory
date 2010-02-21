@@ -74,6 +74,9 @@ module Cores : sig
     reduce:('k2 -> 'v2 list list -> 'v2 list) ->
     'v1 list -> ('k2 * 'v2 list) list
 
+  val master : 
+    f:('a -> 'b) -> handle:('a -> 'b -> 'a list) -> 'a list -> unit
+
 end
 
 module Network : sig
