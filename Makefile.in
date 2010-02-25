@@ -24,7 +24,7 @@ MANDIR=@mandir@
 
 # other variables set by ./configure
 OCAMLC   = @OCAMLC@
-OCAMLOPT = @OCAMLOPT@
+OCAMLOPT = @OCAMLOPT@ -g
 OCAMLDEP = @OCAMLDEP@
 OCAMLLEX = @OCAMLLEX@
 OCAMLYACC= @OCAMLYACC@
@@ -122,8 +122,7 @@ test2: master_test.opt worker_test.opt
 	./worker_test.opt &
 	sleep 1 && ./master_test.opt && killall -9 worker_test.opt
 
-install-test: $(TESTS)
-	cp worker_test.opt test.opt ~
+install-test: tests/n-queens/a.out
 	cp tests/n-queens/a.out ~
 
 tests/%/a.out: tests/%/main.ml mapreduce.cmxa

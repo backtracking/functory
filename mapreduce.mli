@@ -89,7 +89,13 @@ module Network : sig
       These functions are to be used only when master and worker are
       *exactly* the same binaries. *)
 
+  module Network1 : sig
+
   val map : f:('a -> 'b) -> 'a list -> 'b list
+
+  end
+
+  (***
 
   val map_local_fold :
     map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
@@ -182,6 +188,8 @@ module Network : sig
 	  and accept several parallel connections from masters. *)
 
   end
+
+  ***)
 
 end
 

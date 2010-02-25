@@ -47,7 +47,10 @@ module Worker = struct
 
   exception ExitOnStop of string
 
-  let server_fun cin cout =
+(*     if Hashtbl.mem computations f then begin *)
+(* 	      let f = Hashtbl.find computations f in *)
+
+  let server_fun compute cin cout =
     dprintf "new connection@.";
     let fdin = descr_of_in_channel cin in
     let fdout = descr_of_out_channel cout in
@@ -57,8 +60,7 @@ module Worker = struct
       dprintf "received: %a@." Master.print m;
       match m with
 	| Master.Assign (id, f, a) ->
-	    if Hashtbl.mem computations f then begin
-	      let f = Hashtbl.find computations f in
+	    begin try
 	      Worker.send fdout (Worker.Started id);
 	      let fin, fout = pipe () in
 	      begin match fork () with
@@ -66,7 +68,7 @@ module Worker = struct
 		    close fin;
 		    (* perform computation *)
 		    dprintf "  id %d: computation is running...@." id;
-		    let r = f a in
+		    let r = compute f a in
 		    let c = out_channel_of_descr fout in
 		    output_value c r;
 		    dprintf "  id %d: computation done@." id;
@@ -76,8 +78,10 @@ module Worker = struct
 		    let t = { pid = pid; file = fin } in
 		    Hashtbl.add pids id t
 	      end
-	    end else
+	    with e ->
+	      dprintf "cannot execute job %d (%s)@." id (Printexc.to_string e);
 	      Worker.send fdout (Worker.Aborted id)
+	    end
 	| Master.Kill id ->
 	    begin 
 	      try
@@ -166,12 +170,12 @@ module Worker = struct
       Hashtbl.add sockets_fd port s;
       s
 
-  let compute ?(stop=false) ?(port=51000) () = 
+  let compute compute ?(stop=false) ?(port=51000) () = 
     if stop then begin
       let s = get_socket_fd port in
       let inchan = Unix.in_channel_of_descr s 
       and outchan = Unix.out_channel_of_descr s in 
-      server_fun inchan outchan 
+      server_fun compute inchan outchan 
     end else begin
       let sock = get_socket port in
       while true do
@@ -181,7 +185,7 @@ module Worker = struct
 	      if Unix.fork() <> 0 then exit 0; 
               let inchan = Unix.in_channel_of_descr s 
               and outchan = Unix.out_channel_of_descr s in 
-	      ignore (server_fun inchan outchan);
+	      ignore (server_fun compute inchan outchan);
               close_in inchan;
               close_out outchan;
               exit 0
@@ -197,19 +201,47 @@ end
 (** Master *)
 
 type worker = { 
+  worker_id : int;
   sockaddr : sockaddr;
   mutable connected : bool;
+  mutable error : bool;
   mutable fdin : file_descr;
   mutable fdout : file_descr;
+  ncores : int;
+  mutable idle_cores : int;
 }
 
-type logical_worker = {
-  worker : worker;
-  wid : int;
-}
+let print_sockaddr fmt = function
+  | ADDR_UNIX s -> fprintf fmt "%s" s
+  | ADDR_INET (ia, port) -> fprintf fmt "%s:%d" (string_of_inet_addr ia) port
+
+let print_worker fmt w = 
+  fprintf fmt "%a (%d idle cores)" print_sockaddr w.sockaddr w.idle_cores
+
+module WorkerSet : sig
+  type t
+  val create : unit -> t
+  val add : t -> worker -> unit
+  val mem : t -> worker -> bool
+  val remove : t -> worker -> unit
+  val is_empty : t -> bool
+  val choose : t -> worker (* does not remove it *)
+end = struct
+  module S = 
+    Set.Make(struct 
+	       type t = worker 
+	       let compare w1 w2 = Pervasives.compare w1.worker_id w2.worker_id
+	     end)
+  type t = S.t ref
+  let create () = ref S.empty
+  let add h w = h := S.add w !h
+  let mem h w = S.mem w !h
+  let remove h w = h := S.remove w !h
+  let is_empty h = S.is_empty !h
+  let choose h = assert (not (S.is_empty !h)); S.choose !h
+end
 
 let workers = ref []
-let logical_workers = ref []
 
 let create_sock_addr name port =
   let addr = 
@@ -224,13 +256,22 @@ let create_sock_addr name port =
   in
   ADDR_INET (addr, port) 
 
-let declare_workers ?(port=51000) ?(n=1) s = 
-  let a = create_sock_addr s port in
-  let w = { sockaddr = a; connected = false; fdin = stdin; fdout = stdout } in
-  workers := w :: !workers;
-  for i = 1 to n do 
-    logical_workers := { worker = w; wid = i }  :: !logical_workers 
-  done
+let declare_workers =
+  let r = ref 0 in
+  fun ?(port=51000) ?(n=1) s ->
+    let a = create_sock_addr s port in
+    let w = { 
+      worker_id = !r;
+      sockaddr = a; 
+      connected = false; 
+      error = false;
+      fdin = stdin; 
+      fdout = stdout;
+      ncores = n;
+      idle_cores = n;
+    } 
+    in
+    workers := w :: !workers
 
 let connect_worker w =
   if not w.connected then begin
@@ -242,56 +283,175 @@ let connect_worker w =
     w.fdout <- fdout
   end
 
-let next_id = let r = ref 0 in fun () -> incr r; !r
+type 'a task = {
+  task : 'a;
+  task_id : int;
+  mutable task_workers : (int * worker) list; (* job id / worker *)
+}
 
-let print_sockaddr fmt = function
-  | ADDR_UNIX s -> fprintf fmt "%s" s
-  | ADDR_INET (ia, port) -> fprintf fmt "%s:%d" (string_of_inet_addr ia) port
+module TaskSet : sig
+  type 'a t
+  val create : unit -> 'a t
+  val add : 'a t -> 'a task -> unit
+  val mem : 'a t -> 'a task -> bool
+  val remove : 'a t -> 'a task -> unit
+  val is_empty : 'a t -> bool
+  val cardinal : 'a t -> int
+end = struct
+  type 'a t = (int, unit) Hashtbl.t
+  let create () = Hashtbl.create 17
+  let add h t = Hashtbl.add h t.task_id ()
+  let mem h t = Hashtbl.mem h t.task_id
+  let remove h t = Hashtbl.remove h t.task_id
+  let is_empty h = 
+    try Hashtbl.iter (fun _ _ -> raise Exit) h; true
+    with Exit -> false
+  let cardinal h = Hashtbl.length h
+end
 
-let master 
-  ~(handle : 'a * string * string -> string -> ('a * string * string) list) 
-  (tasks : ('a * string * string) list)
+let task_counter = ref 0
+let create_task t =
+  incr task_counter; 
+  { task = t;
+    task_id = !task_counter;
+    task_workers = []; }
+
+let job_id = let r = ref 0 in fun () -> incr r; !r
+
+let main_master 
+  ~(assign_job : 'a -> string * string)
+  ~(handle : 'a * 'c -> string -> ('a * 'c) list) 
+  (tasks : ('a * 'c) list)
 =
+  (* the tasks still to be done *)
+  let todo = Stack.create () in
+  List.iter (fun t -> Stack.push (create_task t) todo) tasks;
+  printf "%d tasks@." (Stack.length todo);
+  (* idle workers *)
+  let idle_workers = WorkerSet.create () in
+  List.iter (fun w -> WorkerSet.add idle_workers w; connect_worker w) !workers;
+  (* running tasks (job id -> task) *)
   let running_tasks = Hashtbl.create 17 in
-  let create_job lw ((_,f,a) as task) =
-    connect_worker lw.worker;
-    let id = next_id () in
-    Protocol.Master.send lw.worker.fdout (Protocol.Master.Assign (id, f, a));
-    Hashtbl.add running_tasks id (lw, task)
+  let create_job w t =
+    connect_worker w;
+    let id = job_id () in
+    let f, a = assign_job (fst t.task) in
+    Protocol.Master.send w.fdout (Protocol.Master.Assign (id, f, a));
+    t.task_workers <- (id, w)  :: t.task_workers;
+    Hashtbl.replace running_tasks id t;
+    assert (w.idle_cores > 0);
+    w.idle_cores <- w.idle_cores - 1;
+    if w.idle_cores = 0 then WorkerSet.remove idle_workers w
   in
-  let wait continuation =
+  let increase_idle_cores w =
+    w.idle_cores <- w.idle_cores + 1;
+    if w.idle_cores = 1 then WorkerSet.add idle_workers w
+  in
+  (* kill jobs not assigned to w in list l *)
+  let kill w jid =
+    Protocol.Master.send w.fdout (Protocol.Master.Kill jid);
+    increase_idle_cores w
+  in
+  let kill_jobs w l =
+    List.iter 
+      (fun (jid', w') -> if w'.worker_id <> w.worker_id then kill w' jid') l
+  in
+  let wait () =
     let listen_for_worker w =
       let l,_,_ = select [w.fdin] [] [] 0.1 in
       if l = [] then raise Exit;
+      dprintf "ready to receive@.";
       let m = Protocol.Worker.receive w.fdin in
-      dprintf "received from %a: %a@." print_sockaddr w.sockaddr
-	Protocol.Worker.print m;
+      dprintf "received from %a: %a@." print_worker w Protocol.Worker.print m;
       match m with
 	| Protocol.Worker.Started _ ->
 	    raise Exit
 	| Protocol.Worker.Completed (id, r) ->
-	    let lw, task = Hashtbl.find running_tasks id in
+	    let t = Hashtbl.find running_tasks id in
 	    Hashtbl.remove running_tasks id;
-	    lw, continuation task r
+	    kill_jobs w t.task_workers;
+	    increase_idle_cores w;
+	    w, handle t.task r
 	| Protocol.Worker.Aborted id ->
-	    let lw, task = Hashtbl.find running_tasks id in
+	    let t = Hashtbl.find running_tasks id in
 	    Hashtbl.remove running_tasks id;
-	    lw, [task]
+	    increase_idle_cores w;
+	    w, [t.task]
     in
+    (* loop over workers, until one has a message for us *)
     let rec loop = function
-      | [] -> loop !workers
-      | w :: wl -> try listen_for_worker w with Exit -> loop wl
+      | [] -> 
+	  loop !workers
+(*       | w :: wl when not w.connected ->  *)
+	  
+(* 	  loop wl *)
+      | w :: wl -> 
+	  try listen_for_worker w with Exit -> loop wl
     in
     loop !workers
   in
-  List.iter connect_worker !workers;
-  Master.run
-    ~create_job
-    ~wait:(fun () -> wait handle)
-    !logical_workers tasks
+  (* start *)
+  while not (Stack.is_empty todo) || (Hashtbl.length running_tasks > 0) do
+    (* if possible, start a new job *)
+    while not (WorkerSet.is_empty idle_workers) && not (Stack.is_empty todo) do
+      let t = Stack.pop todo in
+      assert (t.task_workers = []);
+      let w = WorkerSet.choose idle_workers in
+      create_job w t
+    done;
+    assert (Hashtbl.length running_tasks > 0);
+
+    printf "----@.";
+    printf "%d running tasks, %d tasks to do@." 
+      (Hashtbl.length running_tasks) (Stack.length todo);
+    printf "workers are@.";
+    List.iter (fun w -> printf "%a@." print_worker w) !workers;
+
+    (* if not, wait for any message from the workers *)
+    let w, tl = wait () in
+    List.iter (fun t -> Stack.push (create_task t) todo) tl
+  done;
+  assert (Stack.is_empty todo && Hashtbl.length running_tasks = 0)
 
 let is_worker = 
   try ignore (Sys.getenv "WORKER"); true with Not_found -> false 
+
+module Network1 = struct
+
+  let () = 
+    if is_worker then begin
+      printf "starting worker loop...@.";
+      Control.set_debug true;
+      let compute f x = 
+	let f = (Marshal.from_string f 0 : 'a -> 'b) in
+	let x = (Marshal.from_string x 0 : 'a) in
+	Marshal.to_string (f x) []
+      in
+      ignore (Worker.compute compute ~stop:false ())
+    end
+
+  let master  
+    ~(f : 'a -> 'b) 
+    ~(handle : 'a * 'c -> 'b -> ('a * 'c) list) 
+    tasks
+  =
+    let f_closure = Marshal.to_string f [Marshal.Closures] in
+    let assign_job x = f_closure, Marshal.to_string x [] in
+    let handle ac r = handle ac (Marshal.from_string r 0) in
+    main_master ~assign_job ~handle tasks
+
+  let map ~f l =
+    let tasks = let i = ref 0 in List.map (fun x -> incr i; x, !i) l in
+    let results = Hashtbl.create 17 in (* index -> 'b *)
+    master 
+      ~f
+      ~handle:(fun (_,i) r -> Hashtbl.add results i r; [])
+      tasks;
+    List.map (fun (_,i) -> Hashtbl.find results i) tasks
+
+end
+
+(*******
 
 type 'a marshaller = {
   marshal_to : 'a -> string;
@@ -655,3 +815,4 @@ module Master = struct
 
 end
 
+*********)
