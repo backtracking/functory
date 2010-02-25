@@ -17,42 +17,17 @@ open Format
 open Control
 open Unix
 
-(***
-type 'a job = {
-  worker : int;
-  pid : int;
-  file : file_descr; (* the pipe where to read the result from *)
-  task : 'a; 
-}
-
-let create_worker w (f : 'a -> 'b) (x : 'a) : 'a job =
-  let fin, fout = pipe () in
-  match fork () with
-    | 0 -> (* child *)
-	close fin;
-	let r = f x in
-	let c = out_channel_of_descr fout in
-	output_value c r;
-	exit 0
-    | pid -> (* parent *)
-	close fout;
-	{ worker = w;
-	  pid = pid;
-	  file = fin;
-	  task = x }
-***)
-
 type 'a job = {
   worker : int;
   pid : int;
   file : string;
   task : 'a; 
 }
-let create_worker w (f : 'a -> 'b) (x : 'a) : 'a job =
+let create_worker w (f : 'a -> 'b) (t : 'a * 'c) : ('a * 'c) job =
   let file = Filename.temp_file "mapfold" "output" in
   match fork () with
     | 0 -> (* child *)
-	let r = f x in
+	let r = f (fst t) in
 	let c = open_out file in
 	output_value c r;
 	exit 0
@@ -60,7 +35,7 @@ let create_worker w (f : 'a -> 'b) (x : 'a) : 'a job =
 	{ worker = w;
 	  pid = pid;
 	  file = file;
-	  task = x }
+	  task = t }
 
 
 let ncores = ref 1
@@ -69,8 +44,37 @@ let set_number_of_cores n = ncores := n
 let rec listij acc i j = if i > j then acc else listij (j :: acc) i (j-1)
 let workers () = listij [] 1 !ncores
 
+(* main loop: assigns tasks to workers, until no more task *)
+let run 
+    ~(create_job : 'worker -> 'task -> unit) 
+    ~(wait : unit -> 'worker * 'task list) 
+    (workers : 'worker list)
+    (tasks : 'task list)
+    = 
+  let todo = Stack.create () in
+  List.iter (fun t -> Stack.push t todo) tasks;
+  let towait = ref 0 in
+  let idle = Stack.create () in
+  List.iter (fun w -> Stack.push w idle) workers;
+  while not (Stack.is_empty todo) || !towait > 0 do
+    (* if possible, start new workers *)
+    while not (Stack.is_empty idle) && not (Stack.is_empty todo) do
+      let t = Stack.pop todo in
+      let w = Stack.pop idle in
+      create_job w t;
+      incr towait
+    done;
+    assert (!towait > 0);
+    (* otherwise, wait for results *)
+    let w, tl = wait () in
+    decr towait;
+    Stack.push w idle;
+    List.iter (fun t -> Stack.push t todo) tl
+  done;
+  assert (Stack.is_empty todo && !towait = 0)
+
 (* the generic master *)
-let master ~(f : 'a -> 'b) ~(handle : 'a -> 'b -> 'a list) tasks =
+let master ~(f : 'a -> 'b) ~(handle : ('a * 'c) -> 'b -> ('a * 'c) list) tasks =
   let jobs = Hashtbl.create 17 in (* PID -> job *)
   let rec wait () = 
     match Unix.wait () with
@@ -93,7 +97,7 @@ let master ~(f : 'a -> 'b) ~(handle : 'a -> 'b -> 'a list) tasks =
         Format.eprintf "master: ** PID %d killed or stopped! **@." p;
         exit 1
   in
-  Master.run
+  run
     ~create_job:(fun w t ->
 		   let j = create_worker w f t in
 		   dprintf "master: started worker %d (PID %d)@." w j.pid;
@@ -101,106 +105,9 @@ let master ~(f : 'a -> 'b) ~(handle : 'a -> 'b -> 'a list) tasks =
     ~wait (workers ()) tasks
 
 
-(* and its instances *)
+include Map_fold.Make(struct let master = master end)
 
-let map ~f l =
-  let tasks = let i = ref 0 in List.map (fun x -> incr i; !i,x) l in
-  let results = Hashtbl.create 17 in (* index -> 'b *)
-  master 
-    ~f:(fun (_,x) -> f x)
-    ~handle:(fun (i,_) r -> Hashtbl.add results i r; [])
-    tasks;
-  List.map (fun (i,_) -> Hashtbl.find results i) tasks
-
-let map_local_fold ~(map : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
-  let acc = ref acc in
-  master 
-    ~f:map
-    ~handle:(fun _ r -> acc := fold !acc r; [])
-    l;
-  !acc 
-
-type ('a, 'b) map_fold =
-  | Map of 'a
-  | Fold of 'b
-
-let map_remote_fold ~(map : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
-  let acc = ref (Some acc) in
-  let pending = Stack.create () in
-  master 
-    ~f:(function
-	  | Map x -> Map (map x)
-	  | Fold (v, x) -> Fold (fold v x))
-    ~handle:(fun _ r -> match r with
-	       | Map r -> begin match !acc with
-		   | None -> Stack.push r pending; []
-		   | Some v -> acc := None; [Fold (v, r)]
-		 end
-	       | Fold r -> 
-		   assert (!acc = None);
-		   if not (Stack.is_empty pending) then
-		     [Fold (r, Stack.pop pending)]
-		   else begin
-		     acc := Some r;
-		     []
-		   end)
-    (List.map (fun x -> Map x) l);
-  (* we are done; the accumulator must exist *)
-  match !acc with
-    | Some r -> r
-    | None -> assert false
-
-let map_fold_ac ~(map : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l =
-  let acc = ref (Some acc) in
-  master 
-    ~f:(function
-	  | Map x -> map x
-	  | Fold (v, x) -> fold v x)
-    ~handle:(fun _ r -> match !acc with
-	       | None -> acc := Some r; []
-	       | Some v -> acc := None; [Fold (v, r)])
-    (List.map (fun x -> Map x) l);
-  (* we are done; the accumulator must exist *)
-  match !acc with
-    | Some r -> r
-    | None -> assert false
-
-
-let map_fold_a ~(map : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l =
-  let tasks = let i = ref 0 in List.map (fun x -> incr i; !i, x) l in
-  (* results maps i and j to (i,j,r) for each completed reduction
-     of the interval i..j with result r *)
-  let results = Hashtbl.create 17 in 
-  let merge i j r = 
-    assert (i <= j);
-    if Hashtbl.mem results (i-1) then begin
-      let l, h, x = Hashtbl.find results (i-1) in
-      assert (l <= h && h = i-1);
-      Hashtbl.remove results l; 
-      Hashtbl.remove results h;
-      [Fold (l, j, x, r)]
-    end else if Hashtbl.mem results (j+1) then begin
-      let l, h, x = Hashtbl.find results (j+1) in
-      assert (l <= h && l = j+1);
-      Hashtbl.remove results h; 
-      Hashtbl.remove results l;
-      [Fold (i, h, r, x)]
-    end else begin
-      Hashtbl.add results i (i,j,r);
-      Hashtbl.add results j (i,j,r);
-      []
-    end
-  in
-  master 
-    ~f:(function
-	  | Map (_,x) -> map x
-	  | Fold (_, _, x1, x2) -> fold x1 x2)
-    ~handle:(fun x r -> match x with
-	       | Map (i, _) -> merge i i r
-	       | Fold (i, j, _, _) -> merge i j r)
-    (List.map (fun x -> Map x) tasks);
-  (* we are done; results must contain 2 mappings only, for 1 and n *)
-  try let _,_,r = Hashtbl.find results 1 in r with Not_found -> acc
+(*******
 
 type ('a, 'b) map_reduce =
   | Map of 'a
@@ -247,3 +154,4 @@ let map_reduce ~map ~reduce l =
     results []
 
 
+**********)

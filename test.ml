@@ -52,8 +52,8 @@ module TestInt(X : MF with type t = int) = struct
     assert (map_remote_fold ~map:f ~fold 0 l = r);
     printf "  map_fold_ac@.";
     assert (map_fold_ac ~map:f ~fold 0 l = r);
-    printf "  map_fold_a@.";
-    assert (map_fold_a ~map:f ~fold 0 l = r);
+(*     printf "  map_fold_a@."; *)
+(*     assert (map_fold_a ~map:f ~fold 0 l = r); *)
     ()
 
 end
@@ -81,13 +81,14 @@ module TestString(X : MF with type t = string) = struct
     assert (check (map_local_fold ~map:f ~fold "" l));
     printf "  map_remote_fold@.";
     assert (check (map_remote_fold ~map:f ~fold "" l));
-    printf "  map_fold_ac@.";
-    assert (check (map_fold_ac ~map:f ~fold "" l));
-    printf "  map_fold_a@.";
-    assert (map_fold_a ~map:f ~fold "" l = "a.bb.ccc.dddd.");
+(*     printf "  map_fold_ac@."; *)
+(*     assert (check (map_fold_ac ~map:f ~fold "" l)); *)
+(*     printf "  map_fold_a@."; *)
+(*     assert (map_fold_a ~map:f ~fold "" l = "a.bb.ccc.dddd."); *)
     ()
 end
 
+(****
 module TestMR(X : 
   sig 
     val map_reduce :
@@ -155,14 +156,15 @@ A l'un des plus grands orateurs qui honorent l'Angleterre, succédait donc ce Phi
     assert (List.assoc "Fogg" wc = [2])
 
 end
+***)
 
 let () = printf "Sequential@."
 module TestIntSeq = 
   TestInt(struct type t = int include Mapreduce.Sequential end)
 module TestStringSeq = 
   TestString(struct type t = string include Mapreduce.Sequential end)
-module TestMRSeq = 
-  TestMR(Mapreduce.Sequential)
+(* module TestMRSeq =  *)
+(*   TestMR(Mapreduce.Sequential) *)
 
 let () = printf "Cores@."
 let () = Mapreduce.Cores.set_number_of_cores 2
@@ -170,17 +172,17 @@ module TestIntCores =
   TestInt(struct type t = int include Mapreduce.Cores end)
 module TestStringCores = 
   TestString(struct type t = string include Mapreduce.Cores end)
-module TestMRCores = 
-  TestMR(Mapreduce.Cores)
+(* module TestMRCores =  *)
+(*   TestMR(Mapreduce.Cores) *)
 
 let () = printf "Network@."
 let () = Mapreduce.Network.declare_workers ~n:2 "localhost"
-module TestIntNetwork = 
-  TestInt(struct type t = int include Mapreduce.Network end)
-module TestStringNetwork = 
-  TestString(struct type t = string include Mapreduce.Network end)
-module TestStringNetworkStr = 
-  TestString(struct type t = string include Mapreduce.Network.Str end)
+module TestIntNetwork =
+  TestInt(struct type t = int include Mapreduce.Network1 end)
+module TestStringNetwork =
+  TestString(struct type t = string include Mapreduce.Network1 end)
+(* module TestStringNetworkStr =  *)
+(*   TestString(struct type t = string include Mapreduce.Network.Str end) *)
 
 
 

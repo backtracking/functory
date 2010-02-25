@@ -69,33 +69,21 @@ module Cores : sig
   val map_fold_a :
     map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 
-  val map_reduce :
-    map:('v1 -> ('k2 * 'v2) list) ->
-    reduce:('k2 -> 'v2 list list -> 'v2 list) ->
-    'v1 list -> ('k2 * 'v2 list) list
+(*   val map_reduce : *)
+(*     map:('v1 -> ('k2 * 'v2) list) -> *)
+(*     reduce:('k2 -> 'v2 list list -> 'v2 list) -> *)
+(*     'v1 list -> ('k2 * 'v2 list) list *)
 
   val master : 
-    f:('a -> 'b) -> handle:('a -> 'b -> 'a list) -> 'a list -> unit
+    f:('a -> 'b) -> 
+    handle:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
 
 end
 
-module Network : sig
-
-  val declare_workers : ?port:int -> ?n:int -> string -> unit
-    (** [declare_workers s] declares workers on machine [s];
-        the number of workers is [n] and defaults to 1 *)
-
-  (** Polymorphic functions.
-      These functions are to be used only when master and worker are
-      *exactly* the same binaries. *)
-
-  module Network1 : sig
+(** Same binary executed as master and workers *)
+module Network1 : sig
 
   val map : f:('a -> 'b) -> 'a list -> 'b list
-
-  end
-
-  (***
 
   val map_local_fold :
     map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
@@ -109,9 +97,27 @@ module Network : sig
   val map_fold_a :
     map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 
+  val master : 
+    f:('a -> 'b) -> 
+    handle:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
+
+end
+
+module Network : sig
+
+  val declare_workers : ?port:int -> ?n:int -> string -> unit
+    (** [declare_workers s] declares workers on machine [s];
+        the number of workers is [n] and defaults to 1 *)
+
+  (** Polymorphic functions.
+      These functions are to be used only when master and worker are
+      *exactly* the same binaries. *)
+
   (** Monomorphic functions.
       These functions should be used when master and workers are compiled
       from the same source. *)
+
+  (***
 
   module Str : sig
 
@@ -134,7 +140,6 @@ module Network : sig
       string -> string list -> string
 
   end
-
 
   (** General case: master and workers are developped independently *)
 
@@ -166,16 +171,13 @@ module Network : sig
 
    end
 
+  ***)
+
   module Worker : sig
 
-    val register_computation : string -> (string -> string) -> unit
-      (** [register_computation n f] registers function [f] with name [n] *)
-
-    val register_computation2 : string -> (string -> string -> string) -> unit
-      (** [register_computation2 n f] registers the two arguments 
-	  function [f] with name [n] *)
-
-    val compute : ?stop:bool -> ?port:int -> unit -> string
+    val compute : 
+      (string -> string -> string) -> 
+      ?stop:bool -> ?port:int -> unit -> string
       (** [compute ()] starts the worker loop, listening on port [port]
 	  (default is 51000). 
 
@@ -188,8 +190,6 @@ module Network : sig
 	  and accept several parallel connections from masters. *)
 
   end
-
-  ***)
 
 end
 

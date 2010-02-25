@@ -57,8 +57,9 @@ opt: $(CMA) $(CMXA) worker_test.opt master_test.opt test.opt
 # bytecode and native-code compilation
 ######################################
 
-CMO = control.cmo sequential.cmo master.cmo cores.cmo binary.cmo protocol.cmo \
-      network.cmo
+CMO = control.cmo sequential.cmo map_fold.cmo \
+      cores.cmo binary.cmo protocol.cmo \
+      network.cmo network1.cmo
 CMX = $(CMO:.cmo=.cmx)
 
 GENERATED = version.ml

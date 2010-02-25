@@ -68,7 +68,7 @@ module Worker = struct
 		    close fin;
 		    (* perform computation *)
 		    dprintf "  id %d: computation is running...@." id;
-		    let r = compute f a in
+		    let r : string = compute f a in
 		    let c = out_channel_of_descr fout in
 		    output_value c r;
 		    dprintf "  id %d: computation done@." id;
@@ -154,6 +154,7 @@ module Worker = struct
       let sock = socket PF_INET SOCK_STREAM 0 in
       let sockaddr = Unix.ADDR_INET (inet_addr_any, port) in
       setsockopt sock SO_REUSEADDR true;
+      setsockopt sock SO_KEEPALIVE true;
       bind sock sockaddr;
       listen sock 3;
       Hashtbl.add sockets port sock;
@@ -226,7 +227,9 @@ let print_sockaddr fmt = function
   | ADDR_INET (ia, port) -> fprintf fmt "%s:%d" (string_of_inet_addr ia) port
 
 let print_worker fmt w = 
-  fprintf fmt "%a (%d idle cores)" print_sockaddr w.sockaddr w.idle_cores
+  fprintf fmt "@[%a (%d cores, %d idle cores, %d jobs)@]" 
+    print_sockaddr w.sockaddr 
+    w.ncores w.idle_cores (IntSet.cardinal w.jobs)
 
 module WorkerSet : sig
   type t
@@ -331,9 +334,12 @@ let main_master
   (* the tasks still to be done *)
   let todo = Stack.create () in
   List.iter (fun t -> Stack.push (create_task t) todo) tasks;
-  printf "%d tasks@." (Stack.length todo);
   (* idle workers *)
   let idle_workers = WorkerSet.create () in
+  List.iter 
+    (fun w -> 
+       if w.connected && w.idle_cores > 0 then WorkerSet.add idle_workers w)
+    !workers;
   (* running tasks (job id -> task) *)
   let running_tasks = Hashtbl.create 17 in
   let create_job w t =
@@ -437,11 +443,11 @@ let main_master
       create_job w t
     done;
 
+    (***
     printf "----@.";
     printf "%d running tasks, %d tasks to do@." 
       (Hashtbl.length running_tasks) (Stack.length todo);
-    printf "workers are@.";
-    List.iter (fun w -> printf "%a@." print_worker w) !workers;
+    ***)	
 
     (* if not, wait for any message from the workers *)
     if Hashtbl.length running_tasks > 0 then begin
@@ -452,45 +458,13 @@ let main_master
 	  ()
     end
   done;
-  assert (Stack.is_empty todo && Hashtbl.length running_tasks = 0)
+  assert (Stack.is_empty todo && Hashtbl.length running_tasks = 0);
+  (*   printf "workers are@."; *)
+  (*   List.iter (fun w -> printf "  %a@." print_worker w) !workers *)
+  ()
 
 let is_worker = 
   try ignore (Sys.getenv "WORKER"); true with Not_found -> false 
-
-module Network1 = struct
-
-  let () = 
-    if is_worker then begin
-      printf "starting worker loop...@.";
-      Control.set_debug true;
-      let compute f x = 
-	let f = (Marshal.from_string f 0 : 'a -> 'b) in
-	let x = (Marshal.from_string x 0 : 'a) in
-	Marshal.to_string (f x) []
-      in
-      ignore (Worker.compute compute ~stop:false ())
-    end
-
-  let master  
-    ~(f : 'a -> 'b) 
-    ~(handle : 'a * 'c -> 'b -> ('a * 'c) list) 
-    tasks
-  =
-    let f_closure = Marshal.to_string f [Marshal.Closures] in
-    let assign_job x = f_closure, Marshal.to_string x [] in
-    let handle ac r = handle ac (Marshal.from_string r 0) in
-    main_master ~assign_job ~handle tasks
-
-  let map ~f l =
-    let tasks = let i = ref 0 in List.map (fun x -> incr i; x, !i) l in
-    let results = Hashtbl.create 17 in (* index -> 'b *)
-    master 
-      ~f
-      ~handle:(fun (_,i) r -> Hashtbl.add results i r; [])
-      tasks;
-    List.map (fun (_,i) -> Hashtbl.find results i) tasks
-
-end
 
 (*******
 
