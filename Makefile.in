@@ -36,8 +36,8 @@ OCAMLWIN32 = @OCAMLWIN32@
 EXE = @EXE@
 
 INCLUDES = 
-BFLAGS = -g $(INCLUDES)
-OFLAGS = $(INCLUDES) -for-pack Mapreduce
+BFLAGS = -dtypes -g $(INCLUDES)
+OFLAGS = -dtypes $(INCLUDES) -for-pack Mapreduce
 
 # main target
 #############

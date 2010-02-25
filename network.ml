@@ -200,6 +200,9 @@ end
 
 (** Master *)
 
+module IntSet = 
+  Set.Make(struct type t = int let compare = Pervasives.compare end)
+
 type worker = { 
   worker_id : int;
   sockaddr : sockaddr;
@@ -209,6 +212,13 @@ type worker = {
   mutable fdout : file_descr;
   ncores : int;
   mutable idle_cores : int;
+  mutable jobs : IntSet.t;
+}
+
+type 'a task = {
+  task : 'a;
+  task_id : int;
+  mutable task_workers : (int * worker) list; (* job id / worker *)
 }
 
 let print_sockaddr fmt = function
@@ -269,6 +279,7 @@ let declare_workers =
       fdout = stdout;
       ncores = n;
       idle_cores = n;
+      jobs = IntSet.empty;
     } 
     in
     workers := w :: !workers
@@ -282,12 +293,6 @@ let connect_worker w =
     w.fdin <- fdin;
     w.fdout <- fdout
   end
-
-type 'a task = {
-  task : 'a;
-  task_id : int;
-  mutable task_workers : (int * worker) list; (* job id / worker *)
-}
 
 module TaskSet : sig
   type 'a t
@@ -329,7 +334,6 @@ let main_master
   printf "%d tasks@." (Stack.length todo);
   (* idle workers *)
   let idle_workers = WorkerSet.create () in
-  List.iter (fun w -> WorkerSet.add idle_workers w; connect_worker w) !workers;
   (* running tasks (job id -> task) *)
   let running_tasks = Hashtbl.create 17 in
   let create_job w t =
@@ -339,9 +343,22 @@ let main_master
     Protocol.Master.send w.fdout (Protocol.Master.Assign (id, f, a));
     t.task_workers <- (id, w)  :: t.task_workers;
     Hashtbl.replace running_tasks id t;
+    w.jobs <- IntSet.add id w.jobs;
     assert (w.idle_cores > 0);
     w.idle_cores <- w.idle_cores - 1;
     if w.idle_cores = 0 then WorkerSet.remove idle_workers w
+  in
+  let manage_disconnection w =
+    w.connected <- false;
+    WorkerSet.remove idle_workers w;
+    IntSet.iter 
+      (fun jid -> 
+	 assert (Hashtbl.mem running_tasks jid);
+	 let t = Hashtbl.find running_tasks jid in
+	 Hashtbl.remove running_tasks jid;
+	 t.task_workers <- List.filter (fun (_,w') -> w' != w) t.task_workers;
+	 Stack.push t todo)
+      w.jobs;
   in
   let increase_idle_cores w =
     w.idle_cores <- w.idle_cores + 1;
@@ -350,6 +367,7 @@ let main_master
   (* kill jobs not assigned to w in list l *)
   let kill w jid =
     Protocol.Master.send w.fdout (Protocol.Master.Kill jid);
+    w.jobs <- IntSet.remove jid w.jobs;
     increase_idle_cores w
   in
   let kill_jobs w l =
@@ -370,36 +388,54 @@ let main_master
 	    let t = Hashtbl.find running_tasks id in
 	    Hashtbl.remove running_tasks id;
 	    kill_jobs w t.task_workers;
+	    w.jobs <- IntSet.remove id w.jobs;
 	    increase_idle_cores w;
 	    w, handle t.task r
 	| Protocol.Worker.Aborted id ->
 	    let t = Hashtbl.find running_tasks id in
 	    Hashtbl.remove running_tasks id;
+	    w.jobs <- IntSet.remove id w.jobs;
 	    increase_idle_cores w;
 	    w, [t.task]
     in
     (* loop over workers, until one has a message for us *)
     let rec loop = function
       | [] -> 
-	  loop !workers
-(*       | w :: wl when not w.connected ->  *)
-	  
-(* 	  loop wl *)
+	  raise Exit
+      | w :: wl when not w.connected ->
+	  loop wl
       | w :: wl -> 
-	  try listen_for_worker w with Exit -> loop wl
+	  try 
+	    listen_for_worker w
+	  with 
+	    | Exit -> loop wl
+	    | End_of_file -> manage_disconnection w; raise Exit
     in
     loop !workers
   in
-  (* start *)
+  (* main loop *)
   while not (Stack.is_empty todo) || (Hashtbl.length running_tasks > 0) do
+
+    (* try to connect if not already connected *)
+    List.iter 
+      (fun w -> if not w.connected then begin
+	 try 
+	   connect_worker w;
+	   WorkerSet.add idle_workers w;
+	   w.idle_cores <- w.ncores; (* we assume all cores are back *)
+	   w.jobs <- IntSet.empty;
+	 with e ->
+	   ()
+       end) 
+      !workers;
+
     (* if possible, start a new job *)
     while not (WorkerSet.is_empty idle_workers) && not (Stack.is_empty todo) do
       let t = Stack.pop todo in
-      assert (t.task_workers = []);
+      assert (t.task_workers = []); (* TO BE REMOVED EVENTUALLY *)
       let w = WorkerSet.choose idle_workers in
       create_job w t
     done;
-    assert (Hashtbl.length running_tasks > 0);
 
     printf "----@.";
     printf "%d running tasks, %d tasks to do@." 
@@ -408,8 +444,13 @@ let main_master
     List.iter (fun w -> printf "%a@." print_worker w) !workers;
 
     (* if not, wait for any message from the workers *)
-    let w, tl = wait () in
-    List.iter (fun t -> Stack.push (create_task t) todo) tl
+    if Hashtbl.length running_tasks > 0 then begin
+      try
+	let w, tl = wait () in
+	List.iter (fun t -> Stack.push (create_task t) todo) tl
+      with Exit ->
+	  ()
+    end
   done;
   assert (Stack.is_empty todo && Hashtbl.length running_tasks = 0)
 
