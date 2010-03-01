@@ -59,7 +59,7 @@ opt: $(CMA) $(CMXA) network_test.opt test.opt
 
 CMO = control.cmo sequential.cmo map_fold.cmo \
       cores.cmo binary.cmo protocol.cmo \
-      network.cmo network1.cmo
+      network.cmo 
 CMX = $(CMO:.cmo=.cmx)
 
 GENERATED = version.ml

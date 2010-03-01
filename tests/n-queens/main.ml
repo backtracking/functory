@@ -45,7 +45,7 @@ let rec tabulate i j f = if i > j then [] else f i :: tabulate (i+1) j f
 let n_queens q = 
   let l = tabulate 0 (q-1) (fun i -> 1 lsl i) in
   let all = lnot ((lnot 0) lsl q) in
-  let rl = Network1.map (fun c -> t (all-c) (c*2) (c/2) 0) l in (* <- map here *)
+  let rl = Network.Same.map (fun c -> t (all-c) (c*2) (c/2) 0) l in (* <- map here *)
   List.fold_left (+) 0 rl	                 (* <- reduce locally *)
 
 let test_n_queens q = 

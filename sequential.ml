@@ -36,3 +36,13 @@ let map_reduce ~map ~reduce l =
   Hashtbl.fold (fun k2 v2l res -> (k2, reduce k2 v2l) :: res) h []
 
 
+let master ~f ~handle l =
+  let pending = Stack.create () in
+  let add l = List.iter (fun t -> Stack.push t pending) l in
+  add l;
+  while not (Stack.is_empty pending) do
+    let a,_ as t = Stack.pop pending in
+    let l = handle t (f a) in
+    add l
+  done
+

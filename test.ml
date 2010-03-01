@@ -33,6 +33,9 @@ module type MF = sig
     map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
   val map_fold_a :
     map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
+  val master :
+    f:('a -> 'b) -> 
+    handle:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
 end
 
 module TestInt(X : MF with type t = int) = struct
@@ -52,8 +55,18 @@ module TestInt(X : MF with type t = int) = struct
     assert (map_remote_fold ~map:f ~fold 0 l = r);
     printf "  map_fold_ac@.";
     assert (map_fold_ac ~map:f ~fold 0 l = r);
-(*     printf "  map_fold_a@."; *)
-(*     assert (map_fold_a ~map:f ~fold 0 l = r); *)
+    printf "  map_fold_a@.";
+    assert (map_fold_a ~map:f ~fold 0 l = r);
+    printf "  master@.";
+    assert (
+      let res = ref 0 in
+      master 
+	~f ~handle:(fun (x,y) z -> 
+		      assert (z = x+1 && x = y); 
+		      res := !res + z;
+		      if x = 3 then [4,4] else []) 
+	[1,1; 2,2; 3,3];
+      !res = 14);
     ()
 
 end
@@ -81,10 +94,10 @@ module TestString(X : MF with type t = string) = struct
     assert (check (map_local_fold ~map:f ~fold "" l));
     printf "  map_remote_fold@.";
     assert (check (map_remote_fold ~map:f ~fold "" l));
-(*     printf "  map_fold_ac@."; *)
-(*     assert (check (map_fold_ac ~map:f ~fold "" l)); *)
-(*     printf "  map_fold_a@."; *)
-(*     assert (map_fold_a ~map:f ~fold "" l = "a.bb.ccc.dddd."); *)
+    printf "  map_fold_ac@.";
+    assert (check (map_fold_ac ~map:f ~fold "" l));
+    printf "  map_fold_a@.";
+    assert (map_fold_a ~map:f ~fold "" l = "a.bb.ccc.dddd.");
     ()
 end
 
@@ -178,9 +191,9 @@ module TestStringCores =
 let () = printf "Network@."
 let () = Mapreduce.Network.declare_workers ~n:2 "localhost"
 module TestIntNetwork =
-  TestInt(struct type t = int include Mapreduce.Network1 end)
+  TestInt(struct type t = int include Mapreduce.Network.Same end)
 module TestStringNetwork =
-  TestString(struct type t = string include Mapreduce.Network1 end)
+  TestString(struct type t = string include Mapreduce.Network.Same end)
 (* module TestStringNetworkStr =  *)
 (*   TestString(struct type t = string include Mapreduce.Network.Str end) *)
 
