@@ -129,6 +129,9 @@ test: test.opt
 	WORKER=yes xterm -e "./test.opt" &
 	sleep 1 && ./test.opt
 
+test-network: network_test.opt 
+	sh ./test-network.sh
+
 test2: master_test.opt worker_test.opt
 	./worker_test.opt &
 	sleep 1 && ./master_test.opt && killall -9 worker_test.opt

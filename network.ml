@@ -171,7 +171,7 @@ module Worker = struct
       Hashtbl.add sockets_fd port s;
       s
 
-  let compute compute ?(stop=false) ?(port=51000) () = 
+  let compute compute ?(stop=false) ?(port = !default_port_number) () = 
     if stop then begin
       let s = get_socket_fd port in
       let inchan = Unix.in_channel_of_descr s 
@@ -271,7 +271,7 @@ let create_sock_addr name port =
 
 let declare_workers =
   let r = ref 0 in
-  fun ?(port=51000) ?(n=1) s ->
+  fun ?(port = !default_port_number) ?(n=1) s ->
     let a = create_sock_addr s port in
     let w = { 
       worker_id = !r;
@@ -296,6 +296,14 @@ let connect_worker w =
     w.fdin <- fdin;
     w.fdout <- fdout
   end
+
+(*
+let stop_workers () =
+  List.iter
+    (fun w -> if w.connected then
+       Protocol.Master.send w.fdout (Protocol.Master.Stop "stop"))
+    !workers
+*)
 
 module TaskSet : sig
   type 'a t
@@ -466,7 +474,7 @@ let main_master
 let is_worker = 
   try ignore (Sys.getenv "WORKER"); true with Not_found -> false 
 
-type worker_type = ?port:int -> unit -> unit
+type worker_type = ?stop:bool -> ?port:int -> unit -> unit
 
 module Mono = struct
 
@@ -478,8 +486,8 @@ module Mono = struct
   end
 
   module Worker = struct
-    let compute f ?port () = 
-      ignore (Worker.compute (fun _ x -> f x) ~stop:false ?port ())
+    let compute f ?stop ?port () = 
+      ignore (Worker.compute (fun _ x -> f x) ?stop ?port ())
   end
 
 end
@@ -498,7 +506,20 @@ module Poly = struct
 	(struct
 	   let master ~f = master
 	 end)
-    let map l = map ~f:(fun _ -> assert false) l
+    let map l = 
+      map ~f:(fun _ -> assert false) l
+    let map_local_fold ~fold acc l = 
+      map_local_fold
+	~map:(fun _ -> assert false) ~fold acc l
+    let map_remote_fold acc l = 
+      map_remote_fold
+	~map:(fun _ -> assert false) ~fold:(fun _ _ -> assert false) acc l
+    let map_fold_ac acc l = 
+      map_fold_ac
+	~map:(fun _ -> assert false) ~fold:(fun _ _ -> assert false) acc l
+    let map_fold_a acc l = 
+      map_fold_a
+	~map:(fun _ -> assert false) ~fold:(fun _ _ -> assert false) acc l
 
   end
 
@@ -508,10 +529,19 @@ module Poly = struct
       let r = f x in
       Marshal.to_string r []
 
-    let compute f ?port () = 
-      ignore (Worker.compute (fun _ -> unpoly f) ~stop:false ?port ())
+    let compute f ?stop ?port () = 
+      ignore (Worker.compute (fun _ -> unpoly f) ?stop ?port ())
 
-    let map ~f = compute f
+    let map ~f = 
+      compute f
+    let map_local_fold ~map = 
+      compute map
+    let map_remote_fold ~map ~fold = 
+      compute (Map_fold.map_fold_wrapper map fold)
+    let map_fold_ac ~map ~fold = 
+      compute (Map_fold.map_fold_wrapper2 map fold)
+    let map_fold_a ~map ~fold = 
+      compute (Map_fold.map_fold_wrapper2 map fold)
   end
 
 end

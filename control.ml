@@ -20,6 +20,8 @@ let set_debug b = debug := b
 let buf = Buffer.create 1024
 let fmt = Format.formatter_of_buffer buf
 
+let default_port_number = ref 51001
+
 let dprintf s =
   Format.kfprintf 
     (fun _ -> 

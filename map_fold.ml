@@ -1,3 +1,14 @@
+type ('a, 'b) map_or_fold =
+  | Map of 'a
+  | Fold of 'b
+
+let map_fold_wrapper map fold = function
+  | Map x -> Map (map x)
+  | Fold (x, y) -> Fold (fold x y)
+
+let map_fold_wrapper2 map fold = function
+  | Map x -> map x
+  | Fold (x, y) -> fold x y
 
 module Make
   (X : sig
@@ -42,17 +53,11 @@ end = struct
       (List.map (fun x -> x, ()) l);
     !acc 
 
-  type ('a, 'b) map_or_fold =
-    | Map of 'a
-    | Fold of 'b
-
   let map_remote_fold  ~(map : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
     let acc = ref (Some acc) in
     let pending = Stack.create () in
     X.master 
-      ~f:(function
-	    | Map x -> Map (map x)
-	    | Fold (x, y) -> Fold (fold x y))
+      ~f:(map_fold_wrapper map fold)
       ~handle:(fun _ r -> match r with
 		 | Map r -> begin match !acc with
 		     | None -> Stack.push r pending; []
@@ -75,9 +80,7 @@ end = struct
   let map_fold_ac ~(map : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l =
     let acc = ref (Some acc) in
     X.master 
-      ~f:(function
-	    | Map x -> map x
-	    | Fold (x, y) -> fold x y)
+      ~f:(map_fold_wrapper2 map fold)
       ~handle:(fun _ r -> 
 		 match !acc with
 		 | None -> 
@@ -119,9 +122,7 @@ end = struct
       end
     in
     X.master 
-      ~f:(function
-	    | Map x -> map x
-	    | Fold (x, y) -> fold x y)
+      ~f:(map_fold_wrapper2 map fold)
       ~handle:(fun x r -> match x with
 		 | Map _, (i, _) -> merge i i r
 		 | Fold _, (i, j) -> merge i j r)

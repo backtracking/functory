@@ -111,7 +111,7 @@ module Network : sig
 
   (** Polymorphic functions. (same version of ocaml) *)
 
-  type worker_type = ?port:int -> unit -> unit
+  type worker_type = ?stop:bool -> ?port:int -> unit -> unit
 
   module Poly : sig
 
@@ -121,12 +121,25 @@ module Network : sig
 	('a * 'c) list -> unit
 
       val map : 'a list -> 'b list
+      val map_local_fold : fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+      val map_remote_fold : 'c -> 'a list -> 'c
+      val map_fold_ac : 'b -> 'a list -> 'b
+      val map_fold_a : 'b -> 'a list -> 'b
     end
 
     module Worker : sig
       val compute : ('a -> 'b) -> worker_type
         
-      val map : f:('a -> 'b) -> worker_type
+      val map : 
+	f:('a -> 'b) -> worker_type
+      val map_local_fold : 
+	map:('a -> 'b) -> worker_type
+      val map_remote_fold :
+	map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> worker_type
+      val map_fold_ac :
+	map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> worker_type
+      val map_fold_a :
+	map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> worker_type
     end
       
   end
