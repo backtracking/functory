@@ -51,8 +51,8 @@ TESTDIRS = n-queens sums sort sort-nfs
 TESTS := $(patsubst %, tests/%/a.out, $(TESTDIRS))
 
 all: $(OCAMLBEST) $(TESTS)
-byte: $(CMA) worker_test.byte master_test.byte test.byte
-opt: $(CMA) $(CMXA) worker_test.opt master_test.opt test.opt
+byte: $(CMA) network_test.byte test.byte
+opt: $(CMA) $(CMXA) network_test.opt test.opt
 
 # bytecode and native-code compilation
 ######################################
@@ -77,6 +77,16 @@ mapreduce.cmo: $(CMO)
 mapreduce.cmx: mapreduce.cmi
 mapreduce.cmx: $(CMX)
 	$(OCAMLOPT) $(INCLUDES) -pack -o $@ $(CMX)
+
+NTCMO = network_test.cmo
+NTCMX = $(NTCMO:.cmo=.cmx)
+
+network_test.byte: $(CMA) $(NTCMO)
+	$(OCAMLC) $(INCLUDES) -o $@ unix.cma $^
+
+network_test.cmx: mapreduce.cmi
+network_test.opt: $(CMXA) $(NTCMX)
+	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $(CMXA) $(NTCMX)
 
 WTCMO = worker_test.cmo
 WTCMX = $(WTCMO:.cmo=.cmx)
@@ -123,8 +133,9 @@ test2: master_test.opt worker_test.opt
 	./worker_test.opt &
 	sleep 1 && ./master_test.opt && killall -9 worker_test.opt
 
-install-test: tests/n-queens/a.out
+install-test: tests/n-queens/a.out network_test.opt
 	cp tests/n-queens/a.out ~
+	cp network_test.opt ~
 
 tests/%/a.out: tests/%/main.ml mapreduce.cmxa
 	$(OCAMLOPT) unix.cmxa mapreduce.cmxa tests/$*/main.ml -o $@

@@ -466,6 +466,56 @@ let main_master
 let is_worker = 
   try ignore (Sys.getenv "WORKER"); true with Not_found -> false 
 
+type worker_type = ?port:int -> unit -> unit
+
+module Mono = struct
+
+  module Master = struct
+
+    let master ~handle tl =
+      main_master ~assign_job:(fun x -> "f", x) ~handle tl
+	
+  end
+
+  module Worker = struct
+    let compute f ?port () = 
+      ignore (Worker.compute (fun _ x -> f x) ~stop:false ?port ())
+  end
+
+end
+
+module Poly = struct
+
+  module Master = struct
+
+    let master ~handle tl =
+      main_master 
+	~assign_job:(fun x -> "f", Marshal.to_string x []) 
+	~handle:(fun t s -> let r = Marshal.from_string s 0 in handle t r)
+	tl
+	
+    include Map_fold.Make
+	(struct
+	   let master ~f = master
+	 end)
+    let map l = map ~f:(fun _ -> assert false) l
+
+  end
+
+  module Worker = struct
+    let unpoly f s = 
+      let x = Marshal.from_string s 0 in
+      let r = f x in
+      Marshal.to_string r []
+
+    let compute f ?port () = 
+      ignore (Worker.compute (fun _ -> unpoly f) ~stop:false ?port ())
+
+    let map ~f = compute f
+  end
+
+end
+
 (*******
 
 type 'a marshaller = {

@@ -21,8 +21,8 @@
 (* let () = set_number_of_cores 2 *)
 
 let () = Mapreduce.Control.set_debug false
-open Mapreduce.Network
-let () = declare_workers ~n:12 "moloch"
+open Mapreduce
+let () = Network.declare_workers ~n:12 "moloch"
 (* let () = declare_workers ~n:4 "orcus" *)
 (* let () = declare_workers ~n:1 "localhost" *)
 

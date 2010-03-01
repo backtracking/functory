@@ -109,13 +109,43 @@ module Network : sig
     (** [declare_workers s] declares workers on machine [s];
         the number of workers is [n] and defaults to 1 *)
 
-  (** Polymorphic functions.
-      These functions are to be used only when master and worker are
-      *exactly* the same binaries. *)
+  (** Polymorphic functions. (same version of ocaml) *)
 
-  (** Monomorphic functions.
-      These functions should be used when master and workers are compiled
-      from the same source. *)
+  type worker_type = ?port:int -> unit -> unit
+
+  module Poly : sig
+
+    module Master : sig
+      val master : 
+	handle:('a * 'c -> 'b -> ('a * 'c) list) -> 
+	('a * 'c) list -> unit
+
+      val map : 'a list -> 'b list
+    end
+
+    module Worker : sig
+      val compute : ('a -> 'b) -> worker_type
+        
+      val map : f:('a -> 'b) -> worker_type
+    end
+      
+  end
+
+  (** Monomorphic functions. (possibly different versions of ocaml) *)
+
+  module Mono : sig
+
+    module Master : sig
+      val master : 
+	handle:(string * 'c -> string -> (string * 'c) list) -> 
+	(string * 'c) list -> unit
+    end
+
+    module Worker : sig
+      val compute : (string -> string) -> worker_type
+    end
+
+  end
 
   (***
 
@@ -141,10 +171,10 @@ module Network : sig
 
   end
 
-  (** General case: master and workers are developped independently *)
+  ***)
 
-  module Master : sig
 
+    (***
     val map : string list -> string list
       (** [map l] is returning [List.map f l] where
 	  [f : string -> string] is a function registered under name "f" *)
@@ -168,28 +198,9 @@ module Network : sig
 
     val map_fold_a : string -> string list -> string
       (** workers should provide a "map" function and a "fold" function *)
+    ***) 
 
-   end
 
-  ***)
-
-  module Worker : sig
-
-    val compute : 
-      (string -> string -> string) -> 
-      ?stop:bool -> ?port:int -> unit -> string
-      (** [compute ()] starts the worker loop, listening on port [port]
-	  (default is 51000). 
-
-	  When [stop] is set to [true], which is the defautl,
-	  the worker will stop whenever it receives
-	  the Stop command from the master and will then return the result
-	  provided by the master.
-	  
-	  Whenever [stop] is set to [false], [compute] never returns
-	  and accept several parallel connections from masters. *)
-
-  end
 
 end
 
