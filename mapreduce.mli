@@ -60,7 +60,8 @@ module Sequential : sig
 
 end
 
-(** Several cores on the same machine *)
+(** Several cores on the same machine.
+    For documentation, refer to module [Sequential]. *)
 module Cores : sig
 
   val set_number_of_cores : int -> unit
@@ -106,9 +107,15 @@ module Network : sig
 
   val declare_workers : ?port:int -> ?n:int -> string -> unit
     (** [declare_workers s] declares workers on machine [s];
-        the number of workers is [n] and defaults to 1 *)
+        the number of workers is [n] and defaults to 1.
+	Number [n] does not necessarily coincide with the number of 
+	available cores	of machine [s]. *)
 
-  (** Same binary executed as master and workers *)
+  (** Same binary executed as master and workers.
+      The environment variable WORKER must be set for workers (to be
+      distinguished from the master). 
+
+      For documentation, refer to module [Sequential]. *)
   module Same : sig
 
     val map : f:('a -> 'b) -> 'a list -> 'b list
@@ -131,11 +138,22 @@ module Network : sig
       
   end
 
-
-
-  (** Polymorphic functions. (same version of ocaml) *)
-
   type worker_type = ?stop:bool -> ?port:int -> unit -> unit
+    (** The type of forthcoming worker implementations.
+	If set, the [stop] boolean indicates that the worker should 
+	stop whenever master disconnects.
+	Port number is given by [port]; default value is [51000] and can
+	be changed using module [Control] (see below). *)
+
+  (** Polymorphic API (same version of ocaml).
+
+      Contrary to module [Same] above, master and workers are no more
+      executing the same code. Submodule [Master] (resp. [Worker]
+      provides functions to implement the master (resp. the workers).
+      Arguments for functions [master], [map], etc. are thus split between
+      these two submodules.
+
+      For documentation, refer to module [Sequential]. *)
 
   module Poly : sig
 
@@ -168,7 +186,13 @@ module Network : sig
       
   end
 
-  (** Monomorphic functions. (possibly different versions of ocaml) *)
+  (** Monomorphic API (possibly different versions of ocaml). 
+      
+      When master and workers are not compiled with the same version of Ocaml,
+      only strings can be passed, hence the monomorphic API below.
+      It is the responsability of user to encode/decode values.
+
+      For documentation, refer to module [Sequential]. *)
 
   module Mono : sig
 
@@ -190,7 +214,11 @@ end
 module Control : sig
 
   val set_debug : bool -> unit
-    (** set the debug flag *)
+    (** sets the debug flag *)
+
+  val set_default_port_number : int -> unit
+    (** sets the default port number
+        (if not called, the default port number is 51000) *)
 
 end
 
