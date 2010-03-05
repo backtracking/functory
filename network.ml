@@ -61,7 +61,6 @@ module Worker = struct
       match m with
 	| Master.Assign (id, f, a) ->
 	    begin try
-	      Worker.send fdout (Worker.Started id);
 	      let fin, fout = pipe () in
 	      begin match fork () with
 		| 0 -> 
@@ -93,6 +92,8 @@ module Worker = struct
 	    end
 	| Master.Stop r ->
 	    raise (ExitOnStop r)
+	| Master.Ping ->
+	    Worker.send fdout Worker.Pong
     in
     let wait_for_completed_task id t =
       match waitpid [WNOHANG] t.pid with
@@ -204,11 +205,16 @@ end
 module IntSet = 
   Set.Make(struct type t = int let compare = Pervasives.compare end)
 
+type worker_state =
+  | Disconnected
+  | Ok     of float (* time since last pong (or initial connection time) *)
+  | Pinged of float (* last time we pinged *)
+  | Error  of float (* last time we pinged *)
+
 type worker = { 
   worker_id : int;
   sockaddr : sockaddr;
-  mutable connected : bool;
-  mutable error : bool;
+  mutable state : worker_state;
   mutable fdin : file_descr;
   mutable fdout : file_descr;
   ncores : int;
@@ -218,7 +224,7 @@ type worker = {
 
 type 'a task = {
   task : 'a;
-  task_id : int;
+  mutable task_done : bool;
   mutable task_workers : (int * worker) list; (* job id / worker *)
 }
 
@@ -239,6 +245,7 @@ module WorkerSet : sig
   val remove : t -> worker -> unit
   val is_empty : t -> bool
   val choose : t -> worker (* does not remove it *)
+  val cardinal : t -> int
 end = struct
   module S = 
     Set.Make(struct 
@@ -252,6 +259,7 @@ end = struct
   let remove h w = h := S.remove w !h
   let is_empty h = S.is_empty !h
   let choose h = assert (not (S.is_empty !h)); S.choose !h
+  let cardinal h = S.cardinal !h
 end
 
 let workers = ref []
@@ -276,8 +284,7 @@ let declare_workers =
     let w = { 
       worker_id = !r;
       sockaddr = a; 
-      connected = false; 
-      error = false;
+      state = Disconnected;
       fdin = stdin; 
       fdout = stdout;
       ncores = n;
@@ -288,48 +295,18 @@ let declare_workers =
     workers := w :: !workers
 
 let connect_worker w =
-  if not w.connected then begin
+  if w.state = Disconnected then begin
     let ic,oc = open_connection w.sockaddr in
     let fdin = descr_of_in_channel ic in
     let fdout = descr_of_out_channel oc in
-    w.connected <- true;
+    w.state <- Ok (Unix.time ());
     w.fdin <- fdin;
     w.fdout <- fdout
   end
 
-(*
-let stop_workers () =
-  List.iter
-    (fun w -> if w.connected then
-       Protocol.Master.send w.fdout (Protocol.Master.Stop "stop"))
-    !workers
-*)
-
-module TaskSet : sig
-  type 'a t
-  val create : unit -> 'a t
-  val add : 'a t -> 'a task -> unit
-  val mem : 'a t -> 'a task -> bool
-  val remove : 'a t -> 'a task -> unit
-  val is_empty : 'a t -> bool
-  val cardinal : 'a t -> int
-end = struct
-  type 'a t = (int, unit) Hashtbl.t
-  let create () = Hashtbl.create 17
-  let add h t = Hashtbl.add h t.task_id ()
-  let mem h t = Hashtbl.mem h t.task_id
-  let remove h t = Hashtbl.remove h t.task_id
-  let is_empty h = 
-    try Hashtbl.iter (fun _ _ -> raise Exit) h; true
-    with Exit -> false
-  let cardinal h = Hashtbl.length h
-end
-
-let task_counter = ref 0
 let create_task t =
-  incr task_counter; 
   { task = t;
-    task_id = !task_counter;
+    task_done = false;
     task_workers = []; }
 
 let job_id = let r = ref 0 in fun () -> incr r; !r
@@ -345,16 +322,24 @@ let main_master
   (* idle workers *)
   let idle_workers = WorkerSet.create () in
   List.iter 
-    (fun w -> 
-       if w.connected && w.idle_cores > 0 then WorkerSet.add idle_workers w)
+    (fun w -> match w.state with
+       | Ok _ | Pinged _ -> 
+	   if w.idle_cores > 0 then WorkerSet.add idle_workers w
+       | Disconnected | Error _ -> 
+	   ())
     !workers;
   (* running tasks (job id -> task) *)
   let running_tasks = Hashtbl.create 17 in
+  let send_ping w = 
+    Protocol.Master.send w.fdout Protocol.Master.Ping;
+  in
   let create_job w t =
     connect_worker w;
     let id = job_id () in
     let f, a = assign_job (fst t.task) in
     Protocol.Master.send w.fdout (Protocol.Master.Assign (id, f, a));
+    send_ping w;
+    w.state <- Pinged (Unix.time ());
     t.task_workers <- (id, w)  :: t.task_workers;
     Hashtbl.replace running_tasks id t;
     w.jobs <- IntSet.add id w.jobs;
@@ -362,31 +347,37 @@ let main_master
     w.idle_cores <- w.idle_cores - 1;
     if w.idle_cores = 0 then WorkerSet.remove idle_workers w
   in
-  let manage_disconnection w =
-    w.connected <- false;
-    WorkerSet.remove idle_workers w;
+  let reschedule_tasks ~remove w = 
     IntSet.iter 
       (fun jid -> 
 	 assert (Hashtbl.mem running_tasks jid);
 	 let t = Hashtbl.find running_tasks jid in
-	 Hashtbl.remove running_tasks jid;
+	 if remove then Hashtbl.remove running_tasks jid;
 	 t.task_workers <- List.filter (fun (_,w') -> w' != w) t.task_workers;
 	 Stack.push t todo)
-      w.jobs;
+      w.jobs
+  in
+  let manage_disconnection w =
+    w.state <- Disconnected;
+    WorkerSet.remove idle_workers w;
+    reschedule_tasks ~remove:true w
   in
   let increase_idle_cores w =
     w.idle_cores <- w.idle_cores + 1;
-    if w.idle_cores = 1 then WorkerSet.add idle_workers w
+    if w.idle_cores > 0 then WorkerSet.add idle_workers w
   in
-  (* kill jobs not assigned to w in list l *)
+  (* kill job jid on worker w *)
   let kill w jid =
-    Protocol.Master.send w.fdout (Protocol.Master.Kill jid);
-    w.jobs <- IntSet.remove jid w.jobs;
-    increase_idle_cores w
+    Hashtbl.remove running_tasks jid;
+    if w.state <> Disconnected then begin
+      Protocol.Master.send w.fdout (Protocol.Master.Kill jid);
+      w.jobs <- IntSet.remove jid w.jobs;
+      increase_idle_cores w
+    end
   in
-  let kill_jobs w l =
-    List.iter 
-      (fun (jid', w') -> if w'.worker_id <> w.worker_id then kill w' jid') l
+  (* kill jobs different from jid *)
+  let kill_jobs jid l =
+    List.iter (fun (jid', w) -> if jid' <> jid then kill w jid') l
   in
   let wait () =
     let listen_for_worker w =
@@ -395,28 +386,37 @@ let main_master
       dprintf "ready to receive@.";
       let m = Protocol.Worker.receive w.fdin in
       dprintf "received from %a: %a@." print_worker w Protocol.Worker.print m;
+      w.state <- Ok (Unix.time ());
       match m with
-	| Protocol.Worker.Started _ ->
+	| Protocol.Worker.Pong ->
+	    if w.idle_cores > 0 then WorkerSet.add idle_workers w;
 	    raise Exit
 	| Protocol.Worker.Completed (id, r) ->
+	    increase_idle_cores w;
 	    let t = Hashtbl.find running_tasks id in
 	    Hashtbl.remove running_tasks id;
-	    kill_jobs w t.task_workers;
 	    w.jobs <- IntSet.remove id w.jobs;
-	    increase_idle_cores w;
-	    w, handle t.task r
+	    if not t.task_done then begin
+	      t.task_done <- true;
+	      kill_jobs id t.task_workers;
+	      w, handle t.task r
+	    end else
+	      w, []
 	| Protocol.Worker.Aborted id ->
+	    increase_idle_cores w;
 	    let t = Hashtbl.find running_tasks id in
 	    Hashtbl.remove running_tasks id;
 	    w.jobs <- IntSet.remove id w.jobs;
-	    increase_idle_cores w;
-	    w, [t.task]
+	    if t.task_done then 
+	      w, []
+	    else
+	      w, [t.task]
     in
     (* loop over workers, until one has a message for us *)
     let rec loop = function
       | [] -> 
 	  raise Exit
-      | w :: wl when not w.connected ->
+      | w :: wl when w.state = Disconnected ->
 	  loop wl
       | w :: wl -> 
 	  try 
@@ -430,20 +430,43 @@ let main_master
   (* main loop *)
   while not (Stack.is_empty todo) || (Hashtbl.length running_tasks > 0) do
 
-    (* try to connect if not already connected *)
+(*     dprintf "***@."; *)
+(*     dprintf "  %d tasks todo@." (Stack.length todo); *)
+(*     dprintf "  %d idle workers@." (WorkerSet.cardinal idle_workers); *)
+(*     dprintf "  %d running tasks@." (Hashtbl.length running_tasks); *)
+(*     dprintf "***@."; *)
+
+    (* 1. try to connect if not already connected *)
+    let current = Unix.time () in
     List.iter 
-      (fun w -> if not w.connected then begin
-	 try 
-	   connect_worker w;
-	   WorkerSet.add idle_workers w;
-	   w.idle_cores <- w.ncores; (* we assume all cores are back *)
-	   w.jobs <- IntSet.empty;
-	 with e ->
-	   ()
-       end) 
+      (fun w -> match w.state with
+	 | Disconnected ->
+	     begin try 
+	       connect_worker w;
+	       WorkerSet.add idle_workers w;
+	       w.idle_cores <- w.ncores; (* we assume all cores are back *)
+	       w.jobs <- IntSet.empty;
+	     with e ->
+	       ()
+	     end
+	 | Pinged t ->
+	     if current > t +. !pong_timeout then begin
+	       dprintf "worker %a timed out@." print_worker w;
+	       w.state <- Error current;
+	       WorkerSet.remove idle_workers w;
+	       reschedule_tasks ~remove:false w
+	     end
+	 | Ok t when current > t +. !ping_interval ->
+	     send_ping w;
+	     w.state <- Pinged current
+	 | Error t when current > t +. !ping_interval ->
+	     send_ping w;
+	     w.state <- Error current
+	 | Ok _ | Error _ ->
+	     ())
       !workers;
 
-    (* if possible, start a new job *)
+    (* 2. if possible, start a new job *)
     while not (WorkerSet.is_empty idle_workers) && not (Stack.is_empty todo) do
       let t = Stack.pop todo in
       assert (t.task_workers = []); (* TO BE REMOVED EVENTUALLY *)
@@ -451,14 +474,8 @@ let main_master
       create_job w t
     done;
 
-    (***
-    printf "----@.";
-    printf "%d running tasks, %d tasks to do@." 
-      (Hashtbl.length running_tasks) (Stack.length todo);
-    ***)	
-
-    (* if not, wait for any message from the workers *)
-    if Hashtbl.length running_tasks > 0 then begin
+    (* 3. if not, wait for any message from the workers *)
+    begin
       try
 	let w, tl = wait () in
 	List.iter (fun t -> Stack.push (create_task t) todo) tl
@@ -467,8 +484,6 @@ let main_master
     end
   done;
   assert (Stack.is_empty todo && Hashtbl.length running_tasks = 0);
-  (*   printf "workers are@."; *)
-  (*   List.iter (fun w -> printf "  %a@." print_worker w) !workers *)
   ()
 
 let is_worker = 

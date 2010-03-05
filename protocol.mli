@@ -30,6 +30,7 @@ module Master : sig
     | Assign of int * string * string (* id, function, argument *)
     | Kill of int                     (* id *)
     | Stop of string
+    | Ping
 
   val send : Unix.file_descr -> t -> unit
 
@@ -42,7 +43,7 @@ end
 module Worker : sig
 
   type t =
-    | Started of int            (* id *)
+    | Pong
     | Completed of int * string (* id, result *)
     | Aborted of int            (* id *)
 

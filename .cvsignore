@@ -7,3 +7,4 @@ master_test.byte worker_test.byte
 test.opt
 *.annot
 network_test.opt
+network_test.byte

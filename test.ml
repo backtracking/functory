@@ -192,8 +192,8 @@ let () = printf "Network@."
 let () = Mapreduce.Network.declare_workers ~n:2 "localhost"
 module TestIntNetwork =
   TestInt(struct type t = int include Mapreduce.Network.Same end)
-module TestStringNetwork =
-  TestString(struct type t = string include Mapreduce.Network.Same end)
+(* module TestStringNetwork = *)
+(*   TestString(struct type t = string include Mapreduce.Network.Same end) *)
 (* module TestStringNetworkStr =  *)
 (*   TestString(struct type t = string include Mapreduce.Network.Str end) *)
 

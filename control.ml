@@ -20,9 +20,17 @@ let set_debug b = debug := b
 let buf = Buffer.create 1024
 let fmt = Format.formatter_of_buffer buf
 
-let default_port_number = ref 51000
+let default_port_number = ref 51002
 
 let set_default_port_number p = default_port_number := p
+
+let pong_timeout = ref 5.
+
+let set_pong_timeout t = pong_timeout := t
+
+let ping_interval = ref 10.
+
+let set_ping_interval t = ping_interval := t
 
 let dprintf s =
   Format.kfprintf 

@@ -73,6 +73,7 @@ module Master = struct
     | Assign of int * string * string (* id, function * argument *)
     | Kill of int                     (* id *)
     | Stop of string
+    | Ping
 
   let print fmt = function
     | Assign (id, f, a) ->
@@ -81,6 +82,8 @@ module Master = struct
 	fprintf fmt "kill %d" id
     | Stop s ->
 	fprintf fmt "stop result=%S" s
+    | Ping ->
+	fprintf fmt "ping"
 
   let buf b = function
     | Assign (id, f, a) -> 
@@ -97,6 +100,9 @@ module Master = struct
 	buf_int31 b !magic_number;
 	buf_int8 b 3; (* 3 = stop *)
 	buf_string b s
+    | Ping ->
+	buf_int31 b !magic_number;
+	buf_int8 b 4 (* 4 = ping *)
 
   let send = generic_send buf
 
@@ -115,6 +121,8 @@ module Master = struct
       | 3 (* stop *) ->
 	  let r, pos = get_string s pos in
 	  Stop r, pos
+      | 4 (* ping *) ->
+	  Ping, pos
       | _ ->
 	  raise BadProtocol
 
@@ -125,23 +133,22 @@ end
 module Worker = struct
 
   type t =
-    | Started of int            (* id *)
+    | Pong
     | Completed of int * string (* id, result *)
     | Aborted of int            (* id *)
 
   let print fmt = function
-    | Started id -> 
-	fprintf fmt "started %d" id
+    | Pong -> 
+	fprintf fmt "pong"
     | Completed (id, s) ->
 	fprintf fmt "completed %d s=%S" id s
     | Aborted id ->
 	fprintf fmt "aborted %d" id
 
   let buf b = function
-    | Started id -> 
+    | Pong -> 
 	buf_int31 b !magic_number;
-	buf_int8 b 3; (* 3 = ack *)
-	buf_int31 b id
+	buf_int8 b 3 (* 3 = pong *)
     | Completed (id, s) ->
 	buf_int31 b !magic_number;
 	buf_int8 b 4; (* 4 = completed *)
@@ -158,9 +165,8 @@ module Worker = struct
     let pos = check_magic_number s pos in
     let c, pos = get_uint8 s pos in
     match c with
-      | 3 (* = ack *) ->
-	  let id, pos = get_int31 s pos in
-	  Started id, pos
+      | 3 (* = pong *) ->
+	  Pong, pos
       | 4 (* = completed *) ->
 	  let id, pos = get_int31 s pos in
 	  let s, pos = get_string s pos in
