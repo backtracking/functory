@@ -17,6 +17,8 @@ open Format
 open Unix
 open Control
 
+let () = set_debug true
+
 let encode_string_pair (s1, s2) =
   let buf = Buffer.create 1024 in
   Binary.buf_string buf s1;
@@ -51,13 +53,14 @@ module Worker = struct
 (* 	      let f = Hashtbl.find computations f in *)
 
   let server_fun compute cin cout =
-    dprintf "new connection@.";
+    set_debug true;
+    eprintf "new connection@.";
     let fdin = descr_of_in_channel cin in
     let fdout = descr_of_out_channel cout in
     let pids = Hashtbl.create 17 in (* ID -> running_task *)
     let handle_message_from_master _ = 
       let m = Master.receive fdin in
-      dprintf "received: %a@." Master.print m;
+      eprintf "received: %a@." Master.print m;
       match m with
 	| Master.Assign (id, f, a) ->
 	    begin try
@@ -112,6 +115,7 @@ module Worker = struct
     try 
       while true do    
 	let l,_,_ = select [fdin] [] [] 1. in
+	eprintf "length(l) = %d@." (List.length l);
 	List.iter handle_message_from_master l;
 	Hashtbl.iter wait_for_completed_task pids
       done;
@@ -173,6 +177,7 @@ module Worker = struct
       s
 
   let compute compute ?(stop=false) ?(port = !default_port_number) () = 
+    eprintf "port = %d@." port;
     if stop then begin
       let s = get_socket_fd port in
       let inchan = Unix.in_channel_of_descr s 
@@ -182,11 +187,14 @@ module Worker = struct
       let sock = get_socket port in
       while true do
 	let s, _ = Unix.accept sock in 
+	eprintf "after accept@.";
 	match Unix.fork() with
 	  | 0 -> 
 	      if Unix.fork() <> 0 then exit 0; 
+	      eprintf "after second fork@.";
               let inchan = Unix.in_channel_of_descr s 
               and outchan = Unix.out_channel_of_descr s in 
+	      eprintf "before server_fun@.";
 	      ignore (server_fun compute inchan outchan);
               close_in inchan;
               close_out outchan;
@@ -430,12 +438,6 @@ let main_master
   (* main loop *)
   while not (Stack.is_empty todo) || (Hashtbl.length running_tasks > 0) do
 
-(*     dprintf "***@."; *)
-(*     dprintf "  %d tasks todo@." (Stack.length todo); *)
-(*     dprintf "  %d idle workers@." (WorkerSet.cardinal idle_workers); *)
-(*     dprintf "  %d running tasks@." (Hashtbl.length running_tasks); *)
-(*     dprintf "***@."; *)
-
     (* 1. try to connect if not already connected *)
     let current = Unix.time () in
     List.iter 
@@ -443,6 +445,7 @@ let main_master
 	 | Disconnected ->
 	     begin try 
 	       connect_worker w;
+	       eprintf "connected to %a@." print_worker w;
 	       WorkerSet.add idle_workers w;
 	       w.idle_cores <- w.ncores; (* we assume all cores are back *)
 	       w.jobs <- IntSet.empty;
@@ -465,6 +468,12 @@ let main_master
 	 | Ok _ | Error _ ->
 	     ())
       !workers;
+
+    dprintf "***@.";
+    dprintf "  %d tasks todo@." (Stack.length todo);
+    dprintf "  %d idle workers@." (WorkerSet.cardinal idle_workers);
+    dprintf "  %d running tasks@." (Hashtbl.length running_tasks);
+    dprintf "***@.";
 
     (* 2. if possible, start a new job *)
     while not (WorkerSet.is_empty idle_workers) && not (Stack.is_empty todo) do

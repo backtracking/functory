@@ -20,11 +20,12 @@
 (* open Mapreduce.Cores *)
 (* let () = set_number_of_cores 2 *)
 
-let () = Mapreduce.Control.set_debug false
+let () = Mapreduce.Control.set_debug true
 open Mapreduce
+(* let () = Network.declare_workers ~n:2 "129.175.4.107" *)
+let () = Network.declare_workers ~n:4 "localhost"
 let () = Network.declare_workers ~n:12 "moloch"
-(* let () = declare_workers ~n:4 "orcus" *)
-(* let () = declare_workers ~n:1 "localhost" *)
+(* let () = Network.declare_workers ~n:4 "orcus" *)
 
 let rec t a b c count =
   if a > 0 then
