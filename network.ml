@@ -53,14 +53,13 @@ module Worker = struct
 (* 	      let f = Hashtbl.find computations f in *)
 
   let server_fun compute cin cout =
-    set_debug true;
-    eprintf "new connection@.";
+    dprintf "new connection@.";
     let fdin = descr_of_in_channel cin in
     let fdout = descr_of_out_channel cout in
     let pids = Hashtbl.create 17 in (* ID -> running_task *)
     let handle_message_from_master _ = 
       let m = Master.receive fdin in
-      eprintf "received: %a@." Master.print m;
+      dprintf "received: %a@." Master.print m;
       match m with
 	| Master.Assign (id, f, a) ->
 	    begin try
@@ -115,7 +114,6 @@ module Worker = struct
     try 
       while true do    
 	let l,_,_ = select [fdin] [] [] 1. in
-	eprintf "length(l) = %d@." (List.length l);
 	List.iter handle_message_from_master l;
 	Hashtbl.iter wait_for_completed_task pids
       done;
@@ -177,7 +175,7 @@ module Worker = struct
       s
 
   let compute compute ?(stop=false) ?(port = !default_port_number) () = 
-    eprintf "port = %d@." port;
+    dprintf "port = %d@." port;
     if stop then begin
       let s = get_socket_fd port in
       let inchan = Unix.in_channel_of_descr s 
@@ -187,14 +185,11 @@ module Worker = struct
       let sock = get_socket port in
       while true do
 	let s, _ = Unix.accept sock in 
-	eprintf "after accept@.";
 	match Unix.fork() with
 	  | 0 -> 
 	      if Unix.fork() <> 0 then exit 0; 
-	      eprintf "after second fork@.";
               let inchan = Unix.in_channel_of_descr s 
               and outchan = Unix.out_channel_of_descr s in 
-	      eprintf "before server_fun@.";
 	      ignore (server_fun compute inchan outchan);
               close_in inchan;
               close_out outchan;
@@ -288,6 +283,7 @@ let create_sock_addr name port =
 let declare_workers =
   let r = ref 0 in
   fun ?(port = !default_port_number) ?(n=1) s ->
+    incr r;
     let a = create_sock_addr s port in
     let w = { 
       worker_id = !r;
@@ -302,14 +298,18 @@ let declare_workers =
     in
     workers := w :: !workers
 
+let worker_fd = Hashtbl.create 17
+
 let connect_worker w =
   if w.state = Disconnected then begin
     let ic,oc = open_connection w.sockaddr in
     let fdin = descr_of_in_channel ic in
     let fdout = descr_of_out_channel oc in
     w.state <- Ok (Unix.time ());
+    Hashtbl.remove worker_fd w.fdin;
     w.fdin <- fdin;
-    w.fdout <- fdout
+    Hashtbl.add worker_fd w.fdin w;
+    w.fdout <- fdout;
   end
 
 let create_task t =
@@ -320,13 +320,14 @@ let create_task t =
 let job_id = let r = ref 0 in fun () -> incr r; !r
 
 let main_master 
-  ~(assign_job : 'a -> string * string)
-  ~(handle : 'a * 'c -> string -> ('a * 'c) list) 
-  (tasks : ('a * 'c) list)
-=
+    ~(assign_job : 'a -> string * string)
+    ~(handle : 'a * 'c -> string -> ('a * 'c) list) 
+    (tasks : ('a * 'c) list)
+    =
   (* the tasks still to be done *)
   let todo = Stack.create () in
-  List.iter (fun t -> Stack.push (create_task t) todo) tasks;
+  let push_new_task t = Stack.push (create_task t) todo in
+  List.iter push_new_task tasks;
   (* idle workers *)
   let idle_workers = WorkerSet.create () in
   List.iter 
@@ -387,53 +388,30 @@ let main_master
   let kill_jobs jid l =
     List.iter (fun (jid', w) -> if jid' <> jid then kill w jid') l
   in
-  let wait () =
-    let listen_for_worker w =
-      let l,_,_ = select [w.fdin] [] [] 0.1 in
-      if l = [] then raise Exit;
-      dprintf "ready to receive@.";
-      let m = Protocol.Worker.receive w.fdin in
-      dprintf "received from %a: %a@." print_worker w Protocol.Worker.print m;
-      w.state <- Ok (Unix.time ());
-      match m with
-	| Protocol.Worker.Pong ->
-	    if w.idle_cores > 0 then WorkerSet.add idle_workers w;
-	    raise Exit
-	| Protocol.Worker.Completed (id, r) ->
-	    increase_idle_cores w;
-	    let t = Hashtbl.find running_tasks id in
-	    Hashtbl.remove running_tasks id;
-	    w.jobs <- IntSet.remove id w.jobs;
-	    if not t.task_done then begin
-	      t.task_done <- true;
-	      kill_jobs id t.task_workers;
-	      w, handle t.task r
-	    end else
-	      w, []
-	| Protocol.Worker.Aborted id ->
-	    increase_idle_cores w;
-	    let t = Hashtbl.find running_tasks id in
-	    Hashtbl.remove running_tasks id;
-	    w.jobs <- IntSet.remove id w.jobs;
-	    if t.task_done then 
-	      w, []
-	    else
-	      w, [t.task]
-    in
-    (* loop over workers, until one has a message for us *)
-    let rec loop = function
-      | [] -> 
-	  raise Exit
-      | w :: wl when w.state = Disconnected ->
-	  loop wl
-      | w :: wl -> 
-	  try 
-	    listen_for_worker w
-	  with 
-	    | Exit -> loop wl
-	    | End_of_file -> manage_disconnection w; raise Exit
-    in
-    loop !workers
+  let listen_for_worker w =
+    dprintf "listen to %d@." w.worker_id;
+    let m = Protocol.Worker.receive w.fdin in
+    dprintf "received from %a: %a@." print_worker w Protocol.Worker.print m;
+    w.state <- Ok (Unix.time ());
+    match m with
+      | Protocol.Worker.Pong ->
+	  if w.idle_cores > 0 then WorkerSet.add idle_workers w
+      | Protocol.Worker.Completed (id, r) ->
+	  increase_idle_cores w;
+	  let t = Hashtbl.find running_tasks id in
+	  Hashtbl.remove running_tasks id;
+	  w.jobs <- IntSet.remove id w.jobs;
+	  if not t.task_done then begin
+	    t.task_done <- true;
+	    kill_jobs id t.task_workers;
+	    List.iter push_new_task (handle t.task r)
+	  end 
+      | Protocol.Worker.Aborted id ->
+	  increase_idle_cores w;
+	  let t = Hashtbl.find running_tasks id in
+	  Hashtbl.remove running_tasks id;
+	  w.jobs <- IntSet.remove id w.jobs;
+	  push_new_task t.task
   in
   (* main loop *)
   while not (Stack.is_empty todo) || (Hashtbl.length running_tasks > 0) do
@@ -445,7 +423,7 @@ let main_master
 	 | Disconnected ->
 	     begin try 
 	       connect_worker w;
-	       eprintf "connected to %a@." print_worker w;
+	       dprintf "new connection to %a@." print_worker w;
 	       WorkerSet.add idle_workers w;
 	       w.idle_cores <- w.ncores; (* we assume all cores are back *)
 	       w.jobs <- IntSet.empty;
@@ -475,7 +453,7 @@ let main_master
     dprintf "  %d running tasks@." (Hashtbl.length running_tasks);
     dprintf "***@.";
 
-    (* 2. if possible, start a new job *)
+    (* 2. if possible, start new jobs *)
     while not (WorkerSet.is_empty idle_workers) && not (Stack.is_empty todo) do
       let t = Stack.pop todo in
       assert (t.task_workers = []); (* TO BE REMOVED EVENTUALLY *)
@@ -483,14 +461,19 @@ let main_master
       create_job w t
     done;
 
-    (* 3. if not, wait for any message from the workers *)
-    begin
-      try
-	let w, tl = wait () in
-	List.iter (fun t -> Stack.push (create_task t) todo) tl
-      with Exit ->
-	  ()
-    end
+    (* 3. if not, listen for workers *)
+    let fds = 
+      let wl = List.filter (fun w -> w.state <> Disconnected) !workers in
+      List.map (fun w -> w.fdin) wl
+    in
+    let l,_,_ = select fds [] [] 0.1 in
+    List.iter 
+      (fun fd -> 
+	 let w = Hashtbl.find worker_fd fd in
+	 try  listen_for_worker w
+	 with End_of_file -> manage_disconnection w)
+      l;
+
   done;
   assert (Stack.is_empty todo && Hashtbl.length running_tasks = 0);
   ()

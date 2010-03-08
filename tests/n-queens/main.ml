@@ -23,8 +23,8 @@
 let () = Mapreduce.Control.set_debug true
 open Mapreduce
 (* let () = Network.declare_workers ~n:2 "129.175.4.107" *)
-let () = Network.declare_workers ~n:4 "localhost"
 let () = Network.declare_workers ~n:12 "moloch"
+let () = Network.declare_workers ~n:4 "localhost"
 (* let () = Network.declare_workers ~n:4 "orcus" *)
 
 let rec t a b c count =
