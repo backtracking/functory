@@ -73,24 +73,25 @@ let () = test_n_queens (int_of_string Sys.argv.(1)) (int_of_string Sys.argv.(2))
 
 (*
 Local Variables: 
-compile-command: "make -C ../.. install-queens"
+compile-command: "unset LANG; make -C ../.. install-queens"
 End: 
 *)
 
 
-(* benchmark results on moloch
+(* benchmark results using moloch(12)/orcus(4)/balrog(1)
 
-   N   implem.    real time 
+   N  depth real time 
   -------------------------
-   16    simple   15.92s
-        4 cores    4.15s
-        8 cores    2.14s
-       16 cores    2.17s
+   15 1     0m 1.153s
 
-   17    simple 1m51.00s
-        4 cores   31.70s
-        8 cores   17.83s
-       16 cores   16.90s
-       17 cores   15.20s
+   16 1     0m 4.054s
+
+   17 1     0m22.196s
+
+   18 2     1m12.856s
+
+   19 2     9m 9.724s
+
+   20 2    71m30.663s
 *)
 
