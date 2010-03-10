@@ -140,8 +140,14 @@ install-test: tests/n-queens/a.out network_test.opt
 	cp tests/n-queens/a.out ~
 	cp network_test.opt ~
 
+install-queens: tests/n-queens/queens64.opt
+	cp tests/n-queens/queens64.opt ~
+
 tests/%/a.out: tests/%/main.ml mapreduce.cmxa
 	$(OCAMLOPT) unix.cmxa mapreduce.cmxa tests/$*/main.ml -o $@
+
+tests/n-queens/queens64.opt: tests/n-queens/main64.ml mapreduce.cmxa
+	$(OCAMLOPT) unix.cmxa mapreduce.cmxa tests/n-queens/main64.ml -o $@
 
 wc:
 	ocamlwc -p *.ml* tests/*/*.ml*

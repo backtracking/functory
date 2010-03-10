@@ -15,6 +15,8 @@
 
 (* Number of solutions to the n-queens puzzle using Map/Reduce *)
 
+open Format
+
 (* open Mapreduce.Sequential *)
 
 (* open Mapreduce.Cores *)
@@ -22,7 +24,6 @@
 
 let () = Mapreduce.Control.set_debug true
 open Mapreduce
-(* let () = Network.declare_workers ~n:2 "129.175.4.107" *)
 let () = Network.declare_workers ~n:12 "moloch"
 let () = Network.declare_workers ~n:1 "localhost"
 let () = Network.declare_workers ~n:4 "orcus"
@@ -38,27 +39,41 @@ let rec t a b c count =
     in
     loop (a land lnot b land lnot c) count
   else
-    count+1
+    Int64.succ count
 
-(* the list [f i; f (i+1); ...; f j] *)
-let rec tabulate i j f = if i > j then [] else f i :: tabulate (i+1) j f
+let problems = ref []
 
-let n_queens q = 
-  let l = tabulate 0 (q-1) (fun i -> 1 lsl i) in
+let rec split depth a b c =
+  if depth = 0 then
+    problems := (a,b,c) :: !problems
+  else
+    let rec loop e =
+      if e > 0 then begin
+	let d = e land (-e) in
+	split (depth-1) (a-d) ((b+d)*2) ((c+d)/2);
+	loop (e - d) 
+      end
+    in
+    loop (a land lnot b land lnot c)
+
+let compute (a,b,c) = t a b c 0L
+
+let n_queens q d = 
   let all = lnot ((lnot 0) lsl q) in
-  let rl = Network.Same.map (fun c -> t (all-c) (c*2) (c/2) 0) l in (* <- map here *)
-  List.fold_left (+) 0 rl	                 (* <- reduce locally *)
+  split d all 0 0;
+  printf "%d sub-problems@." (List.length !problems);
+  Network.Same.map_local_fold ~map:compute ~fold:Int64.add 0L !problems
 
-let test_n_queens q = 
-  Format.printf "computing n-queens(%d)...@?" q;
-  let r = n_queens q in
-  Format.printf "done (answer = %d)@." r
+let test_n_queens q d = 
+  printf "computing n-queens(%d) with depth %d...@." q d;
+  let r = n_queens q d in
+  printf "done (answer = %Ld)@." r
 
-let () = test_n_queens (int_of_string Sys.argv.(1))
+let () = test_n_queens (int_of_string Sys.argv.(1)) (int_of_string Sys.argv.(2))
 
 (*
 Local Variables: 
-compile-command: "make -C ../.. tests/n-queens/a.out"
+compile-command: "make -C ../.. install-queens"
 End: 
 *)
 
