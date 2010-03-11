@@ -78,20 +78,32 @@ End:
 *)
 
 
-(* benchmark results using moloch(12)/orcus(4)/balrog(1)
+(* benchmark results using 17 cores: moloch(12)/orcus(4)/balrog(1)
 
-   N  depth real time 
+   d is the depth
+
+   N  d  #tasks time 
   -------------------------
-   15 1     0m 1.153s
+   15 1         0m 1.153s
 
-   16 1     0m 4.054s
+   16 1         0m 2.049s
+   16 2         0m 9.458s
+   16 3         --- network >> computation
 
-   17 1     0m22.196s
+   17 1         0m11.022s
+   17 2         0m17.291s
+   17 3         --- network >> computation
 
-   18 2     1m12.856s
+   18 1         1m22.263s
+   18 2         1m12.856s
+   18 3         --- network >> computation
 
-   19 2     9m 9.724s
+   19 1   19
+   19 2  306    9m 9.724s
+   19 3        10m11.596s
 
-   20 2    71m30.663s
+   20 2        71m30.663s
+   20 3
+
 *)
 
