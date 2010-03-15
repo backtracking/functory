@@ -1,0 +1,137 @@
+%-----------------------------------------------------------------------------
+%
+%               Template for sigplanconf LaTeX Class
+%
+% Name:         sigplanconf-template.tex
+%
+% Purpose:      A template for sigplanconf.cls, which is a LaTeX 2e class
+%               file for SIGPLAN conference proceedings.
+%
+% Author:       Paul C. Anagnostopoulos
+%               Windfall Software
+%               978 371-2316
+%               paul@windfall.com
+%
+% Created:      15 February 2005
+%
+%-----------------------------------------------------------------------------
+
+
+\documentclass[preprint]{sigplanconf}
+
+% The following \documentclass options may be useful:
+%
+% 10pt          To set in 10-point type instead of 9-point.
+% 11pt          To set in 11-point type instead of 9-point.
+% authoryear    To obtain author/year citation style instead of numeric.
+
+\usepackage{amsmath}
+
+\begin{document}
+
+\conferenceinfo{ICFP '10}{September 27-29, 2010, Baltimore, Maryland.} 
+\copyrightyear{2010} 
+\copyrightdata{[to be supplied]} 
+
+\titlebanner{banner above paper title}        % These are ignored unless
+\preprintfooter{short description of paper}   % 'preprint' option specified.
+
+\title{Experience Report: }
+\subtitle{Subtitle Text, if any}
+
+\authorinfo{Name1}
+           {Affiliation1}
+           {Email1}
+\authorinfo{Name2\and Name3}
+           {Affiliation2/3}
+           {Email2/3}
+
+\maketitle
+
+\begin{abstract}
+This is the text of the abstract.
+\end{abstract}
+
+\category{CR-number}{subcategory}{third-level}
+
+\terms
+term1, term2
+
+\keywords
+keyword1, keyword2
+
+\section{Introduction}
+
+what it is and what it is not
+\begin{itemize}
+\item it is not a library which does parallelization
+\item it is a library for reliable distributed execution of
+  parallelizable computation 
+\end{itemize}
+
+inspired by Google's MapReduce~\cite{mapreduce} (itself inspired by functional
+programming, ironically) ;  however, there are differences:
+\begin{itemize}
+\item polymorphic, higher-order API
+\item more generic (cores/network)
+\item does not focus on association lists
+\item we don't have data locality (future work)
+\end{itemize}
+
+what is the target audience/applications: 
+for instance, use if automatic provers on thousands of verification
+conditions, on computing infrastructures which can be
+\begin{itemize}
+\item a single machine with multiple cores, possibly remote
+\item several machines, small or large in number, over a network
+\end{itemize}
+
+\section{API}
+
+main idea of the master function
+
+four scenarios:
+\begin{itemize}
+\item cores
+\item same binary
+\item same version of ocaml
+\item completely different programs
+\end{itemize}
+
+\section{Derived API}
+
+map, map\_fold, etc.
+
+generic programming using a functor, which is then applied in each of
+the 4 cases
+
+\section{Implementation Details}
+
+cores?
+
+network: protocol, fault tolerance, etc.
+
+\section{Experiments}
+
+n-queens, SMT solvers, etc.
+
+\section{Future Work}
+
+data locality: scheduling supplied by the user
+
+% \appendix
+% \section{Appendix Title}
+
+% This is the text of the appendix, if you need one.
+
+\acks
+
+Acknowledgments, if needed.
+
+% We recommend abbrvnat bibliography style.
+
+\nocite{*}
+\bibliographystyle{abbrvnat}
+\bibliography{./biblio}
+
+\end{document}
