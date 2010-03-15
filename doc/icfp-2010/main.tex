@@ -25,7 +25,10 @@
 % 11pt          To set in 11-point type instead of 9-point.
 % authoryear    To obtain author/year citation style instead of numeric.
 
-\usepackage{amsmath}
+\usepackage{amsmath,graphicx, color}
+
+\newcommand{\Ocaml}{OCaml}
+\newcommand{\unix}{\textsc{Unix}}
 
 \begin{document}
 
@@ -86,19 +89,172 @@ conditions, on computing infrastructures which can be
 \item several machines, small or large in number, over a network
 \end{itemize}
 
+master and worker terminology introduced here
+
+a few technical details about marshaling should be explained
+
 \section{API}
 
-main idea of the master function
+The main idea is to start with a generic function, with the
+following interface: 
+% TODO: rename this function
+\begin{ocaml}
+  val compute : 
+    f:('a -> 'b) -> 
+    handle:('a * 'c -> 'b -> ('a * 'c) list) -> 
+    ('a * 'c) list -> unit
+\end{ocaml}
+This function takes two functions, \ocaml{f} and \ocaml{handle}, and a
+list of \emph{tasks} of type \ocaml{('a * 'c) list}.
+The function \ocaml{f} is applied to the first component for each task.
+Whenever it completes, the task and the result are passed to the
+function \ocaml{handle}. This may possibly generate a new list of
+tasks. The process ends when all computations are done.
 
-four scenarios:
-\begin{itemize}
-\item cores
-\item same binary
-\item same version of ocaml
-\item completely different programs
-\end{itemize}
+Function \ocaml{f} should be pure and is executed in parallel.
+Function \ocaml{handle}, on the contrary, can be impure and is never
+executed in parallel with other \ocaml{handle}s. Typically,
+\ocaml{handle} stores and processes information locally.
+The next section will describe the usage of this generic interface to
+perform traditional map and fold operations.
+
+Actually, our library provides more than just a single \ocaml{compute}
+function as above, but instead provides five different versions
+depending on the execution context. The five possible contexts are the
+following: 
+\begin{enumerate}
+\item \textbf{purely sequential execution:}
+  this is intended for validating the results;
+
+\item \textbf{several cores on the same machine:} 
+  this implementation makes use of \unix\ processes and thus can
+  provide a polymorphic \ocaml{compute} function;
+
+\item \textbf{same executable run on master and worker machines:}
+  this implementation makes use of the ability to marshal \Ocaml\
+  closures and thus can still provide a polymorphic \ocaml{compute} function;
+
+\item \textbf{master and workers are different programs, compiled with
+    the same version of \Ocaml:} 
+  in this case, we can no longer marshal closures but we can still
+  marshal polymorphic values. As a consequence, 
+  the \ocaml{compute} function is split into two
+  polymorphic functions, to implement the master and workers respectively:
+  \begin{ocaml}
+val master : 
+  handle:('a * 'c -> 'b -> ('a * 'c) list) -> 
+  ('a * 'c) list -> unit
+val worker : ('a -> 'b) -> unit -> unit
+  \end{ocaml}
+
+\item \textbf{master and workers are different programs, not even
+    compiled with the same version of \Ocaml:} in this case, we can no
+  longer use marshaling, so the
+  \ocaml{compute} function is split into two monomorphic functions
+  over strings: 
+  \begin{ocaml}
+val master : 
+  handle:(string * 'c -> string -> (string * 'c) list) -> 
+  (string * 'c) list -> unit
+val worker : (string -> string) -> unit -> unit
+  \end{ocaml}
+  Note that the second component of each task is still polymorphic (of
+  type \ocaml{'c} here).
+\end{enumerate}
+
+Our library is organized into three modules: \of{Sequential} for the
+pure sequential implementation, \of{Cores} for multiple cores on the
+same machine and \of{Network} for a network of machines, respectively.
+The \of{Network} module itself is organized into three sub-modules,
+corresponding to contexts 3, 4 and 5 above. The different
+API functions are summarized in the following table (their signatures
+being given above):
+\begin{center}
+  \begin{tabular}{|c|c|c|c|c|}
+    \hline
+    \ocaml{Sequential} & \ocaml{Cores} &
+    \multicolumn{3}{|c|}{\ocaml{Network}} 
+    \\\cline{3-5}
+    &       & \ocaml{Same} & \ocaml{Poly} & \ocaml{Mono} \\\hline
+    \ocaml{compute}  & \ocaml{compute}   & \ocaml{compute}  &
+    \ocaml{master}  & \ocaml{master}  \\
+    & & & \ocaml{worker}  & \ocaml{worker} \\\hline
+  \end{tabular}
+\end{center}
 
 \section{Derived API}
+
+In most cases, the easiest way to parallelize execution it to make use
+of map and fold operations over lists, where processing of the list
+elements are done in parallel.  Using the generic API described in the
+previous section to do that is not very convenient.
+Hence we provide the most commonly used list operations in our API.
+
+The most obvious operation is the traditional map operation over
+lists, that is:
+\begin{ocaml}
+  val map : ('a -> 'b) -> 'a list -> 'b list
+\end{ocaml}
+The next natural operation is a combination of map and fold
+operations, that is a function like
+\begin{ocaml}
+ val map_fold :
+   map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
+   'c -> 'a list -> 'c
+\end{ocaml}
+which, given two functions, an accumulator \of{a} and a list \of{l}, computes
+\begin{equation}\label{eq:map-fold}
+  \of{fold} ... (\of{fold} (\of{fold} ~ a ~ (\of{map} ~ x_1)) (\of{map} ~ x_2))
+  ... (\of{map} ~ x_n)
+\end{equation}
+for some permutation $[x_1,x_2,...,x_n]$ of the list \of{l}.
+
+We assume that the \of{map} operations are always performed in parallel.
+Regarding \of{fold} operations, we distinguish two cases:
+\begin{itemize}
+\item either \of{fold} operations are computationally less expensive
+  than \of{map} and we perform them locally;
+\item or \of{fold} operations are computationally expensive and we
+  perform them in parallel.
+\end{itemize}
+We thus provide two functions \of{map_local_fold} and \of{map_remote_fold}.
+
+In the case of \of{map_remote_fold}, only one \of{fold} operation can
+be performed at a time (possibly in parallel with \of{map}
+operations), as obvious from~(\ref{eq:map-fold}). However, there are
+cases where several \of{fold} operations can be performed in parallel,
+as early as intermediate results of \of{fold} operations are available.
+This is the case when \of{fold} is an associative operation (which
+implies that type \of{'b} and \of{'c} are the same  and that the
+accumulator should be a neutral element for \of{fold}). Whenever
+\of{fold} is also commutative, we can perform even more \of{fold}
+operations in parallel. Thus our API provides two functions
+\of{map_fold_a} and \of{map_fold_ac} for these two particular cases.
+The five operations of the derived API are summarized
+in Figure~\ref{fig:derived}.
+\begin{figure}[t]
+  \begin{ocaml}
+    val map : 
+      f:('a -> 'b) -> 'a list -> 'b list 
+    val map_local_fold : 
+      map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
+      'c -> 'a list -> 'c 
+    val map_remote_fold : 
+      map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
+      'c -> 'a list -> 'c 
+    val map_fold_ac : 
+      map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
+      'b -> 'a list -> 'b 
+    val map_fold_a : 
+      map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
+      'b -> 'a list -> 'b
+  \end{ocaml}
+  \caption{Derived API.}
+\label{fig:derived}
+\end{figure}
+
+These functions are actually derived from the generic API.
+
 
 map, map\_fold, etc.
 
@@ -135,3 +291,5 @@ Acknowledgments, if needed.
 \bibliography{./biblio}
 
 \end{document}
+
+% LocalWords:  parallelize

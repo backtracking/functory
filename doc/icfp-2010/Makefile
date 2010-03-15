@@ -1,9 +1,15 @@
 
-quick:
-	pdflatex main
+quick: main-pp.tex
+	pdflatex main-pp
+	xpdf -remote tmp -reload
 
-main.pdf: main.tex biblio.bib
-	pdflatex main
+main-pp.pdf: main-pp.tex biblio.bib
+	pdflatex main-pp
 	bibtex main
-	pdflatex main
-	pdflatex main
+	pdflatex main-pp
+	pdflatex main-pp
+
+LATEXPP = latexpp -g color no -e ocaml ocaml-sf -m of ocaml-sf
+
+main-pp.tex: main.tex
+	$(LATEXPP) $^ -o $@
