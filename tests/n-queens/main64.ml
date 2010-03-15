@@ -27,6 +27,7 @@ open Mapreduce
 let () = Network.declare_workers ~n:12 "moloch"
 let () = Network.declare_workers ~n:1 "localhost"
 let () = Network.declare_workers ~n:4 "orcus"
+let () = Network.declare_workers ~n:2 "129.175.4.126"
 
 let rec t a b c count =
   if a > 0 then
@@ -82,8 +83,8 @@ End:
 
    d is the depth
 
-   N  d  #tasks time 
-  -------------------------
+   N  d  #tasks time          time per computation
+  ------------------------------------------------
    15 1         0m 1.153s
 
    16 1         0m 2.049s
@@ -98,12 +99,14 @@ End:
    18 2         1m12.856s
    18 3         --- network >> computation
 
-   19 1   19
+   19 1   19   10m45.990s
    19 2  306    9m 9.724s
-   19 3        10m11.596s
+   19 3 4144   10m11.596s
 
-   20 2        71m30.663s
-   20 3
+   20 2  342   71m30.663s
+   20 3 4964   72m25.548s  5-10s
+
+   21 3 5886  605m45.422s
 
 *)
 

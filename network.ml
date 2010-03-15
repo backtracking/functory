@@ -231,13 +231,19 @@ type 'a task = {
   mutable task_workers : (int * worker) list; (* job id / worker *)
 }
 
+let print_task fmt t=
+  fprintf fmt "@[done=%b, workers={" t.task_done;
+  List.iter (fun (jid, w) -> fprintf fmt "%d (on worker %d), " jid w.worker_id)
+    t.task_workers;
+  fprintf fmt "}@]"
+
 let print_sockaddr fmt = function
   | ADDR_UNIX s -> fprintf fmt "%s" s
   | ADDR_INET (ia, port) -> fprintf fmt "%s:%d" (string_of_inet_addr ia) port
 
 let print_worker fmt w = 
-  fprintf fmt "@[%a (%d cores, %d idle cores, %d jobs)@]" 
-    print_sockaddr w.sockaddr 
+  fprintf fmt "@[%d @[(%a,@ %d cores, %d idle cores, %d jobs)@]@]" 
+    w.worker_id print_sockaddr w.sockaddr 
     w.ncores w.idle_cores (IntSet.cardinal w.jobs)
 
 module WorkerSet : sig
@@ -343,6 +349,8 @@ let main_master
     Protocol.Master.send w.fdout Protocol.Master.Ping;
   in
   let create_job w t =
+    dprintf "@[<hov 2>create_job: worker=%a,@ task=%a@]@." 
+      print_worker w print_task t;
     connect_worker w;
     let id = job_id () in
     let f, a = assign_job (fst t.task) in
@@ -361,8 +369,10 @@ let main_master
       (fun jid -> 
 	 assert (Hashtbl.mem running_tasks jid);
 	 let t = Hashtbl.find running_tasks jid in
-	 if remove then Hashtbl.remove running_tasks jid;
-	 t.task_workers <- List.filter (fun (_,w') -> w' != w) t.task_workers;
+	 if remove then begin
+	   Hashtbl.remove running_tasks jid;
+	   t.task_workers <- List.filter (fun (_,w') -> w' != w) t.task_workers
+	 end;
 	 Stack.push t todo)
       w.jobs
   in
@@ -377,6 +387,7 @@ let main_master
   in
   (* kill job jid on worker w *)
   let kill w jid =
+    dprintf "kill job id %d on worker %d@." jid w.worker_id;
     Hashtbl.remove running_tasks jid;
     if w.state <> Disconnected then begin
       Protocol.Master.send w.fdout (Protocol.Master.Kill jid);
@@ -389,7 +400,6 @@ let main_master
     List.iter (fun (jid', w) -> if jid' <> jid then kill w jid') l
   in
   let listen_for_worker w =
-    dprintf "listen to %d@." w.worker_id;
     let m = Protocol.Worker.receive w.fdin in
     dprintf "received from %a: %a@." print_worker w Protocol.Worker.print m;
     w.state <- Ok (Unix.time ());
@@ -399,6 +409,7 @@ let main_master
       | Protocol.Worker.Completed (id, r) ->
 	  increase_idle_cores w;
 	  let t = Hashtbl.find running_tasks id in
+	  dprintf "completed task: job id=%d, %a@." id print_task t;
 	  Hashtbl.remove running_tasks id;
 	  w.jobs <- IntSet.remove id w.jobs;
 	  if not t.task_done then begin
@@ -413,8 +424,27 @@ let main_master
 	  w.jobs <- IntSet.remove id w.jobs;
 	  push_new_task t.task
   in
+  let last_printed_state = ref (0,0,0) in
+  let print_state () =
+    let n1 = Stack.length todo in
+    let n2 = WorkerSet.cardinal idle_workers in
+    let n3 = Hashtbl.length running_tasks in
+    let st = (n1, n2, n3) in 
+    if st <> !last_printed_state then begin
+      last_printed_state := st;
+      dprintf "***@.";
+      dprintf "  %d tasks todo@." n1;
+      dprintf "  %d idle workers@." n2;
+      dprintf "  %d running tasks (" n3;
+      Hashtbl.iter (fun jid _ -> dprintf "%d, " jid) running_tasks;
+      dprintf ")@.";
+      dprintf "***@.";
+    end
+  in
   (* main loop *)
   while not (Stack.is_empty todo) || (Hashtbl.length running_tasks > 0) do
+
+    print_state ();
 
     (* 1. try to connect if not already connected *)
     let current = Unix.time () in
@@ -447,19 +477,17 @@ let main_master
 	     ())
       !workers;
 
-    dprintf "***@.";
-    dprintf "  %d tasks todo@." (Stack.length todo);
-    dprintf "  %d idle workers@." (WorkerSet.cardinal idle_workers);
-    dprintf "  %d running tasks@." (Hashtbl.length running_tasks);
-    dprintf "***@.";
+    print_state ();
 
     (* 2. if possible, start new jobs *)
     while not (WorkerSet.is_empty idle_workers) && not (Stack.is_empty todo) do
       let t = Stack.pop todo in
-      assert (t.task_workers = []); (* TO BE REMOVED EVENTUALLY *)
+      (* assert (t.task_workers = []); *) (* TO BE REMOVED EVENTUALLY *)
       let w = WorkerSet.choose idle_workers in
       create_job w t
     done;
+
+    print_state ();
 
     (* 3. if not, listen for workers *)
     let fds = 
