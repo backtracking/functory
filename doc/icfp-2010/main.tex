@@ -253,13 +253,78 @@ in Figure~\ref{fig:derived}.
 \label{fig:derived}
 \end{figure}
 
-These functions are actually derived from the generic API.
+These five functions are actually derived from the generic API.
+The generality is achieved by implementing theses derivations as a functor.
+This functor, \of{Derive}, is parameterized by the \of{compute}
+function, as follows:
+\begin{ocaml}
+module Derive
+  (X : sig
+     val compute : 
+       f:('a -> 'b) -> 
+       handle:('a * 'c -> 'b -> ('a * 'c) list) ->
+       ('a * 'c) list -> unit
+   end) = struct ... end
+\end{ocaml}
+We now explain how each function from Figure~\ref{fig:derived} is
+implemented using \of{compute} inside the functor body.
 
+\paragraph{\of{map}.} 
+Function \of{map} is easily implemented by associating an integer
+index with each element (of type \of{'a}) of the input list. Thus the
+list of tasks passed to \of{compute} is a list of pairs of type \of{'a * int}.
+As soon as an intermediate result is available, it is passed to
+\of{handle}, which stores it in a local table using the index as a key
+and generates no new task. Whenever \of{compute} returns, we easily
+recover the output list from the values stored in the table.
 
-map, map\_fold, etc.
+\paragraph{\of{map_local_fold}.} 
+Function \of{map_local_fold} is implemented using a local reference
+storing the current accumulator (of type \of{'c}).
+As soon as an intermediate result is available, \of{handle} 
+combines it with the accumulator using function \of{fold}. Whenever \of{compute}
+returns, we simply return the current accumulator.
 
-generic programming using a functor, which is then applied in each of
-the 4 cases
+\paragraph{\of{map_remote_fold}.}
+In this case, combining the accumulator with an intermediate result is
+itself a task to be performed in parallel with \of{map} operations.
+Thus, when an intermediate \of{map} result is available, the
+accumulator may be already in use in a \of{fold} operation. Hence we
+need to store the intermediate \of{map} result in a local table, to be
+used as soon as the accumulator becomes available.
+The \of{handle} function distinguishes between \of{map} and \of{fold}
+results and, accordingly, updates the table and the accumulator. For a
+\of{map} result, either we combine it with the accumulator in a new
+task or we simply store it in the local table. For a \of{fold} result,
+either we simply store it into the accumulator or we immediately
+combine it with a pending \of{map} result from the table.
+Whenever \of{compute} returns, the accumulator must be available and
+we simply return it.
+
+\paragraph{\of{map_fold_ac}.}
+Function \of{map_fold_ac} is easier than the previous one, since we do
+not need to store more than one intermediate result. Indeed, as soon
+as two intermediate results are available, we immediately combine them
+using a \of{fold} operation. Thus the \of{handle} function 
+either stores it or combines it, depending on the availability/non
+availability of the accumulator.
+Whenever \of{compute} returns, the accumulator must be available and
+we simply return it.
+
+\paragraph{\of{map_fold_a}.}
+Function \of{map_fold_a} is definitely the trickiest. Indeed, the
+operation being only associative, we can only combine \emph{adjacent}
+intermediate results. In order to perform this, we store intermediate
+results in a local table according to indices of the input list. More
+precisely, if we have already computed
+\begin{displaymath}
+  x_i \oplus x_{i+1} \oplus \dots \oplus x_j
+\end{displaymath}
+where $\oplus$ denotes the \of{fold} operation, then we associate this
+value with indices $i,j$. As soon as a result of indices $k,i-1$ or
+$j+1,k$ is available, it can be combined with the result of $i,j$.
+Whenever \of{compute} returns, the table should only contain a result
+corresponding to the full input list and we simply return it.
 
 \section{Implementation Details}
 
@@ -292,4 +357,4 @@ Acknowledgments, if needed.
 
 \end{document}
 
-% LocalWords:  parallelize
+% LocalWords:  parallelize functor parameterized indices
