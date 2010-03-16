@@ -38,7 +38,9 @@ module Sequential : sig
     
   val map_fold_a :
     map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
-      (** same result, assuming [fold] is an associative
+      (** [map_fold_a map fold acc [x1;...xn]] computes
+	  [fold ... (fold (fold acc (map x1)) (map x2)) ... (map xn)]
+	  assuming [fold] is an associative
 	  operation with neutral element [acc] *)
 
   val master : 
