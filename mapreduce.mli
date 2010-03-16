@@ -113,11 +113,22 @@ module Network : sig
 	Number [n] does not necessarily coincide with the number of 
 	available cores	of machine [s]. *)
 
+  type worker_type = ?stop:bool -> ?port:int -> unit -> unit
+    (** The type of forthcoming worker implementations.
+	If set, the [stop] boolean indicates that the worker should 
+	stop whenever master disconnects.
+	Port number is given by [port]; default value is [51000] and can
+	be changed using module [Control] (see below). *)
+
   (** Same binary executed as master and workers.
-      The environment variable WORKER must be set for workers (to be
-      distinguished from the master). 
+
+      A worker is distinguished from the master in two possible ways:
+      - either the environment variable WORKER is set and then a worker is 
+        immediately started;
+      - or function [worker] below is explicitely called by the user.
 
       For documentation, refer to module [Sequential]. *)
+
   module Same : sig
 
     val map : f:('a -> 'b) -> 'a list -> 'b list
@@ -138,14 +149,9 @@ module Network : sig
       f:('a -> 'b) -> 
       handle:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
       
-  end
+    val worker : worker_type
 
-  type worker_type = ?stop:bool -> ?port:int -> unit -> unit
-    (** The type of forthcoming worker implementations.
-	If set, the [stop] boolean indicates that the worker should 
-	stop whenever master disconnects.
-	Port number is given by [port]; default value is [51000] and can
-	be changed using module [Control] (see below). *)
+  end
 
   (** Polymorphic API (same version of ocaml).
 

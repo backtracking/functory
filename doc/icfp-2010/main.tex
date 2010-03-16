@@ -415,7 +415,7 @@ correspond to sub-processes and idle workers correspond to idle
 cores. In addition to this, it also involves issues of message
 transfer and fault tolerance, which are subsequently described.
 
-\subsubsection{Protocol}
+\subsubsection{Protocol}\label{sec:protocol}
 
 Messages sent from master to workers could be any of the following kinds:
 \begin{description}
@@ -480,9 +480,41 @@ Fault tolerance is achieved by exploiting the statues of workers as
 follows. First, tasks are only assigned to workers with either
 \of{alive} or \of{pinged} status. Second, whenever a worker executing
 a task $t$ moves to status \of{not connected} or \of{unreachable}, the
-task $t$ is rescheduled, which means 
+task $t$ is rescheduled, which means it is put back in the set of
+pending tasks. Whenever a task is completed, any rescheduled copy of
+this task is either removed from the set of pending tasks or killed if
+it was already assigned to an idle worker.
 
-\subsubsection{Same, Poly and Mono} % TODO: change title
+\subsubsection{Three Network Implementations} % TODO: change title
+
+As explained in Section~\ref{sec:API}, the \of{Network} module is
+actually providing three different implementations, according to three
+different execution scenarios (namely, \of{Same}, \of{Poly} and
+\of{Mono}). There is actually a single, generic implementation, which
+is then instantiated in three different ways.
+The generic implementation assumes that we are only transmitting
+strings over the network, as evident from \of{Assign} and
+\of{Completed} messages in the protocol section~\ref{sec:protocol}.
+Therefore, the signature for the generic implementation is as follows:
+\begin{ocaml}
+  generic_compute:
+    assign_job:('a -> string * string) ->
+    handle:('a * 'c -> string -> ('a * 'c) list)  ->
+    ('a * 'c) list -> unit
+\end{ocaml}
+The first argument \of{assign_job} is a function indicating 
+the two strings to pass inside the \of{Assign} message of the protocol.
+We can now distinguish the three cases:
+\begin{description}
+\item[\of{Same}:] in this case, \of{assign_job} is simply returning
+  the marshaled closure together with the marshaled value.
+\item[\of{Poly}:] in this case, \of{assign_job} is simply
+  returning the marshaled value (the first string being meaningless in
+  this context).
+\item[\of{Mono}:] in this case, \of{assign_job} is immediately
+  returning its argument (the first string being meaningless in
+  this context).
+\end{description}
 
 \section{Experiments}\label{sec:experiments}
 

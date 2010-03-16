@@ -331,8 +331,8 @@ let main_master
     (tasks : ('a * 'c) list)
     =
   (* the tasks still to be done *)
-  let todo = Stack.create () in
-  let push_new_task t = Stack.push (create_task t) todo in
+  let todo = Queue.create () in
+  let push_new_task t = Queue.add (create_task t) todo in
   List.iter push_new_task tasks;
   (* idle workers *)
   let idle_workers = WorkerSet.create () in
@@ -374,7 +374,7 @@ let main_master
 	   Hashtbl.remove running_tasks jid;
 	   t.task_workers <- List.filter (fun (_,w') -> w' != w) t.task_workers
 	 end;
-	 Stack.push t todo)
+	 Queue.add t todo)
       w.jobs
   in
   let manage_disconnection w =
@@ -427,7 +427,7 @@ let main_master
   in
   let last_printed_state = ref (0,0,0) in
   let print_state () =
-    let n1 = Stack.length todo in
+    let n1 = Queue.length todo in
     let n2 = WorkerSet.cardinal idle_workers in
     let n3 = Hashtbl.length running_tasks in
     let st = (n1, n2, n3) in 
@@ -443,7 +443,7 @@ let main_master
     end
   in
   (* main loop *)
-  while not (Stack.is_empty todo) || (Hashtbl.length running_tasks > 0) do
+  while not (Queue.is_empty todo) || (Hashtbl.length running_tasks > 0) do
 
     print_state ();
 
@@ -481,8 +481,8 @@ let main_master
     print_state ();
 
     (* 2. if possible, start new jobs *)
-    while not (WorkerSet.is_empty idle_workers) && not (Stack.is_empty todo) do
-      let t = Stack.pop todo in
+    while not (WorkerSet.is_empty idle_workers) && not (Queue.is_empty todo) do
+      let t = Queue.pop todo in
       if not t.task_done then
 	let w = WorkerSet.choose idle_workers in
 	create_job w t
@@ -504,7 +504,7 @@ let main_master
       l;
 
   done;
-  assert (Stack.is_empty todo && Hashtbl.length running_tasks = 0);
+  assert (Queue.is_empty todo && Hashtbl.length running_tasks = 0);
   ()
 
 let is_worker = 
@@ -584,15 +584,18 @@ end
 
 module Same = struct
 
+  let worker ?stop ?port () =
+    let compute f x = 
+      let f = (Marshal.from_string f 0 : 'a -> 'b) in
+      let x = (Marshal.from_string x 0 : 'a) in
+      Marshal.to_string (f x) []
+    in
+    ignore (Worker.compute compute ?stop ?port ())
+
   let () = 
     if is_worker then begin
       dprintf "starting worker loop...@.";
-      let compute f x = 
-	let f = (Marshal.from_string f 0 : 'a -> 'b) in
-	let x = (Marshal.from_string x 0 : 'a) in
-	Marshal.to_string (f x) []
-      in
-      ignore (Worker.compute compute ~stop:false ())
+      worker ~stop:false ()
     end
       
   let master  
