@@ -417,7 +417,42 @@ transfer and fault tolerance, which are subsequently described.
 
 \subsubsection{Protocol}
 
+Messages sent from master to workers could be any of the following kinds:
+\begin{description}
+\item[\of{Assign(id:int, f:string, x:string)}] This message assigns a
+  new task to the worker, the task being identified by the unique
+  integer \of{id}. The task to be performed is given by strings \of{f}
+  and \of{x}, which are interpreted depending on the context.
+
+\item[\of{Kill(id:int)}] This message indicates the worker that task
+  identified by \of{id} is to be killed.
+
+\item[\of{Stop}] This message informs the worker about completion of
+  the computation, so that it may choose to exit.
+
+\item[\of{Ping}] This message is used to check if the worker is still
+  alive, expecting a \of{Pong} message from the worker in return.
+\end{description}
+Messages sent by the workers could be any of the following kinds:
+\begin{description}
+\item[\of{Pong}] This message is an acknowledgment for a \of{Ping}
+  message from the master.
+
+\item[\of{Completed(id:int, s:string)}] This message indicates the
+  completion of a task identified by \of{id}, with result \of{s}.
+
+\item[\of{Aborted(id:int)}] This message informs the master that the
+  task identified by \of{id} is aborted, either as a response to a
+  \of{Kill} message or because of a worker malfunction.
+\end{description}
+Our implementation of the protocol works across different
+architectures, so that master and workers could be run on completely
+different platforms w.r.t. endianness, version of \Ocaml\ and
+operating system.
+
 \subsubsection{Fault Tolerance}\label{sec:fault}
+
+\subsubsection{Same, Poly and Mono} % TODO: change title
 
 \section{Experiments}\label{sec:experiments}
 
@@ -444,4 +479,4 @@ Acknowledgments, if needed.
 
 \end{document}
 
-% LocalWords:  parallelize functor parameterized indices
+% LocalWords:  parallelize functor parameterized indices endianness
