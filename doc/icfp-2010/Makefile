@@ -5,7 +5,7 @@ quick: main-pp.tex
 
 main-pp.pdf: main-pp.tex biblio.bib
 	pdflatex main-pp
-	bibtex main
+	bibtex main-pp
 	pdflatex main-pp
 	pdflatex main-pp
 
