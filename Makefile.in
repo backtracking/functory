@@ -136,9 +136,8 @@ test2: master_test.opt worker_test.opt
 	./worker_test.opt &
 	sleep 1 && ./master_test.opt && killall -9 worker_test.opt
 
-install-test: tests/n-queens/a.out network_test.opt
-	cp tests/n-queens/a.out ~
-	cp network_test.opt ~
+install-test: tests/fault/a.out
+	cp tests/fault/a.out ~
 
 install-queens: tests/n-queens/queens64.opt
 	cp tests/n-queens/queens64.opt ~

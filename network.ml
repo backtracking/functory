@@ -349,6 +349,7 @@ let main_master
     Protocol.Master.send w.fdout Protocol.Master.Ping;
   in
   let create_job w t =
+    assert (not t.task_done);
     dprintf "@[<hov 2>create_job: worker=%a,@ task=%a@]@." 
       print_worker w print_task t;
     connect_worker w;
@@ -482,9 +483,9 @@ let main_master
     (* 2. if possible, start new jobs *)
     while not (WorkerSet.is_empty idle_workers) && not (Stack.is_empty todo) do
       let t = Stack.pop todo in
-      (* assert (t.task_workers = []); *) (* TO BE REMOVED EVENTUALLY *)
-      let w = WorkerSet.choose idle_workers in
-      create_job w t
+      if not t.task_done then
+	let w = WorkerSet.choose idle_workers in
+	create_job w t
     done;
 
     print_state ();

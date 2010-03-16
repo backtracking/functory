@@ -452,6 +452,36 @@ operating system.
 
 \subsubsection{Fault Tolerance}\label{sec:fault}
 
+The main issue in any distributed computing environment is ability to
+handle faults, which is also a distinguishing feature of our library.
+Faults are mainly of two kinds: either a worker is stopped, and
+possibly later restarted; or a worker is temporarily or permanently
+unreachable on the network. To provide fault tolerance, our master
+implementation is keeping track of the status of each worker. 
+This status is controlled by two timeout parameters $T_1$ and $T_2$
+and \of{Ping} and \of{Pong} messages sent by master and workers,
+respectively. There are four possible statuses for a worker: 
+\begin{description}
+\item[\of{not connected}:] the worker is still to be
+  connected to perform any useful task;
+\item[\of{alive}:] the worker has sent some message recently,
+  within $T_1$ seconds;
+\item[\of{pinged}:] the worker has not sent any message recently (for more
+  than $T_1$ seconds) and the master hash sent it a \of{Ping} message
+  within the last $T_2$ seconds;
+\item[\of{unreachable}:] the worker has not yet responded to the \of{Ping}
+  message (for more than $T_2$ seconds).
+\end{description}
+% TODO picture
+Whenever we receive a message from a worker, its status changes to
+\of{alive} and its timeout value is reset.
+
+Fault tolerance is achieved by exploiting the statues of workers as
+follows. First, tasks are only assigned to workers with either
+\of{alive} or \of{pinged} status. Second, whenever a worker executing
+a task $t$ moves to status \of{not connected} or \of{unreachable}, the
+task $t$ is rescheduled, which means 
+
 \subsubsection{Same, Poly and Mono} % TODO: change title
 
 \section{Experiments}\label{sec:experiments}
@@ -461,6 +491,9 @@ n-queens, SMT solvers, etc.
 \section{Future Work}\label{sec:future}
 
 data locality: scheduling supplied by the user
+
+speeding up the end of computation with duplicate tasks on idle workers
+(straightforward since already done for fault tolerance)
 
 % \appendix
 % \section{Appendix Title}
