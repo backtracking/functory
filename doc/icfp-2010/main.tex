@@ -36,11 +36,11 @@
 \copyrightyear{2010} 
 \copyrightdata{[to be supplied]} 
 
-\titlebanner{banner above paper title}        % These are ignored unless
-\preprintfooter{short description of paper}   % 'preprint' option specified.
+\titlebanner{submitted to ICFP 2010}        % These are ignored unless
+\preprintfooter{Experience Report: Distributed Computing for the Common Man}   % 'preprint' option specified.
 
-\title{Experience Report: }
-\subtitle{Subtitle Text, if any}
+\title{Experience Report: Distributed Computing for the Common Man}
+%\subtitle{Subtitle Text, if any}
 
 \authorinfo{Name1}
            {Affiliation1}
@@ -64,6 +64,20 @@ term1, term2
 keyword1, keyword2
 
 \section{Introduction}
+
+This paper introduces a generic distributed computing library.
+It was initially motivated by computing needs that exist in our own
+research team. Our applications include large-scale deductive program
+verification, which amounts to check the validity of a huge number of
+logical formulas using a variety of automated theorem
+provers~\cite{filliatre07cav}. Our computing infrastructure consists
+of a few powerful multi-core machines (typically 8 to 16 cores) and
+several desktop PCs (typically dual-core). However, there is no
+library that helps in exploiting such a computing infrastructure in
+our favorite functional programming language. Hence we designed and
+implemented such a library\footnote{This library is implemented in
+  \Ocaml, but the implementation should be straightforward in any
+  functional programming language.}, which is the subject of this paper.
 
 what it is and what it is not
 \begin{itemize}
