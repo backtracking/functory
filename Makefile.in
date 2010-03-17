@@ -142,6 +142,9 @@ install-test: tests/fault/a.out
 install-queens: tests/n-queens/queens64.opt
 	cp tests/n-queens/queens64.opt ~
 
+install-provers: tests/provers/a.out
+	cp tests/provers/a.out ~/disco-provers.opt
+
 tests/%/a.out: tests/%/main.ml mapreduce.cmxa
 	$(OCAMLOPT) unix.cmxa mapreduce.cmxa tests/$*/main.ml -o $@
 

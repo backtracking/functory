@@ -1,11 +1,9 @@
-%!PS-Adobe-3.0 EPSF-3.0
+%!PS
 %%BoundingBox: -20 50 200 100 
 %%Creator: MetaPost
-%%CreationDate: 2010.03.17:2031
+%%CreationDate: 2010.03.17:2217
 %%Pages: 1
-%%DocumentFonts: CMSS9
- /cmss9 /CMSS9 def
-/fshow {exch findfont exch scalefont setfont show}bind def
+%*Font: cmss9 8.96637 8.96637 61:ba9754
 %%EndProlog
 %%Page: 1 1
 %%HiResBoundingBox: -19.8848 50.88574 199.18732 99.34085
