@@ -1,5 +1,5 @@
 
-quick: main-pp.tex
+quick: main-pp.tex 
 	pdflatex main-pp
 	xpdf -remote tmp -reload
 
@@ -13,3 +13,6 @@ LATEXPP = latexpp -g color no -e ocaml ocaml-sf -m of ocaml-sf
 
 main-pp.tex: main.tex
 	$(LATEXPP) $^ -o $@
+
+state.mps:
+	mlpost -latex main.tex figures.ml

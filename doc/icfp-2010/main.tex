@@ -25,7 +25,7 @@
 % 11pt          To set in 11-point type instead of 9-point.
 % authoryear    To obtain author/year citation style instead of numeric.
 
-\usepackage{amsmath,graphicx, color}
+\usepackage{amsmath,graphicx,color}
 
 \newcommand{\Ocaml}{OCaml}
 \newcommand{\unix}{\textsc{Unix}}
@@ -42,12 +42,13 @@
 \title{Experience Report: Distributed Computing for the Common Man}
 %\subtitle{Subtitle Text, if any}
 
-\authorinfo{Name1}
-           {Affiliation1}
-           {Email1}
-\authorinfo{Name2\and Name3}
-           {Affiliation2/3}
-           {Email2/3}
+\authorinfo{Jean-Christophe Filli\^atre}
+           {CNRS, LRI, Univ Paris-Sud, Orsay F-91405\\
+           INRIA Saclay - \^Ile-de-France, ProVal, Orsay, F-91893}
+           {filliatr@lri.fr}
+\authorinfo{Kalyan Krishnamani}
+           {INRIA Saclay - \^Ile-de-France, ProVal, Orsay, F-91893}
+           {kalyan@lri.fr}
 
 \maketitle
 
@@ -489,6 +490,8 @@ respectively. There are four possible statuses for a worker:
 % TODO picture
 Whenever we receive a message from a worker, its status changes to
 \of{alive} and its timeout value is reset.
+
+\includegraphics{state.mps}
 
 Fault tolerance is achieved by exploiting the statues of workers as
 follows. First, tasks are only assigned to workers with either
