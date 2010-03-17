@@ -1,0 +1,504 @@
+
+;; DO NOT EDIT BELOW THIS LINE
+
+(BG_PUSH (NEQ |@true| |@false|))
+
+(DEFPRED (zwf_zero a b) (AND (<= 0 b) (< a b)))
+
+(DEFPRED (lt_pointer p1 p2)
+  (AND (EQ (base_addr p1) (base_addr p2)) (< (offset p1) (offset p2))))
+
+(DEFPRED (le_pointer p1 p2)
+  (AND (EQ (base_addr p1) (base_addr p2)) (<= (offset p1) (offset p2))))
+
+(DEFPRED (gt_pointer p1 p2)
+  (AND (EQ (base_addr p1) (base_addr p2)) (> (offset p1) (offset p2))))
+
+(DEFPRED (ge_pointer p1 p2)
+  (AND (EQ (base_addr p1) (base_addr p2)) (>= (offset p1) (offset p2))))
+
+(DEFPRED (valid a p)
+  (AND (<= 0 (offset p)) (< (offset p) (block_length a p))))
+
+(DEFPRED (valid_index a p i)
+  (AND (<= 0 (+ (offset p) i)) (< (+ (offset p) i) (block_length a p))))
+
+(DEFPRED (valid_range a p i j)
+  (AND (<= 0 (+ (offset p) i)) (< (+ (offset p) j) (block_length a p))))
+
+(BG_PUSH
+ ;; Why axiom offset_shift
+ (FORALL (p i) (EQ (offset (shift p i)) (+ (offset p) i))))
+
+(BG_PUSH
+ ;; Why axiom shift_zero
+ (FORALL (p) (EQ (shift p 0) p)))
+
+(BG_PUSH
+ ;; Why axiom shift_shift
+ (FORALL (p i j) (EQ (shift (shift p i) j) (shift p (+ i j)))))
+
+(BG_PUSH
+ ;; Why axiom base_addr_shift
+ (FORALL (p i) (EQ (base_addr (shift p i)) (base_addr p))))
+
+(BG_PUSH
+ ;; Why axiom block_length_shift
+ (FORALL (a p i) (EQ (block_length a (shift p i)) (block_length a p))))
+
+(BG_PUSH
+ ;; Why axiom base_addr_block_length
+ (FORALL (a p1 p2)
+ (IMPLIES (EQ (base_addr p1) (base_addr p2))
+ (EQ (block_length a p1) (block_length a p2))))
+
+ (FORALL (p1 p2)
+ (IMPLIES (EQ (base_addr p1) (base_addr p2))
+ (FORALL (a) (EQ (block_length a p1) (block_length a p2))))))
+
+(BG_PUSH
+ ;; Why axiom pointer_pair_1
+ (FORALL (p1 p2)
+ (IMPLIES
+ (AND (EQ (base_addr p1) (base_addr p2)) (EQ (offset p1) (offset p2)))
+ (EQ p1 p2))))
+
+(BG_PUSH
+ ;; Why axiom pointer_pair_2
+ (FORALL (p1 p2)
+ (IMPLIES (EQ p1 p2)
+ (AND (EQ (base_addr p1) (base_addr p2)) (EQ (offset p1) (offset p2))))))
+
+(BG_PUSH
+ ;; Why axiom neq_base_addr_neq_shift
+ (FORALL (p1 p2 i j)
+ (IMPLIES (NEQ (base_addr p1) (base_addr p2))
+ (NEQ (shift p1 i) (shift p2 j))))
+
+ (FORALL (p1 p2)
+ (IMPLIES (NEQ (base_addr p1) (base_addr p2))
+ (FORALL (i j) (NEQ (shift p1 i) (shift p2 j))))))
+
+(BG_PUSH
+ ;; Why axiom neq_offset_neq_shift
+ (FORALL (p1 p2 i j)
+ (IMPLIES (NEQ (+ (offset p1) i) (+ (offset p2) j))
+ (NEQ (shift p1 i) (shift p2 j)))))
+
+(BG_PUSH
+ ;; Why axiom eq_offset_eq_shift
+ (FORALL (p1 p2 i j)
+ (IMPLIES (EQ (base_addr p1) (base_addr p2))
+ (IMPLIES (EQ (+ (offset p1) i) (+ (offset p2) j))
+ (EQ (shift p1 i) (shift p2 j)))))
+
+ (FORALL (p1 p2)
+ (IMPLIES (EQ (base_addr p1) (base_addr p2))
+ (FORALL (j i)
+ (IMPLIES (EQ (+ (offset p1) i) (+ (offset p2) j))
+ (EQ (shift p1 i) (shift p2 j)))))))
+
+(BG_PUSH
+ ;; Why axiom valid_index_valid_shift
+ (FORALL (a p i) (IMPLIES (valid_index a p i) (valid a (shift p i)))))
+
+(BG_PUSH
+ ;; Why axiom valid_range_valid_shift
+ (FORALL (a p i j k)
+ (IMPLIES (valid_range a p i j)
+ (IMPLIES (AND (<= i k) (<= k j)) (valid a (shift p k)))))
+
+ (FORALL (a p i j)
+ (IMPLIES (valid_range a p i j)
+ (FORALL (k) (IMPLIES (AND (<= i k) (<= k j)) (valid a (shift p k)))))))
+
+(BG_PUSH
+ ;; Why axiom valid_range_valid
+ (FORALL (a p i j)
+ (IMPLIES (valid_range a p i j)
+ (IMPLIES (AND (<= i 0) (<= 0 j)) (valid a p)))))
+
+(BG_PUSH
+ ;; Why axiom valid_range_valid_index
+ (FORALL (a p i j k)
+ (IMPLIES (valid_range a p i j)
+ (IMPLIES (AND (<= i k) (<= k j)) (valid_index a p k))))
+
+ (FORALL (a p i j)
+ (IMPLIES (valid_range a p i j)
+ (FORALL (k) (IMPLIES (AND (<= i k) (<= k j)) (valid_index a p k))))))
+
+(BG_PUSH
+ ;; Why axiom sub_pointer_def
+ (FORALL (p1 p2)
+ (IMPLIES (EQ (base_addr p1) (base_addr p2))
+ (EQ (sub_pointer p1 p2) (- (offset p1) (offset p2))))))
+
+(BG_PUSH
+ ;; Why axiom acc_upd
+ (FORALL (m p a) (EQ (acc (upd m p a) p) a)))
+
+(BG_PUSH
+ ;; Why axiom acc_upd_neq
+ (FORALL (m p1 p2 a)
+ (IMPLIES (NEQ p1 p2) (EQ (acc (upd m p1 a) p2) (acc m p2))))
+
+ (FORALL (p1 p2)
+ (IMPLIES (NEQ p1 p2) (FORALL (m a) (EQ (acc (upd m p1 a) p2) (acc m p2))))))
+
+(BG_PUSH
+ ;; Why axiom false_not_true
+ (NEQ |@false| |@true|))
+
+(DEFPRED (not_assigns a m1 m2 l)
+  (FORALL (p)
+  (IMPLIES (valid a p)
+  (IMPLIES (EQ (not_in_pset p l) |@true|) (EQ (acc m2 p) (acc m1 p))))))
+
+(BG_PUSH
+ ;; Why axiom pset_empty_intro
+ (FORALL (p) (EQ (not_in_pset p pset_empty) |@true|)))
+
+(BG_PUSH
+ ;; Why axiom pset_singleton_intro
+ (FORALL (p1 p2)
+ (IMPLIES (NEQ p1 p2) (EQ (not_in_pset p1 (pset_singleton p2)) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_singleton_elim
+ (FORALL (p1 p2)
+ (IMPLIES (EQ (not_in_pset p1 (pset_singleton p2)) |@true|) (NEQ p1 p2))))
+
+(BG_PUSH
+ ;; Why axiom not_not_in_singleton
+ (FORALL (p) (NOT (EQ (not_in_pset p (pset_singleton p)) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_union_intro
+ (FORALL (l1 l2 p)
+ (IMPLIES
+ (AND (EQ (not_in_pset p l1) |@true|) (EQ (not_in_pset p l2) |@true|))
+ (EQ (not_in_pset p (pset_union l1 l2)) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_union_elim1
+ (FORALL (l1 l2 p)
+ (IMPLIES (EQ (not_in_pset p (pset_union l1 l2)) |@true|)
+ (EQ (not_in_pset p l1) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_union_elim2
+ (FORALL (l1 l2 p)
+ (IMPLIES (EQ (not_in_pset p (pset_union l1 l2)) |@true|)
+ (EQ (not_in_pset p l2) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_star_intro
+ (FORALL (l m p)
+ (IMPLIES
+ (FORALL (p1) (IMPLIES (EQ p (acc m p1)) (EQ (not_in_pset p1 l) |@true|)))
+ (EQ (not_in_pset p (pset_star l m)) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_star_elim
+ (FORALL (l m p)
+ (IMPLIES (EQ (not_in_pset p (pset_star l m)) |@true|)
+ (FORALL (p1) (IMPLIES (EQ p (acc m p1)) (EQ (not_in_pset p1 l) |@true|))))))
+
+(BG_PUSH
+ ;; Why axiom pset_all_intro
+ (FORALL (p l)
+ (IMPLIES
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (NEQ (base_addr p) (base_addr p1))))
+ (EQ (not_in_pset p (pset_all l)) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_all_elim
+ (FORALL (p l)
+ (IMPLIES (EQ (not_in_pset p (pset_all l)) |@true|)
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (NEQ (base_addr p) (base_addr p1)))))))
+
+(BG_PUSH
+ ;; Why axiom pset_range_intro
+ (FORALL (p l a b)
+ (IMPLIES
+ (FORALL (p1)
+ (OR (EQ (not_in_pset p1 l) |@true|)
+ (FORALL (i) (IMPLIES (AND (<= a i) (<= i b)) (NEQ p (shift p1 i))))))
+ (EQ (not_in_pset p (pset_range l a b)) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_range_elim
+ (FORALL (p l a b)
+ (IMPLIES (EQ (not_in_pset p (pset_range l a b)) |@true|)
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (FORALL (i) (IMPLIES (AND (<= a i) (<= i b)) (NEQ (shift p1 i) p))))))))
+
+(BG_PUSH
+ ;; Why axiom pset_range_left_intro
+ (FORALL (p l a)
+ (IMPLIES
+ (FORALL (p1)
+ (OR (EQ (not_in_pset p1 l) |@true|)
+ (FORALL (i) (IMPLIES (<= i a) (NEQ p (shift p1 i))))))
+ (EQ (not_in_pset p (pset_range_left l a)) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_range_left_elim
+ (FORALL (p l a)
+ (IMPLIES (EQ (not_in_pset p (pset_range_left l a)) |@true|)
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (FORALL (i) (IMPLIES (<= i a) (NEQ (shift p1 i) p))))))))
+
+(BG_PUSH
+ ;; Why axiom pset_range_right_intro
+ (FORALL (p l a)
+ (IMPLIES
+ (FORALL (p1)
+ (OR (EQ (not_in_pset p1 l) |@true|)
+ (FORALL (i) (IMPLIES (<= a i) (NEQ p (shift p1 i))))))
+ (EQ (not_in_pset p (pset_range_right l a)) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_range_right_elim
+ (FORALL (p l a)
+ (IMPLIES (EQ (not_in_pset p (pset_range_right l a)) |@true|)
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (FORALL (i) (IMPLIES (<= a i) (NEQ (shift p1 i) p))))))))
+
+(BG_PUSH
+ ;; Why axiom pset_acc_all_intro
+ (FORALL (p l m)
+ (IMPLIES
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (FORALL (i) (NEQ p (acc m (shift p1 i))))))
+ (EQ (not_in_pset p (pset_acc_all l m)) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_acc_all_elim
+ (FORALL (p l m)
+ (IMPLIES (EQ (not_in_pset p (pset_acc_all l m)) |@true|)
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (FORALL (i) (NEQ (acc m (shift p1 i)) p)))))))
+
+(BG_PUSH
+ ;; Why axiom pset_acc_range_intro
+ (FORALL (p l m a b)
+ (IMPLIES
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (FORALL (i) (IMPLIES (AND (<= a i) (<= i b)) (NEQ p (acc m (shift p1 i)))))))
+ (EQ (not_in_pset p (pset_acc_range l m a b)) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_acc_range_elim
+ (FORALL (p l m a b)
+ (IMPLIES (EQ (not_in_pset p (pset_acc_range l m a b)) |@true|)
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (FORALL (i) (IMPLIES (AND (<= a i) (<= i b)) (NEQ (acc m (shift p1 i)) p))))))))
+
+(BG_PUSH
+ ;; Why axiom pset_acc_range_left_intro
+ (FORALL (p l m a)
+ (IMPLIES
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (FORALL (i) (IMPLIES (<= i a) (NEQ p (acc m (shift p1 i)))))))
+ (EQ (not_in_pset p (pset_acc_range_left l m a)) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_acc_range_left_elim
+ (FORALL (p l m a)
+ (IMPLIES (EQ (not_in_pset p (pset_acc_range_left l m a)) |@true|)
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (FORALL (i) (IMPLIES (<= i a) (NEQ (acc m (shift p1 i)) p))))))))
+
+(BG_PUSH
+ ;; Why axiom pset_acc_range_right_intro
+ (FORALL (p l m a)
+ (IMPLIES
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (FORALL (i) (IMPLIES (<= a i) (NEQ p (acc m (shift p1 i)))))))
+ (EQ (not_in_pset p (pset_acc_range_right l m a)) |@true|))))
+
+(BG_PUSH
+ ;; Why axiom pset_acc_range_right_elim
+ (FORALL (p l m a)
+ (IMPLIES (EQ (not_in_pset p (pset_acc_range_right l m a)) |@true|)
+ (FORALL (p1)
+ (IMPLIES (NOT (EQ (not_in_pset p1 l) |@true|))
+ (FORALL (i) (IMPLIES (<= a i) (NEQ (acc m (shift p1 i)) p))))))))
+
+(BG_PUSH
+ ;; Why axiom not_assigns_trans
+ (FORALL (a l m1 m2 m3)
+ (IMPLIES (not_assigns a m1 m2 l)
+ (IMPLIES (not_assigns a m2 m3 l) (not_assigns a m1 m3 l))))
+
+ (FORALL (a l m1 m2)
+ (IMPLIES (not_assigns a m1 m2 l)
+ (FORALL (m3) (IMPLIES (not_assigns a m2 m3 l) (not_assigns a m1 m3 l))))))
+
+(BG_PUSH
+ ;; Why axiom not_assigns_refl
+ (FORALL (a l m) (not_assigns a m m l)))
+
+(DEFPRED (valid_acc m1)
+  (FORALL (p a) (IMPLIES (valid a p) (valid a (acc m1 p)))))
+
+(DEFPRED (valid_acc_range m1 size)
+  (FORALL (p a)
+  (IMPLIES (valid a p) (valid_range a (acc m1 p) 0 (- size 1)))))
+
+(BG_PUSH
+ ;; Why axiom valid_acc_range_valid
+ (FORALL (m1 size p a)
+ (IMPLIES (valid_acc_range m1 size)
+ (IMPLIES (valid a p) (valid a (acc m1 p)))))
+
+ (FORALL (m1 size)
+ (IMPLIES (valid_acc_range m1 size)
+ (FORALL (a p) (IMPLIES (valid a p) (valid a (acc m1 p)))))))
+
+(DEFPRED (separation1 m1 m2)
+  (FORALL (p a)
+  (IMPLIES (valid a p) (NEQ (base_addr (acc m1 p)) (base_addr (acc m2 p))))))
+
+(DEFPRED (separation1_range1 m1 m2 size)
+  (FORALL (p a)
+  (IMPLIES (valid a p)
+  (FORALL (i1 i2)
+  (IMPLIES (AND (<= 0 i1) (< i1 size))
+  (IMPLIES (AND (<= 0 i2) (< i2 size))
+  (NEQ (base_addr (acc m1 (shift p i1))) (base_addr (acc m2 (shift p i2))))))))))
+
+(DEFPRED (separation1_range m size)
+  (FORALL (p a)
+  (IMPLIES (valid a p)
+  (FORALL (i1)
+  (IMPLIES (AND (<= 0 i1) (< i1 size))
+  (NEQ (base_addr (acc m (shift p i1))) (base_addr (acc m p))))))))
+
+(DEFPRED (separation2 m1 m2)
+  (FORALL (p1 p2)
+  (IMPLIES (NEQ p1 p2) (NEQ (base_addr (acc m1 p1)) (base_addr (acc m2 p2))))))
+
+(DEFPRED (separation2_range1 m1 m2 size)
+  (FORALL (p q a i)
+  (IMPLIES (AND (<= 0 i) (< i size))
+  (NEQ (base_addr (acc m1 (shift p i))) (base_addr (acc m2 q))))))
+
+(BG_PUSH
+ ;; Why axiom fresh_not_valid
+ (FORALL (a p) (IMPLIES (EQ (fresh a p) |@true|) (NOT (valid a p)))))
+
+(BG_PUSH
+ ;; Why axiom fresh_not_valid_shift
+ (FORALL (a p)
+ (IMPLIES (EQ (fresh a p) |@true|) (FORALL (i) (NOT (valid a (shift p i)))))))
+
+(BG_PUSH
+ ;; Why axiom alloc_extends_valid
+ (FORALL (a1 a2)
+ (IMPLIES (EQ (alloc_extends a1 a2) |@true|)
+ (FORALL (q) (IMPLIES (valid a1 q) (valid a2 q))))))
+
+(BG_PUSH
+ ;; Why axiom alloc_extends_valid_index
+ (FORALL (a1 a2)
+ (IMPLIES (EQ (alloc_extends a1 a2) |@true|)
+ (FORALL (q i) (IMPLIES (valid_index a1 q i) (valid_index a2 q i))))))
+
+(BG_PUSH
+ ;; Why axiom alloc_extends_valid_range
+ (FORALL (a1 a2)
+ (IMPLIES (EQ (alloc_extends a1 a2) |@true|)
+ (FORALL (q i j) (IMPLIES (valid_range a1 q i j) (valid_range a2 q i j))))))
+
+(BG_PUSH
+ ;; Why axiom alloc_extends_refl
+ (FORALL (a) (EQ (alloc_extends a a) |@true|)))
+
+(BG_PUSH
+ ;; Why axiom alloc_extends_trans
+ (FORALL (a1 a2 a3)
+ (IMPLIES (EQ (alloc_extends a1 a2) |@true|)
+ (IMPLIES (EQ (alloc_extends a2 a3) |@true|)
+ (EQ (alloc_extends a1 a3) |@true|))))
+
+ (FORALL (a1 a2)
+ (IMPLIES (EQ (alloc_extends a1 a2) |@true|)
+ (FORALL (a3)
+ (IMPLIES (EQ (alloc_extends a2 a3) |@true|)
+ (EQ (alloc_extends a1 a3) |@true|))))))
+
+(BG_PUSH
+ ;; Why axiom free_stack_heap
+ (FORALL (a1 a2 a3)
+ (IMPLIES (EQ (free_stack a1 a2 a3) |@true|)
+ (FORALL (p)
+ (IMPLIES (valid a2 p) (IMPLIES (EQ (on_heap a2 p) |@true|) (valid a3 p)))))))
+
+(BG_PUSH
+ ;; Why axiom free_stack_stack
+ (FORALL (a1 a2 a3)
+ (IMPLIES (EQ (free_stack a1 a2 a3) |@true|)
+ (FORALL (p)
+ (IMPLIES (valid a1 p) (IMPLIES (EQ (on_stack a1 p) |@true|) (valid a3 p)))))))
+
+(BG_PUSH
+ ;; Why axiom null_not_valid
+ (FORALL (a) (NOT (valid a null))))
+
+(BG_PUSH
+ ;; Why axiom mean_1
+ (FORALL (x y)
+ (IMPLIES (<= x y)
+ (AND (<= x (int_div (+ x y) 2)) (<= (int_div (+ x y) 2) y)))))
+
+;; binary_search_impl_po_17, File "binary_search_po17.why", line 600, characters 0-1235
+(FORALL (t n v alloc intM_t_2)
+(IMPLIES
+(AND (AND (>= n 0) (valid_range alloc t 0 (- n 1)))
+(FORALL (k1 k2)
+(IMPLIES (AND (AND (<= 0 k1) (<= k1 k2)) (<= k2 (- n 1)))
+(<= (acc intM_t_2 (shift t k1)) (acc intM_t_2 (shift t k2))))))
+(FORALL (l u)
+(IMPLIES
+(AND (AND (<= 0 l) (<= u (- n 1)))
+(FORALL (k)
+(IMPLIES (AND (<= 0 k) (< k n))
+(IMPLIES (EQ (acc intM_t_2 (shift t k)) v) (AND (<= l k) (<= k u))))))
+(IMPLIES (<= l u)
+(IMPLIES (NEQ 2 0)
+(FORALL (result)
+(IMPLIES (EQ result (int_div (+ l u) 2))
+(FORALL (result0)
+(IMPLIES (EQ result0 (shift t result))
+(IMPLIES (valid alloc result0)
+(FORALL (result1)
+(IMPLIES (EQ result1 (acc intM_t_2 result0))
+(IMPLIES (>= result1 v)
+(FORALL (result2)
+(IMPLIES (EQ result2 (shift t result))
+(IMPLIES (valid alloc result2)
+(FORALL (result3)
+(IMPLIES (EQ result3 (acc intM_t_2 result2))
+(IMPLIES (<= result3 v)
+(OR (AND (>= result 0) (EQ (acc intM_t_2 (shift t result)) v))
+(AND (EQ result (- 0 1))
+(FORALL (k)
+(IMPLIES (AND (<= 0 k) (< k n)) (NEQ (acc intM_t_2 (shift t k)) v)))))))))))))))))))))))))
+
