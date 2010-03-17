@@ -33,9 +33,9 @@ module type MF = sig
     map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
   val map_fold_a :
     map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
-  val master :
-    f:('a -> 'b) -> 
-    handle:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
+  val compute :
+    worker:('a -> 'b) -> 
+    master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
 end
 
 module TestInt(X : MF with type t = int) = struct
@@ -60,11 +60,12 @@ module TestInt(X : MF with type t = int) = struct
     printf "  master@.";
     assert (
       let res = ref 0 in
-      master 
-	~f ~handle:(fun (x,y) z -> 
-		      assert (z = x+1 && x = y); 
-		      res := !res + z;
-		      if x = 3 then [4,4] else []) 
+      compute 
+	~worker:f 
+	~master:(fun (x,y) z -> 
+		   assert (z = x+1 && x = y); 
+		   res := !res + z;
+		   if x = 3 then [4,4] else []) 
 	[1,1; 2,2; 3,3];
       !res = 14);
     ()

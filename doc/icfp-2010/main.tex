@@ -100,22 +100,22 @@ following interface:
 % TODO: rename this function?
 \begin{ocaml}
   val compute : 
-    f:('a -> 'b) -> 
-    handle:('a * 'c -> 'b -> ('a * 'c) list) -> 
+    worker:('a -> 'b) -> 
+    master:('a * 'c -> 'b -> ('a * 'c) list) -> 
     ('a * 'c) list -> unit
 \end{ocaml}
 % TODO be even more explicit about the introduction of the word `task'
-This function takes two functions, \ocaml{f} and \ocaml{handle}, and a
+This function takes two functions, \ocaml{worker} and \ocaml{master}, and a
 list of \emph{tasks} of type \ocaml{('a * 'c) list}.
-The function \ocaml{f} is applied to the first component for each task.
+The function \ocaml{worker} is applied to the first component for each task.
 Whenever it completes, the task and the result are passed to the
-function \ocaml{handle}. This may possibly generate a new list of
+function \ocaml{master}. This may possibly generate a new list of
 tasks. The process ends when all computations are done.
 
-Function \ocaml{f} should be pure and is executed in parallel.
-Function \ocaml{handle}, on the contrary, can be impure and is never
-executed in parallel with other \ocaml{handle}s. Typically,
-\ocaml{handle} stores and processes information locally.
+Function \ocaml{worker} should be pure and is executed in parallel.
+Function \ocaml{master}, on the contrary, can be impure and is never
+executed in parallel with other \ocaml{master}s. Typically,
+\ocaml{master} stores and processes information locally.
 The next section will describe the usage of this generic interface to
 perform traditional map and fold operations.
 
@@ -143,7 +143,7 @@ following:
   polymorphic functions, to implement the master and workers respectively:
   \begin{ocaml}
 val master : 
-  handle:('a * 'c -> 'b -> ('a * 'c) list) -> 
+  ('a * 'c -> 'b -> ('a * 'c) list) -> 
   ('a * 'c) list -> unit
 val worker : ('a -> 'b) -> unit -> unit
   \end{ocaml}
@@ -155,7 +155,7 @@ val worker : ('a -> 'b) -> unit -> unit
   over strings: 
   \begin{ocaml}
 val master : 
-  handle:(string * 'c -> string -> (string * 'c) list) -> 
+  (string * 'c -> string -> (string * 'c) list) -> 
   (string * 'c) list -> unit
 val worker : (string -> string) -> unit -> unit
   \end{ocaml}
@@ -262,8 +262,8 @@ function, as follows:
 module Derive
   (X : sig
      val compute : 
-       f:('a -> 'b) -> 
-       handle:('a * 'c -> 'b -> ('a * 'c) list) ->
+       worker:('a -> 'b) -> 
+       master:('a * 'c -> 'b -> ('a * 'c) list) ->
        ('a * 'c) list -> unit
    end) = struct ... end
 \end{ocaml}
@@ -275,14 +275,14 @@ Function \of{map} is easily implemented by associating an integer
 index with each element (of type \of{'a}) of the input list. Thus the
 list of tasks passed to \of{compute} is a list of pairs of type \of{'a * int}.
 As soon as an intermediate result is available, it is passed to
-\of{handle}, which stores it in a local table using the index as a key
+\of{master}, which stores it in a local table using the index as a key
 and generates no new task. Whenever \of{compute} returns, we easily
 recover the output list from the values stored in the table.
 
 \paragraph{\of{map_local_fold}.} 
 Function \of{map_local_fold} is implemented using a local reference
 storing the current accumulator (of type \of{'c}).
-As soon as an intermediate result is available, \of{handle} 
+As soon as an intermediate result is available, \of{master} 
 combines it with the accumulator using function \of{fold}. Whenever \of{compute}
 returns, we simply return the current accumulator.
 
@@ -293,7 +293,7 @@ Thus, when an intermediate \of{map} result is available, the
 accumulator may be already in use in a \of{fold} operation. Hence we
 need to store the intermediate \of{map} result in a local table, to be
 used as soon as the accumulator becomes available.
-The \of{handle} function distinguishes between \of{map} and \of{fold}
+The \of{master} function distinguishes between \of{map} and \of{fold}
 results and, accordingly, updates the table and the accumulator. For a
 \of{map} result, either we combine it with the accumulator in a new
 task or we simply store it in the local table. For a \of{fold} result,
@@ -306,7 +306,7 @@ we simply return it.
 Function \of{map_fold_ac} is easier than the previous one, since we do
 not need to store more than one intermediate result. Indeed, as soon
 as two intermediate results are available, we immediately combine them
-using a \of{fold} operation. Thus the \of{handle} function 
+using a \of{fold} operation. Thus the \of{master} function 
 either stores it or combines it, depending on the availability/non
 availability of the accumulator.
 Whenever \of{compute} returns, the accumulator must be available and
@@ -369,7 +369,7 @@ once completed, the sub-process marshals the result
 into a local file. The main process maintains a table
 mapping each sub-process ID to the input task and the local file
 name. It waits for any completed sub-process using \of{Unix.wait}
-and recovers the result from the local file. Then function \of{handle}
+and recovers the result from the local file. Then function \of{master}
 is applied, which may generate new tasks.
 The main loop can be depicted in the following way:
 \begin{flushleft}
@@ -377,7 +377,7 @@ The main loop can be depicted in the following way:
   \quad  \quad \textbf{while} pending tasks $\land$ idle cores \\
   \quad  \quad \quad create new sub-process for some task \\
   \quad  \quad \textbf{wait} for any completed sub-process \\
-  \quad  \quad \quad push new tasks generated by handle \\
+  \quad  \quad \quad push new tasks generated by \of{master} \\
 \end{flushleft}
 
 It would be more efficient to use \unix\ pipes instead of local files
@@ -497,9 +497,9 @@ strings over the network, as evident from \of{Assign} and
 \of{Completed} messages in the protocol section~\ref{sec:protocol}.
 Therefore, the signature for the generic implementation is as follows:
 \begin{ocaml}
-  generic_compute:
+  generic_master:
     assign_job:('a -> string * string) ->
-    handle:('a * 'c -> string -> ('a * 'c) list)  ->
+    master:('a * 'c -> string -> ('a * 'c) list)  ->
     ('a * 'c) list -> unit
 \end{ocaml}
 The first argument \of{assign_job} is a function indicating 
@@ -544,4 +544,4 @@ Acknowledgments, if needed.
 
 \end{document}
 
-% LocalWords:  parallelize functor parameterized indices endianness
+% LocalWords:  parallelize functor parameterized indices endianness monomorphic

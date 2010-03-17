@@ -73,8 +73,8 @@ let run
   done;
   assert (Stack.is_empty todo && !towait = 0)
 
-(* the generic master *)
-let master ~(f : 'a -> 'b) ~(handle : ('a * 'c) -> 'b -> ('a * 'c) list) tasks =
+let compute 
+    ~(worker : 'a -> 'b) ~(master : ('a * 'c) -> 'b -> ('a * 'c) list) tasks =
   let jobs = Hashtbl.create 17 in (* PID -> job *)
   let rec wait () = 
     match Unix.wait () with
@@ -87,7 +87,7 @@ let master ~(f : 'a -> 'b) ~(handle : ('a * 'c) -> 'b -> ('a * 'c) list) tasks =
           let r : 'b = input_value c in
           close_in c;
           Sys.remove j.file;
-          let l = handle j.task r in j.worker, l
+          let l = master j.task r in j.worker, l
         with Not_found -> 
           (* If the pid is unknown to us, it's probably a process created
 	     by one of the workers. In this case, simply continue to wait. *)
@@ -99,13 +99,13 @@ let master ~(f : 'a -> 'b) ~(handle : ('a * 'c) -> 'b -> ('a * 'c) list) tasks =
   in
   run
     ~create_job:(fun w t ->
-		   let j = create_worker w f t in
+		   let j = create_worker w worker t in
 		   dprintf "master: started worker %d (PID %d)@." w j.pid;
 		   Hashtbl.add jobs j.pid j)
     ~wait (workers ()) tasks
 
 
-include Map_fold.Make(struct let master = master end)
+include Map_fold.Make(struct let compute = compute end)
 
 (*******
 

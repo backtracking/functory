@@ -19,6 +19,9 @@ open Control
 
 let () = set_debug true
 
+let is_worker = 
+  try ignore (Sys.getenv "WORKER"); true with Not_found -> false 
+
 let encode_string_pair (s1, s2) =
   let buf = Buffer.create 1024 in
   Binary.buf_string buf s1;
@@ -138,18 +141,6 @@ module Worker = struct
   (* sockets are allocated lazily; this table maps port numbers to sockets *)
   let sockets = Hashtbl.create 17
 
-(*   let () =  *)
-(*     at_exit  *)
-(*       (fun () -> *)
-(* 	 Hashtbl.iter *)
-(* 	   (fun _ s ->  *)
-(* 	      begin try  *)
-(* 		shutdown s SHUTDOWN_ALL *)
-(* 	      with e ->  *)
-(* 		eprintf "cannot shutdown socket: %s@." (Printexc.to_string e)  *)
-(* 	      end) *)
-(* 	   sockets) *)
-      
   let get_socket port =
     try
       Hashtbl.find sockets port
@@ -273,6 +264,15 @@ end
 
 let workers = ref []
 
+let () =
+  at_exit 
+    (fun () ->
+       if not is_worker then
+	 let shutdown_worker w = Unix.shutdown w.fdin Unix.SHUTDOWN_SEND in
+	 List.iter 
+	   (fun w -> if w.state <> Disconnected then shutdown_worker w)
+	   !workers)
+
 let create_sock_addr name port =
   let addr = 
     try  
@@ -327,7 +327,7 @@ let job_id = let r = ref 0 in fun () -> incr r; !r
 
 let main_master 
     ~(assign_job : 'a -> string * string)
-    ~(handle : 'a * 'c -> string -> ('a * 'c) list) 
+    ~(master : 'a * 'c -> string -> ('a * 'c) list) 
     (tasks : ('a * 'c) list)
     =
   (* the tasks still to be done *)
@@ -416,7 +416,7 @@ let main_master
 	  if not t.task_done then begin
 	    t.task_done <- true;
 	    kill_jobs id t.task_workers;
-	    List.iter push_new_task (handle t.task r)
+	    List.iter push_new_task (master t.task r)
 	  end 
       | Protocol.Worker.Aborted id ->
 	  increase_idle_cores w;
@@ -507,17 +507,14 @@ let main_master
   assert (Queue.is_empty todo && Hashtbl.length running_tasks = 0);
   ()
 
-let is_worker = 
-  try ignore (Sys.getenv "WORKER"); true with Not_found -> false 
-
 type worker_type = ?stop:bool -> ?port:int -> unit -> unit
 
 module Mono = struct
 
   module Master = struct
 
-    let master ~handle tl =
-      main_master ~assign_job:(fun x -> "f", x) ~handle tl
+    let compute ~master tl =
+      main_master ~assign_job:(fun x -> "f", x) ~master tl
 	
   end
 
@@ -532,15 +529,15 @@ module Poly = struct
 
   module Master = struct
 
-    let master ~handle tl =
+    let compute ~master tl =
       main_master 
 	~assign_job:(fun x -> "f", Marshal.to_string x []) 
-	~handle:(fun t s -> let r = Marshal.from_string s 0 in handle t r)
+	~master:(fun t s -> let r = Marshal.from_string s 0 in master t r)
 	tl
 	
     include Map_fold.Make
 	(struct
-	   let master ~f = master
+	   let compute ~worker = compute
 	 end)
     let map l = 
       map ~f:(fun _ -> assert false) l
@@ -584,31 +581,35 @@ end
 
 module Same = struct
 
-  let worker ?stop ?port () =
-    let compute f x = 
-      let f = (Marshal.from_string f 0 : 'a -> 'b) in
-      let x = (Marshal.from_string x 0 : 'a) in
-      Marshal.to_string (f x) []
-    in
-    ignore (Worker.compute compute ?stop ?port ())
+  module Worker = struct 
+
+    let compute ?stop ?port () =
+      let compute f x = 
+	let f = (Marshal.from_string f 0 : 'a -> 'b) in
+	let x = (Marshal.from_string x 0 : 'a) in
+	Marshal.to_string (f x) []
+      in
+      ignore (Worker.compute compute ?stop ?port ())
+
+  end
 
   let () = 
     if is_worker then begin
       dprintf "starting worker loop...@.";
-      worker ~stop:false ()
+      Worker.compute ~stop:false ()
     end
       
-  let master  
-      ~(f : 'a -> 'b) 
-      ~(handle : 'a * 'c -> 'b -> ('a * 'c) list) 
+  let compute
+      ~(worker : 'a -> 'b) 
+      ~(master : 'a * 'c -> 'b -> ('a * 'c) list) 
       tasks
   =
-    let f_closure = Marshal.to_string f [Marshal.Closures] in
-    let assign_job x = f_closure, Marshal.to_string x [] in
-    let handle ac r = handle ac (Marshal.from_string r 0) in
-    main_master ~assign_job ~handle tasks
+    let worker_closure = Marshal.to_string worker [Marshal.Closures] in
+    let assign_job x = worker_closure, Marshal.to_string x [] in
+    let master ac r = master ac (Marshal.from_string r 0) in
+    main_master ~assign_job ~master tasks
       
-  include Map_fold.Make(struct let master = master end)
+  include Map_fold.Make(struct let compute = compute end)
 
  end
 

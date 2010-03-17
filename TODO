@@ -1,4 +1,6 @@
 
+- check consistency of executables (md5 checksum)
+
 - acknowledgment for killed message: use Aborted for that purpose
 
 - minimal API (map, fold, etc.)

@@ -12,9 +12,9 @@ let map_fold_wrapper2 map fold = function
 
 module Make
   (X : sig
-     val master : 
-       f:('a -> 'b) -> 
-       handle:('a * 'c -> 'b -> ('a * 'c) list) ->
+     val compute : 
+       worker:('a -> 'b) -> 
+       master:('a * 'c -> 'b -> ('a * 'c) list) ->
        ('a * 'c) list ->
        unit
    end) :
@@ -39,26 +39,26 @@ end = struct
   let map ~f l =
     let tasks = let i = ref 0 in List.map (fun x -> incr i; x, !i) l in
     let results = Hashtbl.create 17 in (* index -> 'b *)
-    X.master 
-      ~f
-      ~handle:(fun (_,i) r -> Hashtbl.add results i r; [])
+    X.compute
+      ~worker:f
+      ~master:(fun (_,i) r -> Hashtbl.add results i r; [])
       tasks;
     List.map (fun (_,i) -> Hashtbl.find results i) tasks
 
   let map_local_fold ~(map : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
     let acc = ref acc in
-    X.master 
-      ~f:map
-      ~handle:(fun _ r -> acc := fold !acc r; [])
+    X.compute
+      ~worker:map
+      ~master:(fun _ r -> acc := fold !acc r; [])
       (List.map (fun x -> x, ()) l);
     !acc 
 
   let map_remote_fold  ~(map : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
     let acc = ref (Some acc) in
     let pending = Stack.create () in
-    X.master 
-      ~f:(map_fold_wrapper map fold)
-      ~handle:(fun _ r -> match r with
+    X.compute
+      ~worker:(map_fold_wrapper map fold)
+      ~master:(fun _ r -> match r with
 		 | Map r -> begin match !acc with
 		     | None -> Stack.push r pending; []
 		     | Some v -> acc := None; [Fold (v, r), ()]
@@ -79,9 +79,9 @@ end = struct
 
   let map_fold_ac ~(map : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l =
     let acc = ref (Some acc) in
-    X.master 
-      ~f:(map_fold_wrapper2 map fold)
-      ~handle:(fun _ r -> 
+    X.compute
+      ~worker:(map_fold_wrapper2 map fold)
+      ~master:(fun _ r -> 
 		 match !acc with
 		 | None -> 
 		     acc := Some r; []
@@ -121,9 +121,9 @@ end = struct
 	[]
       end
     in
-    X.master 
-      ~f:(map_fold_wrapper2 map fold)
-      ~handle:(fun x r -> match x with
+    X.compute 
+      ~worker:(map_fold_wrapper2 map fold)
+      ~master:(fun x r -> match x with
 		 | Map _, (i, _) -> merge i i r
 		 | Fold _, (i, j) -> merge i j r)
       tasks;

@@ -9,6 +9,7 @@ let kind = ref Poly
 let test = ref ""
 let local = ref false
 let stop = ref false
+let port = ref 51004
 
 let () = Arg.parse
   ["-w", Arg.Set worker, "runs as a worker";
@@ -18,11 +19,13 @@ let () = Arg.parse
    "-test", Arg.Set_string test, "<int> ";
    "-local", Arg.Set local, "use a worker on localhost";
    "-stop", Arg.Set stop, "stop the worker";
+   "-port", Arg.Set_int port, "<int> set the port number";
   ]
   (fun _ -> ())
   "usage: "
 
 let stop = !stop
+let () = Mapreduce.Control.set_default_port_number !port
 
 let () = 
   if not !worker then begin
@@ -46,8 +49,8 @@ let () = match !kind with
 	Mono.Worker.compute double_string ()
       end else begin
 	let s = ref 0 in
-	Mono.Master.master 
-	  ~handle:(fun _ r -> s := !s + int_of_string r; []) 
+	Mono.Master.compute
+	  ~master:(fun _ r -> s := !s + int_of_string r; []) 
 	  (List.map (fun x -> x,()) ["1";"2";"3"]);
 	printf "%d@." !s;
 	assert (!s = 12)
@@ -74,8 +77,8 @@ let () = match !kind with
 	match !test with
 	  | "" ->
 	      let s = ref 0 in
-	      Poly.Master.master
-		~handle:(fun _ r -> s := !s + r; [])
+	      Poly.Master.compute
+		~master:(fun _ r -> s := !s + r; [])
 		(List.map (fun x -> x,()) [1;2;3]);
 	      printf "%d@." !s;
 	      assert (!s = 12)
@@ -95,14 +98,14 @@ let () = match !kind with
   | Same -> 
       if !worker then begin
 	printf "I'm a same worker...@.";
-	Same.worker ()
+	Same.Worker.compute ()
       end else begin
 	match !test with
 	  | "" ->
 	      let s = ref 0 in
-	      Same.master
-		~f:double
-		~handle:(fun _ r -> s := !s + r; [])
+	      Same.compute
+		~worker:double
+		~master:(fun _ r -> s := !s + r; [])
 		(List.map (fun x -> x,()) [1;2;3]);
 	      printf "%d@." !s;
 	      assert (!s = 12)

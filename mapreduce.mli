@@ -43,9 +43,9 @@ module Sequential : sig
 	  assuming [fold] is an associative
 	  operation with neutral element [acc] *)
 
-  val master : 
-    f:('a -> 'b) -> 
-    handle:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
+  val compute : 
+    worker:('a -> 'b) -> 
+    master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
       (** [master f handle l] applies function [f] to each first-component
 	  of elements in [l]; for each such computation, both the list element
 	  and the result are passed to [handle], which returns a list of 
@@ -82,9 +82,9 @@ module Cores : sig
   val map_fold_a :
     map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 
-  val master : 
-    f:('a -> 'b) -> 
-    handle:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
+  val compute : 
+    worker:('a -> 'b) -> 
+    master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
 
 (*   val map_reduce : *)
 (*     map:('v1 -> ('k2 * 'v2) list) -> *)
@@ -145,11 +145,13 @@ module Network : sig
     val map_fold_a :
       map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
       
-    val master : 
-      f:('a -> 'b) -> 
-      handle:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
+    val compute : 
+      worker:('a -> 'b) -> 
+      master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
       
-    val worker : worker_type
+    module Worker : sig
+      val compute : worker_type
+    end
 
   end
 
@@ -166,8 +168,8 @@ module Network : sig
   module Poly : sig
 
     module Master : sig
-      val master : 
-	handle:('a * 'c -> 'b -> ('a * 'c) list) -> 
+      val compute : 
+	master:('a * 'c -> 'b -> ('a * 'c) list) -> 
 	('a * 'c) list -> unit
 
       val map : 'a list -> 'b list
@@ -205,8 +207,8 @@ module Network : sig
   module Mono : sig
 
     module Master : sig
-      val master : 
-	handle:(string * 'c -> string -> (string * 'c) list) -> 
+      val compute : 
+	master:(string * 'c -> string -> (string * 'c) list) -> 
 	(string * 'c) list -> unit
     end
 
