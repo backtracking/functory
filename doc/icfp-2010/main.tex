@@ -75,33 +75,48 @@ of a few powerful multi-core machines (typically 8 to 16 cores) and
 several desktop PCs (typically dual-core). However, for our
 application needs, there is no library that helps in exploiting such a
 computing infrastructure in our favorite functional programming
-language. Hence we designed and implemented such a
+language. 
+Hence we designed and implemented such a
 library\footnote{This library is implemented in \Ocaml, but the
   implementation should be straightforward in any functional
   programming language.}, which is the subject of this paper.
 
-The distributing computing library presented in this paper, is not a
+
+
+The distributing computing library presented in this paper is not a
 library that helps in parallelizing computations. Rather, it provides
 facilities for reliable, distributed execution of parallelizable
 computations. In particular, it provides a set of APIs that allows
 execution of large-scale parallelizable computations, very relevant to
-our application needs, (and presumably relevant to a variety of
-real-world applications) over multiple cores in the same machine or
-over a network of machines. It relieves the user from implementing
-details of fault-tolerance, task distribution and parallelization. The
-most striking feature of the library is its generality. The user needs
-to change no more than a couple of lines in his code when he moves his
-large-scale computation from a multi-core machine to a network of
-machines. Further, the library provides exciting flexibilities as it
-supports polymorphic functions, and rich features such as
-fault-tolerance that become a cause for concern in any distributed
-programming environment. It is worth noting that the library is not
+our application needs (and presumably relevant to a variety of
+real-world applications), over multiple cores in the same machine or
+over a network of machines. The most important features of our library
+are the following:
+\begin{itemize}
+\item \emph{genericity}: 
+  it allows various patterns of polymorphic computations;
+\item \emph{simplicity}: 
+  switching between multiple cores and a network of
+  machine is as simple as changing a couple of lines of code;
+\item \emph{task distribution and fault-tolerance}: 
+  it relieves the user from implementing task distribution routines
+  and reliable fault-tolerance mechanism.
+\end{itemize}
+It is worth noting that the library is not
 targeted at applications running on server farms, crunching enormous
 amounts of data. Neither it is limited to research labs possessing a
 few number of powerful computing infrastructure. It serves a variety
 of users and a wide spectrum of needs, from desktop PCs to network of
-machines, and hence we find title \emph{Distributed Computing for the
-  Common Man}, apt and appropriate.
+machines, and hence the title.
+
+
+The application domain of such a distributed computing library is
+manyfold.  The most striking application, as also relevant to our
+research endeavours, is in validating thousands of verification
+conditions using automated theorem provers. Having noted this, it
+should be apparent that the library finds use in efficient execution
+of any large-scale expensive computation, that is parallelizable.
+
 
 % what it is and what it is not
 % \begin{itemize}
@@ -127,20 +142,21 @@ machines, and hence we find title \emph{Distributed Computing for the
 % \item several machines, small or large in number, over a network
 % \end{itemize}
 
-\emph{Distributed Computing:} 
-A typical distributed computing library, in its minimal implementation
-should provide the following:
+\paragraph{Distributed Computing.}
+A typical distributed computing library
+provides the following (borrowing some terminology from Google's
+Mapreduce~\cite{mapreduce}):
 \begin{itemize}
-\item A notion of a \of{task} which denotes the computation to be
-  performed in a distributed manner
-\item A set of machines or programs called \of{workers} that perform
-  the tasks, producing results
-\item A machine or a program called a \of{master} that is incharge
+\item A notion of a \emph{task} which denotes the atomic computation to be
+  performed in a distributed manner;
+\item A set of machines or programs called \emph{workers} that perform
+  the tasks, producing results;
+\item A single program called a \emph{master} that is in charge
   of distributing the tasks among the workers and managing results
-  produced by the workers
+  produced by the workers.
 \end{itemize}
 In addition to the above, distributed computing environments also
-implement mechanisms for fault-tolerance and efficient storage and
+implement mechanisms for fault-tolerance, efficient storage and
 distribution of tasks. This is required to handle network failures
 that may occur, as well as to optimize the usage of machines in the
 network. Another concern of importance is the transmission of messages
@@ -148,33 +164,43 @@ over the network. This requires efficient serialization (or
 marshalling) of data that can be reliably reconstructed when
 transmitted over different computing environments.  It is desirable to
 maintain architecture independence while transmitting marshalled data,
-as machines in a distributed computing environment more often run on
+as machines in a distributed computing environment often run on
 different hardware architectures and make use of varying software
-platforms. For example, a computer running on a hardware architecture
-should be able to reliably reconstruct the data irrespective of
-endianness. We carefully exploit the marshalling provided by \Ocaml\,
-in particular the restrictions involved in marshalling functions, in
-order to achieve maximally reliable transmission of messages over a
-network.
+platforms. For example, endianness may be different across machines on
+the network.
 
-The application domain of such a distributed computing library is
-manyfold.  The most striking application, as also relevant to our
-research endeavours, is in validating thousands of verification
-conditions using automated theorem provers. Having noted this, it
-should be apparent that the library finds use in efficient execution
-of any large-scale expensive computation, that is parallelizable.
+\paragraph{A Functional Programming Approach.}
+Our work was initially inspired by Google's
+Mapreduce\footnote{Ironically, Google's approach itself was inspired
+  by functional programming primitives.}. However, our functional
+programming environment allows us to be more generic. 
+The main idea behind our approach is that
+workers may implement any polymorphic function
+\begin{ocaml}
+  worker: 'a -> 'b
+\end{ocaml}
+where \of{'a} denotes the type of tasks and \of{'b} the type of results.
+Then the master is given a list of initial tasks, together with a
+function to handle the results:
+\begin{ocaml}
+  master: ('a -> 'b -> 'a list) -> 'a list -> unit
+\end{ocaml}
+The function passed to the master is applied whenever a result is
+available and may in turn generate new tasks (hence the return type
+\of{'a list}).  The master is executed as long as there are incomplete
+tasks.
 
-A couple of caveats are in order. (1) We do not focus on issues like
-data-locality or distributed file system like Google's, rather we
-assume a \unix\ Network File System (NFS). (2) Our focus is not
-exactly on Google's Mapreduce paradigm~\cite{mapreduce} that works on
-association lists, but we also provide an API similar to Google's that
-works on association lists, just for satisfying popular interest.
+Our library makes use of \Ocaml's marshaling capabilities, as much as
+possible. Whenever master and worker executables are exactly the same,
+we can marshal polymorphic values and closures. However, it is not
+always possible to have master and workers running the same
+executable. In that case, we cannot marshal closures anymore but we
+can still marshal polymorphic values as long as the same version of
+\Ocaml\ is used to compile master and workers. When different versions
+of \Ocaml\ are used, we can no longer marshal values but we can still
+transmit strings between master and workers. Our library adapts to all
+these situations, by providing several APIs.
 
-Google's approach was also one of our inspirations to design and
-implement a generic distributed computing library for functional
-programming. Ironically, Google's approach itself was inspired by
-functional programming primitives.
 
 The paper is organized as follows. In Section~\ref{sec:API}, we
 describe the main idea behind the generic API, and introduce
@@ -183,42 +209,33 @@ derive more interesting functions from the generic
 API. Section~\ref{sec:implem} delves into the implementation details
 of our library, while Section~\ref{sec:experiments} illustrates the
 potential of the presented library through experimental evaluation. We
-draw some conclusions in Section~\ref{sec:future} and outline our
-future work.
-
-% master and worker terminology introduced here
-% a few technical details about marshaling should be explained
+compare our approach with relevant related work in
+Section~\ref{sec:future} and outline our future work.
 
 \section{API}\label{sec:API}
 
-The main idea is to start with a generic function, with the
-following interface: 
-% TODO: rename this function?
+The main function in our API follows the idea sketched in the
+introduction. It has the following signature:
 \begin{ocaml}
   val compute : 
     worker:('a -> 'b) -> 
     master:('a * 'c -> 'b -> ('a * 'c) list) -> 
     ('a * 'c) list -> unit
 \end{ocaml}
-% TODO be even more explicit about the introduction of the word `task'
-This function takes two functions, \ocaml{worker} and \ocaml{master}, and a
-list of \emph{tasks} of type \ocaml{('a * 'c) list}.
-The function \ocaml{worker} is applied to the first component for each task.
-Whenever it completes, the task and the result are passed to the
-function \ocaml{master}. This may possibly generate a new list of
-tasks. The process ends when all computations are done.
-
+Tasks are pairs, of type \of{'a * 'c}, where the first component is
+passed to the worker and the second component is local to the master.
 Function \ocaml{worker} should be pure and is executed in parallel.
 Function \ocaml{master}, on the contrary, can be impure and is never
-executed in parallel with other \ocaml{master}s. Typically,
-\ocaml{master} stores and processes information locally.
+executed in parallel with other \ocaml{master}s. Function
+\ocaml{master} always processes information locally, typically storing
+it to internal data structures.
 The next section will describe the usage of this generic interface to
 perform traditional map and fold operations.
 
-Actually, our library provides more than just a single \ocaml{compute}
-function as above, but instead provides five different versions
-depending on the execution context. The five possible contexts are the
-following: 
+Actually, our library provides not just a single \ocaml{compute}
+function as above, but instead five different versions
+depending on the execution context. 
+The five possible contexts are the following: 
 \begin{enumerate}
 \item \textbf{purely sequential execution:}
   this is intended for validating the results;
@@ -233,30 +250,30 @@ following:
 
 \item \textbf{master and workers are different programs, compiled with
     the same version of \Ocaml:} 
-  in this case, we can no longer marshal closures but we can still
+  we can no longer marshal closures but we can still
   marshal polymorphic values. As a consequence, 
   the \ocaml{compute} function is split into two
-  polymorphic functions, to implement the master and workers respectively:
-  \begin{ocaml}
+  polymorphic functions, to implement the master and workers 
+  respectively:%
+\begin{ocaml}
 val master : 
   ('a * 'c -> 'b -> ('a * 'c) list) -> 
   ('a * 'c) list -> unit
 val worker : ('a -> 'b) -> unit -> unit
-  \end{ocaml}
-
+\end{ocaml}
 \item \textbf{master and workers are different programs, not even
-    compiled with the same version of \Ocaml:} in this case, we can no
+    compiled with the same version of \Ocaml:} we can no
   longer use marshaling, so the
   \ocaml{compute} function is split into two monomorphic functions
-  over strings: 
-  \begin{ocaml}
+  over strings:%
+\begin{ocaml}
 val master : 
   (string * 'c -> string -> (string * 'c) list) -> 
   (string * 'c) list -> unit
 val worker : (string -> string) -> unit -> unit
-  \end{ocaml}
+\end{ocaml}
   Note that the second component of each task is still polymorphic (of
-  type \ocaml{'c} here).
+  type \ocaml{'c} here), since it is local to the master.
 \end{enumerate}
 
 Our library is organized into three modules: \of{Sequential} for the
@@ -278,14 +295,16 @@ being given above):
     & & & \ocaml{worker}  & \ocaml{worker} \\\hline
   \end{tabular}
 \end{center}
+The following section introduces other interesting APIs that can be
+derived from this generic API.
 
 \section{Derived API}\label{sec:derived}
 
 In most cases, the easiest way to parallelize execution it to make use
 of map and fold operations over lists, where processing of the list
-elements are done in parallel.  Using the generic API described in the
-previous section to do that is not very convenient.
-Hence we provide the most commonly used list operations in our API.
+elements are done in parallel.  To facilitate such a processing, we
+now derive the most commonly used list operations from our generic
+API.
 
 The most obvious operation is the traditional map operation over
 lists, that is:
@@ -305,7 +324,6 @@ which, given two functions, an accumulator \of{a} and a list \of{l}, computes
   ... (\of{map} ~ x_n)
 \end{equation}
 for some permutation $[x_1,x_2,...,x_n]$ of the list \of{l}.
-
 We assume that the \of{map} operations are always performed in parallel.
 Regarding \of{fold} operations, we distinguish two cases:
 \begin{itemize}
@@ -618,6 +636,13 @@ n-queens, SMT solvers, etc.
 
 \section{Future Work}\label{sec:future}
 
+A couple of caveats are in order. (1) We do not focus on issues like
+data-locality or distributed file system like Google's, rather we
+assume a \unix\ Network File System (NFS). (2) Our focus is not
+exactly on Google's Mapreduce paradigm~\cite{mapreduce} that works on
+association lists, but we also provide an API similar to Google's that
+works on association lists, just for satisfying popular interest.
+
 data locality: scheduling supplied by the user
 
 speeding up the end of computation with duplicate tasks on idle workers
@@ -641,3 +666,4 @@ Acknowledgments, if needed.
 \end{document}
 
 % LocalWords:  parallelize functor parameterized indices endianness monomorphic
+% LocalWords:  genericity executables
