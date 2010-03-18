@@ -17,7 +17,7 @@ open Format
 open Unix
 open Control
 
-let () = set_debug true
+(* let () = set_debug true *)
 
 let is_worker = 
   try ignore (Sys.getenv "WORKER"); true with Not_found -> false 

@@ -24,10 +24,11 @@ open Format
 
 let () = Mapreduce.Control.set_debug true
 open Mapreduce
-let () = Network.declare_workers ~n:12 "moloch"
+let () = Network.declare_workers ~n:14 "moloch"
 let () = Network.declare_workers ~n:1 "localhost"
-let () = Network.declare_workers ~n:4 "orcus"
-let () = Network.declare_workers ~n:2 "129.175.4.126"
+let () = Network.declare_workers ~n:2 "orcus"
+(* let () = Network.declare_workers ~n:2 "129.175.4.126" *)
+let () = Network.declare_workers ~n:8 "belzebuth"
 
 let rec t a b c count =
   if a > 0 then
@@ -96,11 +97,11 @@ End:
    17 3         --- network >> computation
 
    18 1         1m22.263s
-   18 2         1m12.856s
+   18 2         1m12.856s                      1m1
    18 3         --- network >> computation
 
    19 1   19   10m45.990s
-   19 2  306    9m 9.724s
+   19 2  306    9m 9.724s                     7m29.977s
    19 3 4144   10m11.596s
 
    20 2  342   71m30.663s
