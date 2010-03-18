@@ -25,7 +25,7 @@
 % 11pt          To set in 11-point type instead of 9-point.
 % authoryear    To obtain author/year citation style instead of numeric.
 
-\usepackage{amsmath,graphicx,color}
+\usepackage{amsmath,graphicx, color}
 
 \newcommand{\Ocaml}{OCaml}
 \newcommand{\unix}{\textsc{Unix}}
@@ -42,13 +42,12 @@
 \title{Experience Report: Distributed Computing for the Common Man}
 %\subtitle{Subtitle Text, if any}
 
-\authorinfo{Jean-Christophe Filli\^atre}
-           {CNRS, LRI, Univ Paris-Sud, Orsay F-91405\\
-           INRIA Saclay - \^Ile-de-France, ProVal, Orsay, F-91893}
-           {filliatr@lri.fr}
-\authorinfo{Kalyan Krishnamani}
-           {INRIA Saclay - \^Ile-de-France, ProVal, Orsay, F-91893}
-           {kalyan@lri.fr}
+\authorinfo{Name1}
+           {Affiliation1}
+           {Email1}
+\authorinfo{Name2\and Name3}
+           {Affiliation2/3}
+           {Email2/3}
 
 \maketitle
 
@@ -66,47 +65,129 @@ keyword1, keyword2
 
 \section{Introduction}
 
-This paper introduces a generic distributed computing library.
-It was initially motivated by computing needs that exist in our own
+This paper introduces a generic distributed computing library. This
+work was initially motivated by computing needs that exist in our own
 research team. Our applications include large-scale deductive program
-verification, which amounts to check the validity of a huge number of
-logical formulas using a variety of automated theorem
+verification, which amounts to checking the validity of a large number
+of logical formulas using a variety of automated theorem
 provers~\cite{filliatre07cav}. Our computing infrastructure consists
 of a few powerful multi-core machines (typically 8 to 16 cores) and
-several desktop PCs (typically dual-core). However, there is no
-library that helps in exploiting such a computing infrastructure in
-our favorite functional programming language. Hence we designed and
-implemented such a library\footnote{This library is implemented in
-  \Ocaml, but the implementation should be straightforward in any
-  functional programming language.}, which is the subject of this paper.
+several desktop PCs (typically dual-core). However, for our
+application needs, there is no library that helps in exploiting such a
+computing infrastructure in our favorite functional programming
+language. Hence we designed and implemented such a
+library\footnote{This library is implemented in \Ocaml, but the
+  implementation should be straightforward in any functional
+  programming language.}, which is the subject of this paper.
 
-what it is and what it is not
+The distributing computing library presented in this paper, is not a
+library that helps in parallelizing computations. Rather, it provides
+facilities for reliable, distributed execution of parallelizable
+computations. In particular, it provides a set of APIs that allows
+execution of large-scale parallelizable computations, very relevant to
+our application needs, (and presumably relevant to a variety of
+real-world applications) over multiple cores in the same machine or
+over a network of machines. It relieves the user from implementing
+details of fault-tolerance, task distribution and parallelization. The
+most striking feature of the library is its generality. The user needs
+to change no more than a couple of lines in his code when he moves his
+large-scale computation from a multi-core machine to a network of
+machines. Further, the library provides exciting flexibilities as it
+supports polymorphic functions, and rich features such as
+fault-tolerance that become a cause for concern in any distributed
+programming environment. It is worth noting that the library is not
+targeted at applications running on server farms, crunching enormous
+amounts of data. Neither it is limited to research labs possessing a
+few number of powerful computing infrastructure. It serves a variety
+of users and a wide spectrum of needs, from desktop PCs to network of
+machines, and hence we find title \emph{Distributed Computing for the
+  Common Man}, apt and appropriate.
+
+% what it is and what it is not
+% \begin{itemize}
+% \item it is not a library which does parallelization
+% \item it is a library for reliable distributed execution of
+%   parallelizable computation 
+% \end{itemize}
+
+% inspired by Google's MapReduce~\cite{mapreduce} (itself inspired by functional
+% programming, ironically) ;  however, there are differences:
+% \begin{itemize}
+% \item polymorphic, higher-order API
+% \item more generic (cores/network)
+% \item does not focus on association lists
+% \item we don't have data locality (future work)
+% \end{itemize}
+
+% what is the target audience/applications: 
+% for instance, use if automatic provers on thousands of verification
+% conditions, on computing infrastructures which can be
+% \begin{itemize}
+% \item a single machine with multiple cores, possibly remote
+% \item several machines, small or large in number, over a network
+% \end{itemize}
+
+\emph{Distributed Computing:} 
+A typical distributed computing library, in its minimal implementation
+should provide the following:
 \begin{itemize}
-\item it is not a library which does parallelization
-\item it is a library for reliable distributed execution of
-  parallelizable computation 
+\item A notion of a \of{task} which denotes the computation to be
+  performed in a distributed manner
+\item A set of machines or programs called \of{workers} that perform
+  the tasks, producing results
+\item A machine or a program called a \of{master} that is incharge
+  of distributing the tasks among the workers and managing results
+  produced by the workers
 \end{itemize}
+In addition to the above, distributed computing environments also
+implement mechanisms for fault-tolerance and efficient storage and
+distribution of tasks. This is required to handle network failures
+that may occur, as well as to optimize the usage of machines in the
+network. Another concern of importance is the transmission of messages
+over the network. This requires efficient serialization (or
+marshalling) of data that can be reliably reconstructed when
+transmitted over different computing environments.  It is desirable to
+maintain architecture independence while transmitting marshalled data,
+as machines in a distributed computing environment more often run on
+different hardware architectures and make use of varying software
+platforms. For example, a computer running on a hardware architecture
+should be able to reliably reconstruct the data irrespective of
+endianness. We carefully exploit the marshalling provided by \Ocaml\,
+in particular the restrictions involved in marshalling functions, in
+order to achieve maximally reliable transmission of messages over a
+network.
 
-inspired by Google's MapReduce~\cite{mapreduce} (itself inspired by functional
-programming, ironically) ;  however, there are differences:
-\begin{itemize}
-\item polymorphic, higher-order API
-\item more generic (cores/network)
-\item does not focus on association lists
-\item we don't have data locality (future work)
-\end{itemize}
+The application domain of such a distributed computing library is
+manyfold.  The most striking application, as also relevant to our
+research endeavours, is in validating thousands of verification
+conditions using automated theorem provers. Having noted this, it
+should be apparent that the library finds use in efficient execution
+of any large-scale expensive computation, that is parallelizable.
 
-what is the target audience/applications: 
-for instance, use if automatic provers on thousands of verification
-conditions, on computing infrastructures which can be
-\begin{itemize}
-\item a single machine with multiple cores, possibly remote
-\item several machines, small or large in number, over a network
-\end{itemize}
+A couple of caveats are in order. (1) We do not focus on issues like
+data-locality or distributed file system like Google's, rather we
+assume a \unix\ Network File System (NFS). (2) Our focus is not
+exactly on Google's Mapreduce paradigm~\cite{mapreduce} that works on
+association lists, but we also provide an API similar to Google's that
+works on association lists, just for satisfying popular interest.
 
-master and worker terminology introduced here
+Google's approach was also one of our inspirations to design and
+implement a generic distributed computing library for functional
+programming. Ironically, Google's approach itself was inspired by
+functional programming primitives.
 
-a few technical details about marshaling should be explained
+The paper is organized as follows. In Section~\ref{sec:API}, we
+describe the main idea behind the generic API, and introduce
+\of{master} and \of{worker} programs. In Section~\ref{sec:derived}, we
+derive more interesting functions from the generic
+API. Section~\ref{sec:implem} delves into the implementation details
+of our library, while Section~\ref{sec:experiments} illustrates the
+potential of the presented library through experimental evaluation. We
+draw some conclusions in Section~\ref{sec:future} and outline our
+future work.
+
+% master and worker terminology introduced here
+% a few technical details about marshaling should be explained
 
 \section{API}\label{sec:API}
 
@@ -490,8 +571,6 @@ respectively. There are four possible statuses for a worker:
 % TODO picture
 Whenever we receive a message from a worker, its status changes to
 \of{alive} and its timeout value is reset.
-
-\includegraphics{state.mps}
 
 Fault tolerance is achieved by exploiting the statues of workers as
 follows. First, tasks are only assigned to workers with either
