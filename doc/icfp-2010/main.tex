@@ -590,6 +590,9 @@ respectively. There are four possible statuses for a worker:
 % TODO picture
 Whenever we receive a message from a worker, its status changes to
 \of{alive} and its timeout value is reset.
+\begin{center}
+  \includegraphics{state.mps}
+\end{center}
 
 Fault tolerance is achieved by exploiting the statues of workers as
 follows. First, tasks are only assigned to workers with either
