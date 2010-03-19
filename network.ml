@@ -69,6 +69,7 @@ module Worker = struct
 	      let fin, fout = pipe () in
 	      begin match fork () with
 		| 0 -> 
+		    (* FIXME: catch exceptions here *)
 		    close fin;
 		    (* perform computation *)
 		    dprintf "  id %d: computation is running...@." id;
