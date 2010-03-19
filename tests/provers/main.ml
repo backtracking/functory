@@ -25,7 +25,7 @@ open Mapreduce
 let () = Network.declare_workers ~n:1 "localhost"
 let () = Network.declare_workers ~n:12 "moloch"
 (* let () = Network.declare_workers ~n:4 "orcus" *)
-let () = Network.declare_workers ~n:4 "belzebuth"
+let () = Network.declare_workers ~n:8 "belzebuth"
 
 let directories = ref []
 let add_directory d = directories := d :: !directories
@@ -76,7 +76,7 @@ let () =
 let tasks =
   List.fold_left
     (fun acc f ->
-       List.fold_left (fun acc p -> ((f, p), ()) :: acc) acc !provers)
+       List.fold_left (fun acc p -> ((f, p, !timeout), ()) :: acc) acc !provers)
     [] files
 
 let () =
@@ -130,14 +130,17 @@ let command_with_output s =
   printf "output = %S@." output;
   output
 
-let why_dp = sprintf "why-dp -timeout %d -simple" !timeout
+let why_dp = "why-dp -simple"
 
-let call_prover file p =
+let call_prover file p timeout =
   let s = match p with
     | "alt-ergo" 
-    | "simplify" -> sprintf "%s %s" why_dp file
-    | "z3"       -> sprintf "%s -smt-solver z3 %s" why_dp file
-    | _ -> assert false
+    | "simplify" -> 
+	sprintf "%s -timeout %d %s" why_dp timeout file
+    | "z3" -> 
+	sprintf "%s -smt-solver z3 -timeout %d %s" why_dp timeout file
+    | _ -> 
+	assert false
   in
   command_with_output s
 
@@ -154,10 +157,10 @@ let interp_result s =
   with Scanf.Scan_failure _ ->
     eprintf "cannot interpret result %S@." s; Failure, 0.
  
-let worker (file, p) =
+let worker (file, p, timeout) =
   printf "checking file %s with prover %s@." file p;
   let file' = prover_file file p in
-  let res = call_prover file' p in
+  let res = call_prover file' p timeout in
   let r = interp_result res in
   r
 
@@ -191,7 +194,7 @@ let () =
   in
   List.iter add_prover !provers
 
-let master ((file, p), ()) (res, time) =
+let master ((file, p, _), ()) (res, time) =
   printf "received time %f for file %s with prover %s@." time file p;
   let pr = Hashtbl.find prover_table p in
   let t = match res with
