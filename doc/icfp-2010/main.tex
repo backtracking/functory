@@ -67,17 +67,16 @@ keyword1, keyword2
 \section{Introduction}
 
 This paper introduces a generic distributed computing library. This
-work was initially motivated by computing needs that exist in our own
-research team. Our applications include large-scale deductive program
-verification, which amounts to checking the validity of a large number
-of logical formulas using a variety of automated theorem
+work was initially motivated by the computing needs that exist in our
+own research team. Our applications include large-scale deductive
+program verification, which amounts to checking the validity of a
+large number of logical formulas using a variety of automated theorem
 provers~\cite{filliatre07cav}. Our computing infrastructure consists
 of a few powerful multi-core machines (typically 8 to 16 cores) and
 several desktop PCs (typically dual-core). However, for our
 application needs, there is no library that helps in exploiting such a
 computing infrastructure in our favorite functional programming
-language. 
-Hence we designed and implemented such a
+language.  Hence we designed and implemented such a
 library\footnote{This library is implemented in \Ocaml, but the
   implementation should be straightforward in any functional
   programming language.}, which is the subject of this paper.
@@ -87,7 +86,7 @@ library\footnote{This library is implemented in \Ocaml, but the
 The distributing computing library presented in this paper is not a
 library that helps in parallelizing computations. Rather, it provides
 facilities for reliable, distributed execution of parallelizable
-computations. In particular, it provides a set of APIs that allows
+computations. In particular, it provides a set of APIs that allows the
 execution of large-scale parallelizable computations, very relevant to
 our application needs (and presumably relevant to a variety of
 real-world applications), over multiple cores in the same machine or
@@ -96,19 +95,19 @@ are the following:
 \begin{itemize}
 \item \emph{genericity}: 
   it allows various patterns of polymorphic computations;
-\item \emph{simplicity}: 
-  switching between multiple cores and a network of
-  machine is as simple as changing a couple of lines of code;
+\item \emph{simplicity}: switching between multiple cores on the same
+  machine and a network of machines is as simple as changing a couple
+  of lines of code;
 \item \emph{task distribution and fault-tolerance}: 
   it relieves the user from implementing task distribution routines
-  and reliable fault-tolerance mechanism.
+  and reliable fault-tolerance mechanisms.
 \end{itemize}
-It is worth noting that the library is not
-targeted at applications running on server farms, crunching enormous
-amounts of data. Neither it is limited to research labs possessing a
-few number of powerful computing infrastructure. It serves a variety
-of users and a wide spectrum of needs, from desktop PCs to network of
-machines, and hence the title.
+It is worth noting that the library is not targeted at applications
+running on server farms, crunching enormous amounts of data. Neither
+is it limited to research labs possessing a few number of powerful
+computing infrastructure. It serves a variety of users and a wide
+spectrum of needs, from desktop PCs to networks of machines, and hence
+the title.
 
 
 The application domain of such a distributed computing library is
@@ -116,7 +115,7 @@ manyfold.  The most striking application, as also relevant to our
 research endeavours, is in validating thousands of verification
 conditions using automated theorem provers. Having noted this, it
 should be apparent that the library finds use in efficient execution
-of any large-scale expensive computation, that is parallelizable.
+of any large-scale expensive computation that is parallelizable.
 
 
 % what it is and what it is not
@@ -144,9 +143,8 @@ of any large-scale expensive computation, that is parallelizable.
 % \end{itemize}
 
 \paragraph{Distributed Computing.}
-A typical distributed computing library
-provides the following (borrowing some terminology from Google's
-Mapreduce~\cite{mapreduce}):
+A typical distributed computing library provides the following (we
+borrow some terminology from Google's Mapreduce~\cite{mapreduce}):
 \begin{itemize}
 \item A notion of a \emph{task} which denotes the atomic computation to be
   performed in a distributed manner;
@@ -195,7 +193,7 @@ Our library makes use of \Ocaml's marshaling capabilities, as much as
 possible. Whenever master and worker executables are exactly the same,
 we can marshal polymorphic values and closures. However, it is not
 always possible to have master and workers running the same
-executable. In that case, we cannot marshal closures anymore but we
+executable. In this case, we cannot marshal closures anymore but we
 can still marshal polymorphic values as long as the same version of
 \Ocaml\ is used to compile master and workers. When different versions
 of \Ocaml\ are used, we can no longer marshal values but we can still
@@ -225,11 +223,11 @@ introduction. It has the following signature:
 \end{ocaml}
 Tasks are pairs, of type \of{'a * 'c}, where the first component is
 passed to the worker and the second component is local to the master.
-Function \ocaml{worker} should be pure and is executed in parallel.
-Function \ocaml{master}, on the contrary, can be impure and is never
-executed in parallel with other \ocaml{master}s. Function
-\ocaml{master} always processes information locally, typically storing
-it to internal data structures.
+The function \ocaml{worker} should be pure and is executed in parallel
+with other \ocaml{worker}s. The function \ocaml{master}, on the
+contrary, can be impure and is never executed in parallel with other
+\ocaml{master}s. The function \ocaml{master} always processes
+information locally, typically storing it to internal data structures.
 The next section will describe the usage of this generic interface to
 perform traditional map and fold operations.
 
@@ -301,10 +299,10 @@ derived from this generic API.
 
 \section{Derived API}\label{sec:derived}
 
-In most cases, the easiest way to parallelize execution it to make use
-of map and fold operations over lists, where processing of the list
-elements are done in parallel.  To facilitate such a processing, we
-now derive the most commonly used list operations from our generic
+In most cases, the easiest way to parallelize an execution it to make
+use of map and fold operations over lists, where processing of the
+list elements are done in parallel.  To facilitate such a processing,
+we now derive the most commonly used list operations from our generic
 API.
 
 The most obvious operation is the traditional map operation over
@@ -369,8 +367,8 @@ in Figure~\ref{fig:derived}.
 \label{fig:derived}
 \end{figure}
 
-These five functions are actually derived from the generic API.
-The generality is achieved by implementing theses derivations as a functor.
+These five functions are actually derived from the generic API.  The
+generality is achieved by implementing these derivations as a functor.
 This functor, \of{Derive}, is parameterized by the \of{compute}
 function, as follows:
 \begin{ocaml}
@@ -396,9 +394,9 @@ recover the output list from the values stored in the table.
 
 \paragraph{\of{map_local_fold}.} 
 Function \of{map_local_fold} is implemented using a local reference
-storing the current accumulator (of type \of{'c}).
-As soon as an intermediate result is available, \of{master} 
-combines it with the accumulator using function \of{fold}. Whenever \of{compute}
+storing the current accumulator (of type \of{'c}).  As soon as an
+intermediate result is available, the \of{master} combines it with the
+accumulator using the function \of{fold}. Whenever \of{compute}
 returns, we simply return the current accumulator.
 
 \paragraph{\of{map_remote_fold}.}
@@ -418,14 +416,13 @@ Whenever \of{compute} returns, the accumulator must be available and
 we simply return it.
 
 \paragraph{\of{map_fold_ac}.}
-Function \of{map_fold_ac} is easier than the previous one, since we do
-not need to store more than one intermediate result. Indeed, as soon
-as two intermediate results are available, we immediately combine them
-using a \of{fold} operation. Thus the \of{master} function 
-either stores it or combines it, depending on the availability/non
-availability of the accumulator.
-Whenever \of{compute} returns, the accumulator must be available and
-we simply return it.
+The function \of{map_fold_ac} is easier than the previous one, since
+we do not need to store more than one intermediate result. Indeed, as
+soon as two intermediate results are available, we immediately combine
+them using a \of{fold} operation. Thus the \of{master} function either
+stores it or combines it, depending on the availability/non
+availability of the accumulator.  Whenever \of{compute} returns, the
+accumulator must be available and we simply return it.
 
 \paragraph{\of{map_fold_a}.}
 Function \of{map_fold_a} is definitely the trickiest. Indeed, the
@@ -462,9 +459,9 @@ module is straightforward and does not require any explanation.
 The \of{Cores} module implements the distributed computing library for
 multiple cores on the same machine. It provides a function
 \of{set_number_of_cores: int -> unit} to indicate the number of cores
-to be used. The number passed to this function may actually be
-different from the actual number of cores in the machine; it is rather
-the number of tasks to be performed simultaneously. 
+to be used. The number passed to this function may be different from
+the actual number of cores in the machine; it is rather the number of
+tasks to be performed simultaneously.
 % TODO comment more on the number of cores?
 Thus a program using the \of{Cores} module typically begins with 
 \begin{ocaml}
@@ -475,18 +472,16 @@ let () = set_number_of_cores 8
 
 The \of{Cores} module is implemented with \unix\ processes, using the
 \of{fork} and \of{wait} system calls provided by the \of{Unix} library
-of \Ocaml. The idea is pretty simple. 
-The \of{compute} function maintains a global table of pending tasks
-and keeps track of the number of idle cores.
-Whenever there a pending task and an idle core, 
-a new sub-process is created using \of{Unix.fork}; 
-once completed, the sub-process marshals the result 
-into a local file. The main process maintains a table
-mapping each sub-process ID to the input task and the local file
-name. It waits for any completed sub-process using \of{Unix.wait}
-and recovers the result from the local file. Then function \of{master}
-is applied, which may generate new tasks.
-The main loop can be depicted in the following way:
+of \Ocaml. The idea is pretty simple.  The \of{compute} function
+maintains a global table of pending tasks and keeps track of the
+number of idle cores.  Whenever there is a pending task and an idle
+core, a new sub-process is created using \of{Unix.fork}; once
+completed, the sub-process marshals the result into a local file. The
+main process maintains a table mapping each sub-process ID to the
+input task and the local file name. It waits for any completed
+sub-process using \of{Unix.wait} and recovers the result from the
+local file. Then function \of{master} is applied, which may generate
+new tasks.  The main loop can be depicted in the following way:
 \begin{flushleft}
   \quad  \textbf{while} pending tasks $\lor$ pending sub-processes \\
   \quad  \quad \textbf{while} pending tasks $\land$ idle cores \\
@@ -497,7 +492,7 @@ The main loop can be depicted in the following way:
 
 It would be more efficient to use \unix\ pipes instead of local files
 but pipes are severely restricted w.r.t. data size. To be more
-generic, we make no assumption about the size of the data. Providing
+generic, we make no assumptions about the size of the data. Providing
 an alternative implementation using pipes would be straightforward.
 
 The scheduling of tasks to the different cores is left to the
@@ -508,13 +503,13 @@ of cores is less or equal than the actual number of cores on the machine.
 
 \subsection{Network of Machines}
 
-The \of{Network} module implements the distributed computing library for
-a network of machines. 
-It provides a function \of{declare_workers: n:int -> string -> unit} 
-to fill a table of worker machines. The argument \of{n} indicates the
-number of cores to be used in each worker machine, analogous to 
-\of{Cores} module. Thus a program using the \of{Network} module
-typically begins with
+The \of{Network} module implements the distributed computing library
+for a network of machines.  It provides a function
+\of{declare_workers: n:int -> string -> unit} to fill a table of
+worker machines. The argument \of{n} indicates the number of cores to
+be used in each worker machine, analogous to the \of{Cores}
+module. Thus a program using the \of{Network} module typically begins
+with
 \begin{ocaml}
 open Mapreduce.Network
 let () = declare_workers ~n:12 "machine1"
@@ -567,23 +562,23 @@ operating system.
 
 \subsubsection{Fault Tolerance}\label{sec:fault}
 
-The main issue in any distributed computing environment is ability to
-handle faults, which is also a distinguishing feature of our library.
-Faults are mainly of two kinds: either a worker is stopped, and
-possibly later restarted; or a worker is temporarily or permanently
-unreachable on the network. To provide fault tolerance, our master
-implementation is keeping track of the status of each worker. 
-This status is controlled by two timeout parameters $T_1$ and $T_2$
-and \of{Ping} and \of{Pong} messages sent by master and workers,
-respectively. There are four possible statuses for a worker: 
+The main issue in any distributed computing environment is the ability
+to handle faults, which is also a distinguishing feature of our
+library.  Faults are mainly of two kinds: either a worker is stopped,
+and possibly later restarted; or a worker is temporarily or
+permanently unreachable on the network. To provide fault tolerance,
+our master implementation is keeping track of the status of each
+worker.  This status is controlled by two timeout parameters $T_1$ and
+$T_2$ and \of{Ping} and \of{Pong} messages sent by master and workers,
+respectively. There are four possible statuses for a worker:
 \begin{description}
 \item[\of{not connected}:] the worker is still to be
   connected to perform any useful task;
 \item[\of{alive}:] the worker has sent some message recently,
   within $T_1$ seconds;
-\item[\of{pinged}:] the worker has not sent any message recently (for more
-  than $T_1$ seconds) and the master hash sent it a \of{Ping} message
-  within the last $T_2$ seconds;
+\item[\of{pinged}:] the worker has not sent any message recently (for
+  more than $T_1$ seconds) and the master has sent the worker a
+  \of{Ping} message within the last $T_2$ seconds;
 \item[\of{unreachable}:] the worker has not yet responded to the \of{Ping}
   message (for more than $T_2$ seconds).
 \end{description}
@@ -594,7 +589,7 @@ Whenever we receive a message from a worker, its status changes to
   \includegraphics{state.mps}
 \end{center}
 
-Fault tolerance is achieved by exploiting the statues of workers as
+Fault tolerance is achieved by exploiting the status of workers as
 follows. First, tasks are only assigned to workers with either
 \of{alive} or \of{pinged} status. Second, whenever a worker executing
 a task $t$ moves to status \of{not connected} or \of{unreachable}, the
@@ -641,12 +636,13 @@ n-queens, SMT solvers, etc.
 \section{Future Work}\label{sec:future}
 
 A couple of caveats are in order. (1) We do not focus on issues like
-data-locality or distributed file system like Google's, rather we
+data-locality or a distributed file system like Google's, rather we
 assume a \unix\ Network File System (NFS). (2) Our focus is not
 exactly on Google's Mapreduce paradigm~\cite{mapreduce} that works on
 association lists, but we also provide an API similar to Google's that
-works on association lists, just for satisfying popular interest.
+works on association lists, just to satisfy popular interest.
 
+%TODO
 data locality: scheduling supplied by the user
 
 speeding up the end of computation with duplicate tasks on idle workers
