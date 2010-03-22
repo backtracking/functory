@@ -600,15 +600,16 @@ it was already assigned to an idle worker.
 
 \subsubsection{Three Network Implementations} % TODO: change title
 
-As explained in Section~\ref{sec:API}, the \of{Network} module is
+As mentioned in Section~\ref{sec:API}, the \of{Network} module is
 actually providing three different implementations, according to three
 different execution scenarios (namely, \of{Same}, \of{Poly} and
-\of{Mono}). There is actually a single, generic implementation, which
-is then instantiated in three different ways.
-The generic implementation assumes that we are only transmitting
-strings over the network, as evident from \of{Assign} and
-\of{Completed} messages in the protocol section~\ref{sec:protocol}.
-Therefore, the signature for the generic implementation is as follows:
+\of{Mono}). The exciting thing about our library is that there is
+actually a single, generic implementation, which is then instantiated
+in three different ways, corresponding to the three scenarios.  The
+generic implementation assumes that only string are being transmitting
+over the network, as evident from \of{Assign} and \of{Completed}
+messages in Section~\ref{sec:protocol}.  The signature for the generic
+implementation is therefore as follows:
 \begin{ocaml}
   generic_master:
     assign_job:('a -> string * string) ->
