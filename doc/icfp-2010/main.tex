@@ -632,7 +632,102 @@ We can now distinguish the three cases, based on \of{assign_job}:
 
 \section{Experiments}\label{sec:experiments}
 
-n-queens, SMT solvers, etc.
+In this section, we show the potential of our library with two 
+computationally-extensive examples.
+
+\subsection{N-queens}
+
+The first example is the classical $N$-queens problem, where we
+compute the total number of solutions for a given $N$.
+The following table shows execution timings for various values of $N$
+and our three different implementations modules \of{Sequential}, \of{Cores} and
+\of{Network}. The purpose of this experiment is to measure the speedup
+ratio w.r.t. the sequential implementation. Therefore, all
+computations are performed on the same machine, a 8 cores Intel Xeon
+3.2 GHz running Debian Linux. The sequential implementation uses a
+single core. The cores implementation uses the 8 cores of
+the machine. The network implementation uses 8 workers running locally and
+a master running on a remote machine (incurs communication cost).
+
+The first column shows the value of $N$.
+Each computation is divided into a certain number of tasks,
+which is shown in second column.
+Then the last three column show execution timings in seconds for the
+three implementations. The figures within brackets show the speedup
+ratio w.r.t. sequential implementation.
+\begin{center}
+  \begin{tabular}{|r|r|r|r|r|}
+    \hline
+    N & \#tasks         & sequential& cores         & network 
+    \\\hline\hline
+    16 &   16    &  15.2     &   2.04 (7.45$\times$) &  2.35  (6.47$\times$) 
+    \\\hline
+       &  210    &  15.2     &   2.01 (7.56$\times$) & 21.80  (0.69$\times$)
+    \\\hline
+    17 &   17    & 107.0     &  17.20 (6.22$\times$) & 16.20  (6.60$\times$)
+    \\\hline
+       &  240    & 107.0     &  14.00                & 24.90    
+    \\\hline
+    18 &   18    &           & 123.00               & 125.00     
+    \\\hline
+       &  272    &           & 103.00               & 124.00
+    \\\hline
+    19 &   19    &           &                      & 940.00
+    \\\hline
+       &  306    &           &                      & 819.00      \\\hline
+  \end{tabular}
+\end{center}
+From the table above, it is clear that the \of{Cores} implementation
+provides a significant speedup. When the number of tasks is large
+enough, the speedup ratio is almost 8, which is also the number of
+cores we use. 
+% (When the number of tasks is small and not a multiple of
+% the number of cores,  for example as in third row with 17 tasks
+% executing on 8 cores, the
+
+% TODO comment on network ratios
+
+Where computation cost for each tasks is too small, then communication
+cost dominates and could even slow down the execution
+w.r.t. sequential implementation, as evident from second row.
+
+\subsection{SMT Solvers}
+
+Here we demonstrate the potential of our library for our application
+needs as mentioned in the introduction. Our computing
+infrastructure consists of 3 machines with 4, 8 and 8 cores
+respectively. The benchmark we use for
+experimentation consists of 80 challenging verification conditions
+(VC) obtained from the Why platform~\cite{filliatre07cav}.  Each
+VC is stored in a file, which is accessible over
+NFS. The purpose of the experiment is to check the validity of each VC
+using several automated provers (namely Alt-Ergo, Simplify and Z3),
+which are all installed on each of the machines in use.
+
+The master program proceeds by reading the 80 file names, turning them
+into tasks by multiplying them by the number of provers (240 tasks in total).
+Each worker in turn invokes the given prover on the given file.
+We set a timeout limit of 600 seconds.
+Each task completes with one of the four possible outcomes: \emph{valid},
+\emph{invalid}, \emph{cannot-decide} (depending on
+whether the VC is valid, invalid or undecided by the prover)
+and \emph{timeout}.
+
+\begin{center}
+  \begin{tabular}{|r|r|r|r|r|}
+    \hline
+    prover   & valid & invalid & cannot & timeout 
+    \\\hline\hline
+    Alt-ergo & 
+    \\\hline
+    Simplify & 
+    \\\hline
+    Z3       & 
+    \\\hline
+  \end{tabular}
+\end{center}
+
+% TODO compare total amount of time wrt sequential time
 
 \section{Future Work}\label{sec:future}
 

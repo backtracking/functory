@@ -20,15 +20,16 @@ open Format
 (* open Mapreduce.Sequential *)
 
 (* open Mapreduce.Cores *)
-(* let () = set_number_of_cores 2 *)
+(* let () = set_number_of_cores 8 *)
 
-let () = Mapreduce.Control.set_debug true
+(* let () = Mapreduce.Control.set_debug true *)
 open Mapreduce
-let () = Network.declare_workers ~n:14 "moloch"
-let () = Network.declare_workers ~n:1 "localhost"
-let () = Network.declare_workers ~n:2 "orcus"
-(* let () = Network.declare_workers ~n:2 "129.175.4.126" *)
-let () = Network.declare_workers ~n:8 "belzebuth"
+let () = Network.declare_workers ~n:8 "moloch"
+(* let () = Network.declare_workers ~n:1 "localhost" *)
+(* let () = Network.declare_workers ~n:2 "orcus" *)
+(* (\* let () = Network.declare_workers ~n:2 "129.175.4.126" *\) *)
+(* let () = Network.declare_workers ~n:5 "belzebuth" *)
+open Network.Same
 
 let rec t a b c count =
   if a > 0 then
@@ -64,7 +65,7 @@ let n_queens q d =
   let all = lnot ((lnot 0) lsl q) in
   split d all 0 0;
   printf "%d sub-problems@." (List.length !problems);
-  Network.Same.map_local_fold ~map:compute ~fold:Int64.add 0L !problems
+  map_local_fold ~map:compute ~fold:Int64.add 0L !problems
 
 let test_n_queens q d = 
   printf "computing n-queens(%d) with depth %d...@." q d;

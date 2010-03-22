@@ -65,10 +65,10 @@ module Worker = struct
       dprintf "received: %a@." Master.print m;
       match m with
 	| Master.Assign (id, f, a) ->
-	    begin try
-	      let fin, fout = pipe () in
-	      begin match fork () with
-		| 0 -> 
+	    let fin, fout = pipe () in
+	    begin match fork () with
+	      | 0 -> 
+		  begin try
 		    (* FIXME: catch exceptions here *)
 		    close fin;
 		    (* perform computation *)
@@ -78,14 +78,15 @@ module Worker = struct
 		    output_value c r;
 		    dprintf "  id %d: computation done@." id;
 		    exit 0
-		| pid -> 
-		    close fout;
-		    let t = { pid = pid; file = fin } in
-		    Hashtbl.add pids id t
-	      end
-	    with e ->
-	      dprintf "cannot execute job %d (%s)@." id (Printexc.to_string e);
-	      Worker.send fdout (Worker.Aborted id)
+		  with e ->
+		    dprintf "cannot execute job %d (%s)@." 
+		      id (Printexc.to_string e);
+		    exit 1
+		  end
+	      | pid -> 
+		  close fout;
+		  let t = { pid = pid; file = fin } in
+		  Hashtbl.add pids id t
 	    end
 	| Master.Kill id ->
 	    begin 
@@ -105,13 +106,13 @@ module Worker = struct
       match waitpid [WNOHANG] t.pid with
 	| 0, _ -> (* not yet completed *)
 	    ()
-	| _, WEXITED _ -> (* success FIXME: check return code *)
+	| _, WEXITED 0 -> 
 	    Hashtbl.remove pids id;
 	    let c = in_channel_of_descr t.file in
 	    let r : string = input_value c in
 	    close_in c;
 	    Worker.send fdout (Worker.Completed (id, r))
-	| _, (WSIGNALED _ | WSTOPPED _) -> (* failure *)
+	| _ -> (* failure *)
 	    Hashtbl.remove pids id;
 	    Worker.send fdout (Worker.Aborted id)
     in

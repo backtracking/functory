@@ -23,8 +23,8 @@ open Format
 let () = Mapreduce.Control.set_debug true
 open Mapreduce
 let () = Network.declare_workers ~n:1 "localhost"
-let () = Network.declare_workers ~n:12 "moloch"
-(* let () = Network.declare_workers ~n:4 "orcus" *)
+let () = Network.declare_workers ~n:8 "moloch"
+let () = Network.declare_workers ~n:4 "orcus"
 let () = Network.declare_workers ~n:8 "belzebuth"
 
 let directories = ref []
