@@ -600,8 +600,8 @@ it was already assigned to an idle worker.
 
 \subsubsection{Three Network Implementations} % TODO: change title
 
-As mentioned in Section~\ref{sec:API}, the \of{Network} module is
-actually providing three different implementations, according to three
+As mentioned in Section~\ref{sec:API}, the \of{Network} module
+actually provides three different implementations, according to three
 different execution scenarios (namely, \of{Same}, \of{Poly} and
 \of{Mono}). The exciting thing about our library is that there is
 actually a single, generic implementation, which is then instantiated
@@ -616,9 +616,9 @@ implementation is therefore as follows:
     master:('a * 'c -> string -> ('a * 'c) list)  ->
     ('a * 'c) list -> unit
 \end{ocaml}
-The first argument \of{assign_job} is a function indicating 
-the two strings to pass inside the \of{Assign} message of the protocol.
-We can now distinguish the three cases:
+The first argument \of{assign_job} is a function indicating the two
+strings that are passed in the \of{Assign} message of the protocol.
+We can now distinguish the three cases, based on \of{assign_job}:
 \begin{description}
 \item[\of{Same}:] in this case, \of{assign_job} is simply returning
   the marshaled closure together with the marshaled value.
