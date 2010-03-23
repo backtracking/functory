@@ -670,7 +670,7 @@ ratio w.r.t. sequential implementation.
     \\\hline
     18 &   18    & 787.0     & 123.00 (6.40$\times$) & 125.00 (6.30$\times$)  
     \\\hline
-       &  272    &           & 103.00               & 124.00
+       &  272    & 787.0     & 103.00               & 124.00
     \\\hline
     19 &   19    &           &                      & 940.00
     \\\hline
@@ -728,6 +728,21 @@ and \emph{timeout}.
 \end{center}
 
 % TODO compare total amount of time wrt sequential time
+
+% timeout = 120
+%            |  valid       | invalid      | cannot       | timeout      | failure
+% ---------------------------------------------------------------------------------------
+%         z3 |  41 (211.08s) |   0 ( 0.00s) |   0 ( 0.00s) |  20 (2383.89s) |  19 (262.30s) | 
+%   alt-ergo |  40 (237.00s) |   0 ( 0.00s) |  19 (34.45s) |  21 (2514.42s) |   0 ( 0.00s) | 
+%   simplify |  32 ( 0.98s) |   0 ( 0.00s) |  34 ( 0.31s) |   5 (598.92s) |   9 (18.98s) | 
+
+% timeout = 600
+%            |  valid       | invalid      | cannot       | timeout      | failure
+% ---------------------------------------------------------------------------------------
+%         z3 |  42 (251.25s) |   0 ( 0.00s) |   0 ( 0.00s) |  16 (9548.79s) |  22 (1223.81s) | 
+%   alt-ergo |  40 (217.55s) |   0 ( 0.00s) |  19 (34.29s) |  19 (11376.70s) |   2 (489.05s) | 
+%   simplify |  32 ( 0.95s) |   0 ( 0.00s) |  34 ( 0.25s) |   4 (2394.60s) |  10 (62.76s) | 
+% 0.43user 0.33system 1:04:57elapsed 0%CPU (0avgtext+0avgdata 0maxresident)k
 
 \section{Future Work}\label{sec:future}
 
