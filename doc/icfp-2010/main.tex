@@ -717,25 +717,18 @@ and \emph{timeout}.
 \begin{center}
   \begin{tabular}{|r|r|r|r|r|}
     \hline
-    prover   & valid & invalid & cannot & timeout 
+    prover   & valid & cannot & timeout & failure
     \\\hline\hline
-    Alt-ergo & 
+    Alt-ergo &    40 &     19 &      19 &       2
     \\\hline
-    Simplify & 
+    Simplify &    32 &     34 &       4 &      10
     \\\hline
-    Z3       & 
+    Z3       &    42 &      0 &      16 &      22
     \\\hline
   \end{tabular}
 \end{center}
 
 % TODO compare total amount of time wrt sequential time
-
-% timeout = 120
-%            |  valid       | invalid      | cannot       | timeout      | failure
-% ---------------------------------------------------------------------------------------
-%         z3 |  41 (211.08s) |   0 ( 0.00s) |   0 ( 0.00s) |  20 (2383.89s) |  19 (262.30s) | 
-%   alt-ergo |  40 (237.00s) |   0 ( 0.00s) |  19 (34.45s) |  21 (2514.42s) |   0 ( 0.00s) | 
-%   simplify |  32 ( 0.98s) |   0 ( 0.00s) |  34 ( 0.31s) |   5 (598.92s) |   9 (18.98s) | 
 
 % timeout = 600
 %            |  valid       | invalid      | cannot       | timeout      | failure
@@ -744,6 +737,17 @@ and \emph{timeout}.
 %   alt-ergo |  40 (217.55s) |   0 ( 0.00s) |  19 (34.29s) |  19 (11376.70s) |   2 (489.05s) | 
 %   simplify |  32 ( 0.95s) |   0 ( 0.00s) |  34 ( 0.25s) |   4 (2394.60s) |  10 (62.76s) | 
 % 0.43user 0.33system 1:04:57elapsed 0%CPU (0avgtext+0avgdata 0maxresident)k
+
+% total amount of time = 25630 seconds = 7 hours 7 minutes 10 seconds
+% ratio = 6.57
+
+
+% timeout = 120
+%            |  valid       | invalid      | cannot       | timeout      | failure
+% ---------------------------------------------------------------------------------------
+%         z3 |  41 (211.08s) |   0 ( 0.00s) |   0 ( 0.00s) |  20 (2383.89s) |  19 (262.30s) | 
+%   alt-ergo |  40 (237.00s) |   0 ( 0.00s) |  19 (34.45s) |  21 (2514.42s) |   0 ( 0.00s) | 
+%   simplify |  32 ( 0.98s) |   0 ( 0.00s) |  34 ( 0.31s) |   5 (598.92s) |   9 (18.98s) | 
 
 \section{Future Work}\label{sec:future}
 
