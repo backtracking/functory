@@ -652,13 +652,13 @@ a master running on a remote machine (incurs communication cost).
 The first column shows the value of $N$.
 Each computation is divided into a certain number of tasks,
 which is shown in second column.
-Then the last three column show execution timings in seconds for the
+Then the last three columns show execution timings in seconds for the
 three implementations. The figures within brackets show the speedup
 ratio w.r.t. sequential implementation.
 \begin{center}
   \begin{tabular}{|r|r|r|r|r|}
     \hline
-    N & \#tasks         & sequential& cores         & network 
+    N & \#tasks  & sequential& cores                 & network 
     \\\hline\hline
     16 &   16    &  15.2     &   2.04 (7.45$\times$) &  2.35  (6.47$\times$) 
     \\\hline
@@ -672,25 +672,27 @@ ratio w.r.t. sequential implementation.
     \\\hline
        &  272    & 787.0     & 103.00 (7.64$\times$) & 124.00 (6.34$\times$)  
     \\\hline
-    19 &   19    &6120.0     &                       & 940.00 (6.51$\times$)  
+    19 &   19    &6120.0     & 937.00 (6.53$\times$) & 940.00 (6.51$\times$)  
     \\\hline
-       &  306    &6130.0     &                       & 819.00 (7.48$\times$)
+       &  306    &6130.0     & 796.00 (7.70$\times$) & 819.00 (7.48$\times$)
     \\\hline
   \end{tabular}
 \end{center}
-From the table above, it is clear that the \of{Cores} implementation
-provides a significant speedup. When the number of tasks is large
-enough, the speedup ratio is almost 8, which is also the number of
+From the table above, it is clear that the \of{Cores} and \of{Network}
+implementations
+provides a significant speedup. As evident from the last row,
+the speedup ratio is almost 8, which is also the number of
 cores we use. 
-% (When the number of tasks is small and not a multiple of
-% the number of cores,  for example as in third row with 17 tasks
-% executing on 8 cores, the
-
-% TODO comment on network ratios
-
-Where computation cost for each tasks is too small, then communication
-cost dominates and could even slow down the execution
-w.r.t. sequential implementation, as evident from second row.
+It is also evident from the last column that \of{Network}
+implementation performs significantly better when the computation time
+dominates the total execution time.
+The two extreme cases correspond to second and last rows: in the
+second row, the communication time dominates and is in fact more than
+91\%\ of the total execution time; on the other hand, for the last row
+communication time amounts to just 4.6\%\ of the total execution time.
+As expected, the network implementation is only beneficial when the
+computation time for each individual task is significant, which is the
+case in realistic examples.
 
 \subsection{SMT Solvers}
 
@@ -708,27 +710,30 @@ which are all installed on each of the machines in use.
 The master program proceeds by reading the 80 file names, turning them
 into tasks by multiplying them by the number of provers (240 tasks in total).
 Each worker in turn invokes the given prover on the given file.
-We set a timeout limit of 600 seconds.
+We set a timeout limit of 10 minutes.
 Each task completes with one of the four possible outcomes: \emph{valid},
-\emph{invalid}, \emph{cannot-decide} (depending on
-whether the VC is valid, invalid or undecided by the prover)
-and \emph{timeout}.
-
+\emph{cannot-decide} (depending on
+whether the VC is valid or undecided by the prover), 
+\emph{timeout} and \emph{failure}.
+The figure below shows the total time in minutes spent by each prover
+for each possible outcomes.
 \begin{center}
   \begin{tabular}{|r|r|r|r|r|}
     \hline
     prover   & valid & cannot & timeout & failure
     \\\hline\hline
-    Alt-ergo &    40 &     19 &      19 &       2
+    Z3       &   4.20 &   0.00 &    160  &  20.0    
     \\\hline
-    Simplify &    32 &     34 &       4 &      10
+    Alt-ergo &   3.60 &   0.57 &    190  &   8.2     
     \\\hline
-    Z3       &    42 &      0 &      16 &      22
+    Simplify &   0.02 &   0.00 &     40  &   1.0   
     \\\hline
   \end{tabular}
 \end{center}
-
-% TODO compare total amount of time wrt sequential time
+These figures sum up to more than 7 hours if provers were executed
+sequentially. However, using our library and our 3-machines
+infrastructure, it completes in 1 hour and 5 minutes, giving us a
+speedup of 6.6$\times$.
 
 % timeout = 600
 %            |  valid       | invalid      | cannot       | timeout      | failure
