@@ -28,6 +28,7 @@
 \usepackage{amsmath,graphicx, color}
 
 \newcommand{\Ocaml}{OCaml}
+\newcommand{\JoCaml}{Jo{\&\!}Caml}
 \newcommand{\unix}{\textsc{Unix}}
 
 \begin{document}
@@ -53,16 +54,15 @@
 \maketitle
 
 \begin{abstract}
-This is the text of the abstract.
+  
 \end{abstract}
 
-\category{CR-number}{subcategory}{third-level}
+\category{D1.1}{Programming techniques}{Applicative (Functional) Programming}
 
 \terms
-term1, term2
+Distributed Computing, Functional Programming
 
-\keywords
-keyword1, keyword2
+%\keywords
 
 \section{Introduction}
 
@@ -754,29 +754,75 @@ speedup of 6.6$\times$.
 %   alt-ergo |  40 (237.00s) |   0 ( 0.00s) |  19 (34.45s) |  21 (2514.42s) |   0 ( 0.00s) | 
 %   simplify |  32 ( 0.98s) |   0 ( 0.00s) |  34 ( 0.31s) |   5 (598.92s) |   9 (18.98s) | 
 
-\section{Future Work}\label{sec:future}
+\section{Conclusion and Future Work}\label{sec:future}
 
-A couple of caveats are in order. (1) We do not focus on issues like
-data-locality or a distributed file system like Google's, rather we
-assume a \unix\ Network File System (NFS). (2) Our focus is not
-exactly on Google's Mapreduce paradigm~\cite{mapreduce} that works on
-association lists, but we also provide an API similar to Google's that
-works on association lists, just to satisfy popular interest.
+We presented a distributed programming environment for functional
+programming. The main features are the genericity of the interface,
+which makes use of polymorphic higher-order functions, and the ability
+to easily switch between sequential, multi-cores and network
+implementations. A distinguishing feature of our library is also a
+robust fault tolerance mechanism implemented within, which relieves
+the user from cumbersome implementation details.
 
-%TODO
-data locality: scheduling supplied by the user
+Closest to the approach in this paper is Yohann Padioleau's mapreduce
+implementation in \Ocaml~\cite{poor-man-mapreduce}.  It is built on
+top of OcamlMPI~\cite{ocamlMPI}, while our approach uses a homemade
+protocol for message passing.  On one hand, we have less flexibility
+w.r.t. deployment of the user program; on the other hand, we provide a
+more generic API together with fault tolerance.
+There are other distributed computing libraries on top of which one
+could implement the library discussed in this paper. \JoCaml\
+is one of them~\cite{jocaml}. However, \JoCaml\ does not allow
+arbitrary closures to be passed between machines, which would limit
+the genericity of the API. Additionally, \JoCaml\ does not provide
+fault tolerance, which is essential in a distributed setting.
+% TODO check with Louis
 
-speeding up the end of computation with duplicate tasks on idle workers
-(straightforward since already done for fault tolerance)
+There are other implementations of distributed computing in the
+context of functional programming. One is the Disco
+project~\cite{disco}, which implements exactly Google's mapreduce in
+Erlang~\cite{erlang}. Our library, on the contrary, is not an \Ocaml\
+implementation of Google's mapreduce; rather it is more generic and
+not restricted to just key/value pairs.
+There are other ways to exploit multi-core architectures. One of which
+is data parallelism, which is also relevant in the functional
+programming setting~\cite{parallel-haskell}. Our work
+does not target data parallelism at all.
+
+
+There are still some interesting features that could be added to our
+library. 
+\begin{itemize}
+\item 
+  One is the ability to efficiently assign tasks to workers depending
+  on resource parameters, such as data locality, CPU power, memory,
+  etc. This could be achieved by providing the user ways to control
+  task scheduling.  
+\item 
+  Another interesting feature could be the ability
+  to add or remove workers dynamically. Currently, our library assumes
+  the list of workers to be used is given \emph{a priori}.
+\item
+  Our library provides limited support for displaying real-time
+  information about the computations. Processing and storing
+  information about tasks locally in the master is straightforward; 
+  monitoring it in real-time is less obvious.
+\item 
+  One very nice feature of Google's mapreduce is the possibility to
+  use idle workers on duplicated tasks to speedup the end of computation.
+  Since we already have the fault tolerance implemented, this
+  optimization should be straightforward to add to our library.
+\end{itemize}
+We intend to enrich our library with all above features.
 
 % \appendix
 % \section{Appendix Title}
 
 % This is the text of the appendix, if you need one.
 
-\acks
+% \acks
 
-Acknowledgments, if needed.
+% Acknowledgments, if needed.
 
 % We recommend abbrvnat bibliography style.
 
