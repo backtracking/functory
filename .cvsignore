@@ -8,3 +8,4 @@ test.opt
 *.annot
 network_test.opt
 network_test.byte
+export

@@ -1,3 +1,4 @@
 
-o Cores: switched to local files (instead of pipes) due to low size limit
-  (8 * 512 bytes)
+version 0.1, March 25, 2010
+---------------------------
+ o first public release

@@ -1,6 +1,7 @@
 ##########################################################################
 #                                                                        #
-#  Copyright (C) Jean-Christophe Filliatre and Kalyan Krishnamani        #
+#  Factory: a distributed computing library for Ocaml                    #
+#  Copyright (C) 2010 Jean-Christophe Filliatre and Kalyan Krishnamani   #
 #                                                                        #
 #  This software is free software; you can redistribute it and/or        #
 #  modify it under the terms of the GNU Library General Public           #
@@ -17,7 +18,6 @@
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 BINDIR=@bindir@
-LIBDIR=@OCAMLLIB@/factory
 
 # where to install the man page
 MANDIR=@mandir@
@@ -34,6 +34,8 @@ OCAMLVERSION = @OCAMLVERSION@
 OCAMLWEB = @OCAMLWEB@
 OCAMLWIN32 = @OCAMLWIN32@
 EXE = @EXE@
+LIBEXT = @LIBEXT@
+OBJEXT = @OBJEXT@
 
 INCLUDES = 
 BFLAGS = -dtypes -g $(INCLUDES)
@@ -50,9 +52,9 @@ CMXA = factory.cmxa
 TESTDIRS = n-queens sums sort sort-nfs
 TESTS := $(patsubst %, tests/%/a.out, $(TESTDIRS))
 
-all: $(OCAMLBEST) $(TESTS)
-byte: $(CMA) network_test.byte test.byte
-opt: $(CMA) $(CMXA) network_test.opt test.opt
+all: $(OCAMLBEST) 
+byte: $(CMA) 
+opt: $(CMA) $(CMXA) 
 
 # bytecode and native-code compilation
 ######################################
@@ -125,6 +127,8 @@ version.ml: Makefile
 # tests
 #######
 
+tests: $(TESTS)
+
 test: test.opt 
 	WORKER=yes xterm -e "./test.opt" &
 	sleep 1 && ./test.opt
@@ -157,19 +161,18 @@ wc:
 # installation
 ##############
 
+INSTALL_LIBDIR=$(DESTDIR)$(OCAMLLIB)/factory
+
 install: install-$(OCAMLBEST)
 
-BCMA = $(addprefix $(BUILD), $(CMA))
-BCMXA = $(addprefix $(BUILD), $(CMXA))
-
 install-byte: 
-	mkdir -p $(LIBDIR)
-	cp -f $(BUILD)factory.cmi $(BCMA) "$(LIBDIR)"
+	mkdir -p $(INSTALL_LIBDIR)
+	cp -f factory.mli factory.cmo factory.cmi $(CMA) $(INSTALL_LIBDIR)
 
 install-opt: 
-	mkdir -p $(LIBDIR)
-	cp -f $(BUILD)factory.cmi  $(BCMA) "$(LIBDIR)"
-	cp -f $(BCMXA) "$(LIBDIR)"
+	mkdir -p $(INSTALL_LIBDIR)
+	cp -f factory.mli factory.cmo factory.cmi $(CMA) $(INSTALL_LIBDIR)
+	cp -f factory$(LIBEXT) factory.cmx $(CMXA) $(INSTALL_LIBDIR)
 
 ocamlfind-install:
 	ocamlfind install factory META $(BUILD)factory.cmi $(BCMA) $(BCMXA) $(BUILD)factory.a
@@ -183,25 +186,27 @@ ocamlfind-remove:
 EXPORTDIR=$(NAME)-$(VERSION)
 TAR=$(EXPORTDIR).tar
 
-FTP = $$HOME/ftp/$(NAME)
 WWW = $$HOME/WWW/$(NAME)
 
 FILES = *.ml* \
 	Makefile.in configure configure.in   \
-	.depend README.txt LICENSE
+	.depend README.txt LICENSE CHANGES
 
-export: source binary export-doc
-	cp README COPYING GPL CHANGES $(FTP)
+export: source export-www export-doc
+	cp README.txt LICENSE CHANGES $(WWW)
 
 source: 
 	mkdir -p export/$(EXPORTDIR)
 	cp $(FILES) export/$(EXPORTDIR)
 	cd export ; tar cf $(TAR) $(EXPORTDIR) ; gzip -f --best $(TAR)
-	cp export/$(TAR).gz $(FTP)
+	cp export/$(TAR).gz $(WWW)/download/
 
 export-doc: factory.mli
 	mkdir -p $(WWW)/doc/
-	ocamldoc -html -hide Factory -d doc factory.mli
+	ocamldoc -html -hide Factory -d  $(WWW)/doc/ factory.mli
+
+export-www:
+	cp www/index.html $(WWW)
 
 BINARY = $(EXPORTDIR)-$(OSTYPE)
 BINARYTAR=$(BINARY).tar

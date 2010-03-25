@@ -1,6 +1,7 @@
 **************************************************************************
 *                                                                        *
-*  Copyright (C) Jean-Christophe Filliatre and Kalyan Krishnamani        *
+*  Factory: a distributed computing library for Ocaml                    *
+*  Copyright (C) 2010 Jean-Christophe Filliatre and Kalyan Krishnamani   *
 *                                                                        *
 *  This software is free software; you can redistribute it and/or        *
 *  modify it under the terms of the GNU Library General Public           *
@@ -13,5 +14,6 @@
 *                                                                        *
 **************************************************************************
 
-This is Mapreduce minimal documentation.
+This is Factory minimal documentation.
+
 
