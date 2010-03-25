@@ -20,6 +20,18 @@ open Control
 
 (* let () = set_debug true *)
 
+let default_port_number = ref 51000
+
+let set_default_port_number p = default_port_number := p
+
+let pong_timeout = ref 5.
+
+let set_pong_timeout t = pong_timeout := t
+
+let ping_interval = ref 10.
+
+let set_ping_interval t = ping_interval := t
+
 let is_worker = 
   try ignore (Sys.getenv "WORKER"); true with Not_found -> false 
 
