@@ -287,9 +287,12 @@ configure: configure.in
 #######
 
 clean::
-	rm -f *.cm[iox] *.o *~
+	rm -f *.cm[iox] *.o *~ *.annot
 	rm -f $(GENERATED) parser.output
 	rm -f $(NAME).byte $(NAME).opt
+	rm -f master_test.byte master_test.opt
+	rm -f worker_test.byte worker_test.opt
+	rm -f network_test.byte network_test.opt
 	rm -f *.aux *.log $(NAME).tex $(NAME).dvi $(NAME).ps
 
 dist-clean distclean:: clean
