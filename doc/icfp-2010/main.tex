@@ -43,7 +43,7 @@
 \title{Experience Report: Distributed Computing for the Common Man}
 %\subtitle{Subtitle Text, if any}
 
-\authorinfo{Jean-Christophe Filliâtre}
+\authorinfo{Jean-Christophe Filli\^{a}tre}
            {CNRS, LRI, Univ Paris-Sud, Orsay F-91405\\
             INRIA Saclay - Île-de-France, ProVal, Orsay, F-91893}
            {filliatr@lri.fr}
@@ -120,7 +120,6 @@ research endeavours, is in validating thousands of verification
 conditions using automated theorem provers. Having noted this, it
 should be apparent that the library finds use in efficient execution
 of any large-scale expensive computation that is parallelizable.
-
 % what it is and what it is not
 % \begin{itemize}
 % \item it is not a library which does parallelization
@@ -142,7 +141,6 @@ of any large-scale expensive computation that is parallelizable.
 % \item a single machine with multiple cores, possibly remote
 % \item several machines, small or large in number, over a network
 % \end{itemize}
-
 \paragraph{Distributed Computing.}
 A typical distributed computing library provides the following (we
 borrow some terminology from Google's Mapreduce~\cite{mapreduce}):
@@ -213,9 +211,10 @@ compare our approach with relevant related work in
 Section~\ref{sec:future} and outline our future work.
 
 \section{API}\label{sec:API}
-
-The main function in our API follows the idea sketched in the
-introduction. It has the following signature:
+In this section, we describe the uniqueness of approach, namely the
+generic API which we shall extend to a plethora of more specialized
+APIs in later sections. The main function in our API follows the idea
+sketched in the introduction. It has the following signature:
 \begin{ocaml}
   val compute : 
     worker:('a -> 'b) -> 
@@ -633,7 +632,7 @@ We can now distinguish the three cases, based on \of{assign_job}:
 
 \section{Experiments}\label{sec:experiments}
 
-In this section, we show the potential of our library with two 
+In this section, we show the potential of our library using two 
 computationally-extensive examples.
 
 \subsection{N-queens}
@@ -680,16 +679,14 @@ ratio w.r.t. sequential implementation.
   \end{tabular}
 \end{center}
 From the table above, it is clear that the \of{Cores} and \of{Network}
-implementations
-provides a significant speedup. As evident from the last row,
-the speedup ratio is almost 8, which is also the number of
-cores we use. 
-It is also evident from the last column that \of{Network}
-implementation performs significantly better when the computation time
-dominates the total execution time.
-The two extreme cases correspond to second and last rows: in the
-second row, the communication time dominates and is in fact more than
-91\%\ of the total execution time; on the other hand, for the last row
+implementations provide a significant speedup. As evident from the
+last row, the speedup ratio is almost 8, which is also the number of
+cores we use.  It is also evident from the last column that
+\of{Network} implementation performs significantly better when the
+computation time dominates the total execution time.  The two extreme
+cases correspond to second and last rows: in the second row, the
+communication time dominates and is in fact more than 91\%\ of the
+total execution time; on the other hand, for the last row
 communication time amounts to just 4.6\%\ of the total execution time.
 As expected, the network implementation is only beneficial when the
 computation time for each individual task is significant, which is the
@@ -732,7 +729,7 @@ for each possible outcomes.
   \end{tabular}
 \end{center}
 These figures sum up to more than 7 hours if provers were executed
-sequentially. However, using our library and our 3-machines
+sequentially. However, using our library and our 3-machine
 infrastructure, it completes in 1 hour and 5 minutes, giving us a
 speedup of 6.6$\times$.
 
@@ -770,13 +767,13 @@ implementation in \Ocaml~\cite{poor-man-mapreduce}.  It is built on
 top of OcamlMPI~\cite{ocamlMPI}, while our approach uses a homemade
 protocol for message passing.  On one hand, we have less flexibility
 w.r.t. deployment of the user program; on the other hand, we provide a
-more generic API together with fault tolerance.
-There are other distributed computing libraries on top of which one
-could implement the library discussed in this paper. \JoCaml\
-is one of them~\cite{jocaml}. However, \JoCaml\ does not allow
-arbitrary closures to be passed between machines, which would limit
-the genericity of the API. Additionally, \JoCaml\ does not provide
-fault tolerance, which is essential in a distributed setting.
+more generic API together with fault tolerance.  There are other
+distributed computing libraries on top of which one could implement
+the library discussed in this paper. \JoCaml~\cite{jocaml} is one of
+them. However, \JoCaml\ does not allow arbitrary closures to be passed
+between machines, which would limit the genericity of the
+API. Additionally, \JoCaml\ does not provide fault tolerance, which is
+indispensible in a distributed setting.
 % TODO check with Louis
 
 There are other implementations of distributed computing in the
