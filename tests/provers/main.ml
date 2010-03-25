@@ -20,11 +20,10 @@ open Format
 (* open Mapreduce.Cores *)
 (* let () = set_number_of_cores 2 *)
 
-let () = Mapreduce.Control.set_debug true
 open Mapreduce
 (* let () = Network.declare_workers ~n:1 "localhost" *)
 let () = Network.declare_workers ~n:8 "moloch"
-let () = Network.declare_workers ~n:4 "orcus"
+(* let () = Network.declare_workers ~n:4 "orcus" *)
 let () = Network.declare_workers ~n:8 "belzebuth"
 
 let directories = ref []
@@ -37,15 +36,19 @@ let add_prover = function
 
 let timeout = ref 10
 let is_worker = ref false
+let debug = ref false
 
 let () = 
   Arg.parse
     ["-p", Arg.String add_prover, "<name> add a prover";
      "-timeout", Arg.Set_int timeout, "<seconds> set the timeout";
      "-w", Arg.Set is_worker, "run as a worker";
+     "-debug", Arg.Set debug, "set the debug flag"; 
     ]
     add_directory
     "usage: provers [options] dir1 dir2 ..."
+
+let () = if not !is_worker then Mapreduce.Control.set_debug true
 
 let files = 
   let files = ref [] in
@@ -79,8 +82,7 @@ let tasks =
        List.fold_left (fun acc p -> ((f, p, !timeout), ()) :: acc) acc !provers)
     [] files
 
-let () =
-  printf "%d tasks@." (List.length tasks)
+let () = printf "%d tasks@." (List.length tasks)
 
 type result = 
   | Valid
@@ -115,7 +117,7 @@ let prover_file file p =
 let command_with_output s =
   let tmp = Filename.temp_file "tmp" ".out" in
   let s = sprintf "%s > %s" s tmp in
-  printf "+ %s@." s;
+  if !debug then printf "+ %s@." s;
   ignore (Sys.command s);
   let cin = open_in tmp in
   let output =
@@ -127,7 +129,6 @@ let command_with_output s =
     with End_of_file -> Buffer.contents b in
   close_in cin;
   Sys.remove tmp;
-  printf "output = %S@." output;
   output
 
 let why_dp = "why-dp -simple"
@@ -158,9 +159,10 @@ let interp_result s =
     eprintf "cannot interpret result %S@." s; Failure, 0.
  
 let worker (file, p, timeout) =
-  printf "checking file %s with prover %s@." file p;
+  if !debug then printf "checking file %s with prover %s@." file p;
   let file' = prover_file file p in
   let res = call_prover file' p timeout in
+  printf "@[<hov 2>file=%S@\noutput=%S@]@." file res;
   let r = interp_result res in
   r
 
