@@ -15,7 +15,7 @@
 
 open Format
 open Unix
-open Mapreduce
+open Factory
 
 let port = ref 51000
 let () = 

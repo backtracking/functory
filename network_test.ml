@@ -1,6 +1,6 @@
 
 open Format
-open Mapreduce.Network
+open Factory.Network
 
 type kind = Same | Mono | Poly
 
@@ -25,7 +25,7 @@ let () = Arg.parse
   "usage: "
 
 let stop = !stop
-let () = Mapreduce.Control.set_default_port_number !port
+let () = Factory.Control.set_default_port_number !port
 
 let () = 
   if not !worker then begin
@@ -35,7 +35,7 @@ let () =
       declare_workers ~n:12 "moloch"
   end
 
-let () = Mapreduce.Control.set_debug true
+let () = Factory.Control.set_debug true
 
 open Mono
 

@@ -15,7 +15,7 @@
 
 open Format
 open Unix
-open Mapreduce
+open Factory
 
 let server = ref "localhost"
 let port = ref 51000

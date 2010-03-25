@@ -15,13 +15,13 @@
 
 (* Number of solutions to the n-queens puzzle using Map/Reduce *)
 
-(* open Mapreduce.Sequential *)
+(* open Factory.Sequential *)
 
-(* open Mapreduce.Cores *)
+(* open Factory.Cores *)
 (* let () = set_number_of_cores 2 *)
 
-let () = Mapreduce.Control.set_debug true
-open Mapreduce
+let () = Factory.Control.set_debug true
+open Factory
 (* let () = Network.declare_workers ~n:2 "129.175.4.107" *)
 let () = Network.declare_workers ~n:12 "moloch"
 let () = Network.declare_workers ~n:1 "localhost"

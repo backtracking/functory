@@ -17,7 +17,7 @@
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 BINDIR=@bindir@
-LIBDIR=@OCAMLLIB@/mapreduce
+LIBDIR=@OCAMLLIB@/factory
 
 # where to install the man page
 MANDIR=@mandir@
@@ -37,15 +37,15 @@ EXE = @EXE@
 
 INCLUDES = 
 BFLAGS = -dtypes -g $(INCLUDES)
-OFLAGS = -dtypes $(INCLUDES) -for-pack Mapreduce
+OFLAGS = -dtypes $(INCLUDES) -for-pack Factory
 
 # main target
 #############
 
-NAME = mapreduce
+NAME = factory
 
-CMA  = mapreduce.cma
-CMXA = mapreduce.cmxa
+CMA  = factory.cma
+CMXA = factory.cmxa
 
 TESTDIRS = n-queens sums sort sort-nfs
 TESTS := $(patsubst %, tests/%/a.out, $(TESTDIRS))
@@ -64,18 +64,18 @@ CMX = $(CMO:.cmo=.cmx)
 
 GENERATED = version.ml
 
-$(CMA): mapreduce.cmo
+$(CMA): factory.cmo
 	$(OCAMLC) -a $(BFLAGS) -o $@ $^
 
-$(CMXA): mapreduce.cmx
+$(CMXA): factory.cmx
 	$(OCAMLOPT) -a $(OFLAGS) -o $@ $^
 
-mapreduce.cmo: mapreduce.cmi
-mapreduce.cmo: $(CMO)
+factory.cmo: factory.cmi
+factory.cmo: $(CMO)
 	$(OCAMLC) $(BFLAGS) -pack -o $@ $(CMO)
 
-mapreduce.cmx: mapreduce.cmi
-mapreduce.cmx: $(CMX)
+factory.cmx: factory.cmi
+factory.cmx: $(CMX)
 	$(OCAMLOPT) $(INCLUDES) -pack -o $@ $(CMX)
 
 NTCMO = network_test.cmo
@@ -84,7 +84,7 @@ NTCMX = $(NTCMO:.cmo=.cmx)
 network_test.byte: $(CMA) $(NTCMO)
 	$(OCAMLC) $(INCLUDES) -o $@ unix.cma $^
 
-network_test.cmx: mapreduce.cmi
+network_test.cmx: factory.cmi
 network_test.opt: $(CMXA) $(NTCMX)
 	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $(CMXA) $(NTCMX)
 
@@ -94,7 +94,7 @@ WTCMX = $(WTCMO:.cmo=.cmx)
 worker_test.byte: $(CMA) $(WTCMO)
 	$(OCAMLC) $(INCLUDES) -o $@ unix.cma $^
 
-worker_test.cmx: mapreduce.cmi
+worker_test.cmx: factory.cmi
 worker_test.opt: $(CMXA) $(WTCMX)
 	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $(CMXA) $(WTCMX)
 
@@ -145,11 +145,11 @@ install-queens: tests/n-queens/queens64.opt
 install-provers: tests/provers/a.out
 	cp tests/provers/a.out ~/disco-provers.opt
 
-tests/%/a.out: tests/%/main.ml mapreduce.cmxa
-	$(OCAMLOPT) unix.cmxa mapreduce.cmxa tests/$*/main.ml -o $@
+tests/%/a.out: tests/%/main.ml factory.cmxa
+	$(OCAMLOPT) unix.cmxa factory.cmxa tests/$*/main.ml -o $@
 
-tests/n-queens/queens64.opt: tests/n-queens/main64.ml mapreduce.cmxa
-	$(OCAMLOPT) unix.cmxa mapreduce.cmxa tests/n-queens/main64.ml -o $@
+tests/n-queens/queens64.opt: tests/n-queens/main64.ml factory.cmxa
+	$(OCAMLOPT) unix.cmxa factory.cmxa tests/n-queens/main64.ml -o $@
 
 wc:
 	ocamlwc -p *.ml* tests/*/*.ml*
@@ -164,25 +164,18 @@ BCMXA = $(addprefix $(BUILD), $(CMXA))
 
 install-byte: 
 	mkdir -p $(LIBDIR)
-	cp -f $(BUILD)mapreduce.cmi $(BCMA) "$(LIBDIR)"
+	cp -f $(BUILD)factory.cmi $(BCMA) "$(LIBDIR)"
 
 install-opt: 
 	mkdir -p $(LIBDIR)
-	cp -f $(BUILD)mapreduce.cmi  $(BCMA) "$(LIBDIR)"
+	cp -f $(BUILD)factory.cmi  $(BCMA) "$(LIBDIR)"
 	cp -f $(BCMXA) "$(LIBDIR)"
 
 ocamlfind-install:
-	ocamlfind install mapreduce META $(BUILD)mapreduce.cmi $(BCMA) $(BCMXA) $(BUILD)mapreduce.a
+	ocamlfind install factory META $(BUILD)factory.cmi $(BCMA) $(BCMXA) $(BUILD)factory.a
 
 ocamlfind-remove:
-	ocamlfind remove mapreduce
-
-# documentation
-###############
-
-doc: mapreduce.mli
-	mkdir -p doc
-	ocamldoc -html -hide Mapreduce -d doc mapreduce.mli
+	ocamlfind remove factory
 
 # export
 ########
@@ -206,9 +199,9 @@ source:
 	cd export ; tar cf $(TAR) $(EXPORTDIR) ; gzip -f --best $(TAR)
 	cp export/$(TAR).gz $(FTP)
 
-export-doc: $(DOCFILES)
-	gzip -c manual.ps > $(FTP)/manual.ps.gz
-	cp manual.html $(WWW)
+export-doc: factory.mli
+	mkdir -p $(WWW)/doc/
+	ocamldoc -html -hide Factory -d doc factory.mli
 
 BINARY = $(EXPORTDIR)-$(OSTYPE)
 BINARYTAR=$(BINARY).tar

@@ -17,7 +17,7 @@ open Format
 
 let () = 
   Arg.parse
-    ["-d", Arg.Unit (fun () -> Mapreduce.Control.set_debug true), 
+    ["-d", Arg.Unit (fun () -> Factory.Control.set_debug true), 
      "sets the debug flag";]
     (fun _ -> ())
     "test: usage:"
@@ -174,29 +174,29 @@ end
 
 let () = printf "Sequential@."
 module TestIntSeq = 
-  TestInt(struct type t = int include Mapreduce.Sequential end)
+  TestInt(struct type t = int include Factory.Sequential end)
 module TestStringSeq = 
-  TestString(struct type t = string include Mapreduce.Sequential end)
+  TestString(struct type t = string include Factory.Sequential end)
 (* module TestMRSeq =  *)
-(*   TestMR(Mapreduce.Sequential) *)
+(*   TestMR(Factory.Sequential) *)
 
 let () = printf "Cores@."
-let () = Mapreduce.Cores.set_number_of_cores 2
+let () = Factory.Cores.set_number_of_cores 2
 module TestIntCores = 
-  TestInt(struct type t = int include Mapreduce.Cores end)
+  TestInt(struct type t = int include Factory.Cores end)
 module TestStringCores = 
-  TestString(struct type t = string include Mapreduce.Cores end)
+  TestString(struct type t = string include Factory.Cores end)
 (* module TestMRCores =  *)
-(*   TestMR(Mapreduce.Cores) *)
+(*   TestMR(Factory.Cores) *)
 
 let () = printf "Network@."
-let () = Mapreduce.Network.declare_workers ~n:2 "localhost"
+let () = Factory.Network.declare_workers ~n:2 "localhost"
 module TestIntNetwork =
-  TestInt(struct type t = int include Mapreduce.Network.Same end)
+  TestInt(struct type t = int include Factory.Network.Same end)
 (* module TestStringNetwork = *)
-(*   TestString(struct type t = string include Mapreduce.Network.Same end) *)
+(*   TestString(struct type t = string include Factory.Network.Same end) *)
 (* module TestStringNetworkStr =  *)
-(*   TestString(struct type t = string include Mapreduce.Network.Str end) *)
+(*   TestString(struct type t = string include Factory.Network.Str end) *)
 
 
 

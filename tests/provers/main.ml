@@ -15,12 +15,12 @@
 
 open Format
 
-(* open Mapreduce.Sequential *)
+(* open Factory.Sequential *)
 
-(* open Mapreduce.Cores *)
+(* open Factory.Cores *)
 (* let () = set_number_of_cores 2 *)
 
-open Mapreduce
+open Factory
 (* let () = Network.declare_workers ~n:1 "localhost" *)
 let () = Network.declare_workers ~n:8 "moloch"
 (* let () = Network.declare_workers ~n:4 "orcus" *)
@@ -48,7 +48,7 @@ let () =
     add_directory
     "usage: provers [options] dir1 dir2 ..."
 
-let () = if not !is_worker then Mapreduce.Control.set_debug true
+let () = if not !is_worker then Factory.Control.set_debug true
 
 let files = 
   let files = ref [] in

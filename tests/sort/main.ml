@@ -17,14 +17,14 @@
 
 open Format
 
-(* let () = Mapreduce.Control.set_debug true *)
+(* let () = Factory.Control.set_debug true *)
 
-open Mapreduce.Sequential
+open Factory.Sequential
 
-(* open Mapreduce.Cores *)
-(* let () = Mapreduce.Cores.set_number_of_cores 10 *)
+(* open Factory.Cores *)
+(* let () = Factory.Cores.set_number_of_cores 10 *)
 
-(* open Mapreduce.Network *)
+(* open Factory.Network *)
 (* let () = declare_workers ~n:4 "moloch" *)
 (* let () = declare_workers ~n:2 "orcus" *)
 

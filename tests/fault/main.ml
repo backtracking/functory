@@ -1,7 +1,7 @@
 
 open Format
-open Mapreduce.Network
-let () = Mapreduce.Control.set_debug true
+open Factory.Network
+let () = Factory.Control.set_debug true
 let () = declare_workers ~n:1 "moloch"
 let () = declare_workers ~n:1 "localhost"
 

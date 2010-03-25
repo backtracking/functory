@@ -13,14 +13,14 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(* open Mapreduce.Sequential *)
+(* open Factory.Sequential *)
 
-let () = Mapreduce.Control.set_debug true
+let () = Factory.Control.set_debug true
 
-open Mapreduce.Cores
+open Factory.Cores
 let () = set_number_of_cores 2
 
-open Mapreduce.Network
+open Factory.Network
 let () = declare_workers ~n:4 "moloch"
 let () = declare_workers ~n:2 "orcus"
 

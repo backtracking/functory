@@ -17,13 +17,13 @@
 
 open Format
 
-(* open Mapreduce.Sequential *)
+(* open Factory.Sequential *)
 
-(* open Mapreduce.Cores *)
+(* open Factory.Cores *)
 (* let () = set_number_of_cores 8 *)
 
-(* let () = Mapreduce.Control.set_debug true *)
-open Mapreduce
+(* let () = Factory.Control.set_debug true *)
+open Factory
 let () = Network.declare_workers ~n:8 "moloch"
 (* let () = Network.declare_workers ~n:1 "localhost" *)
 (* let () = Network.declare_workers ~n:2 "orcus" *)
