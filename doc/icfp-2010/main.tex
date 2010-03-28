@@ -45,16 +45,16 @@
 
 \authorinfo{Jean-Christophe Filli\^{a}tre}
            {CNRS, LRI, Univ Paris-Sud, Orsay F-91405\\
-            INRIA Saclay -- \^Ile-de-France, ProVal, Orsay, F-91893}
+            INRIA Saclay - \^{I}le-de-France, ProVal, Orsay, F-91893}
            {filliatr@lri.fr}
 \authorinfo{Kalyan Krishnamani}
-           {INRIA Saclay -- \^Ile-de-France, ProVal, Orsay, F-91893}
-           {kalyan@lri.fr}
+           {INRIA Saclay - \^{I}le-de-France, ProVal, Orsay, F-91893}
+           {kalyan@inria.fr}
 
 \maketitle
 
 \begin{abstract}
-  In this paper, we present a distributed computing library for
+  We present a distributed computing library for
   functional programming languages. The main features of this library
   include (1) a highly-generic API, (2) several implementations to
   adapt to different computing environments such as sequential,
@@ -73,7 +73,7 @@ Distributed Computing, Functional Programming
 
 \section{Introduction}
 
-This paper introduces a generic distributed computing library. This
+This paper introduces a generic library for distributed computing. This
 work was initially motivated by the computing needs that exist in our
 own research team. Our applications include large-scale deductive
 program verification, which amounts to checking the validity of a
@@ -88,7 +88,7 @@ library\footnote{This library is implemented in \Ocaml, but the
   implementation should be straightforward in any functional
   programming language.}, which is the subject of this paper.
 
-The distributing computing library presented in this paper is not a
+The distributed computing library presented in this paper is not a
 library that helps in parallelizing computations. Rather, it provides
 facilities for reliable, distributed execution of parallelizable
 computations. In particular, it provides a set of APIs that allows the
