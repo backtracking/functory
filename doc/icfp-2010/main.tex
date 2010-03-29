@@ -28,6 +28,7 @@
 \usepackage{amsmath,graphicx, color}
 
 \newcommand{\Ocaml}{OCaml}
+\newcommand{\functory}{\textsf{Functory}}
 \newcommand{\JoCaml}{Jo{\&\!}Caml}
 \newcommand{\unix}{\textsc{Unix}}
 
@@ -95,8 +96,8 @@ computations. In particular, it provides a set of APIs that allows the
 execution of large-scale parallelizable computations, very relevant to
 our application needs (and presumably relevant to a variety of
 real-world applications), over multiple cores in the same machine or
-over a network of machines. The most important features of our library
-are the following:
+over a network of machines. 
+The most important features of our library are the following:
 \begin{itemize}
 \item \emph{genericity}: 
   it allows various patterns of polymorphic computations;
@@ -158,9 +159,9 @@ implement mechanisms for fault-tolerance, efficient storage and
 distribution of tasks. This is required to handle network failures
 that may occur, as well as to optimize the usage of machines in the
 network. Another concern of importance is the transmission of messages
-over the network. This requires efficient serialization (or
-marshalling) of data that can be reliably reconstructed when
-transmitted over different computing environments.  It is desirable to
+over the network. This requires efficient 
+\emph{marshalling} of data, that is encoding and decoding of data 
+for transmission over different computing environments.  It is desirable to
 maintain architecture independence while transmitting marshalled data,
 as machines in a distributed computing environment often run on
 different hardware architectures and make use of varying software
@@ -632,6 +633,7 @@ We can now distinguish the three cases, based on \of{assign_job}:
 
 \section{Experiments}\label{sec:experiments}
 
+Our library, \functory, 
 In this section, we show the potential of our library using two 
 computationally-extensive examples.
 
@@ -698,17 +700,18 @@ Here we demonstrate the potential of our library for our application
 needs as mentioned in the introduction. Our computing
 infrastructure consists of 3 machines with 4, 8 and 8 cores
 respectively. The benchmark we use for
-experimentation consists of 80 challenging verification conditions
+experimentation consists of around 80 challenging verification conditions
 (VC) obtained from the Why platform~\cite{filliatre07cav}.  Each
 VC is stored in a file, which is accessible over
 NFS. The purpose of the experiment is to check the validity of each VC
-using several automated provers (namely Alt-Ergo, Simplify and Z3),
+using several automated provers (namely Alt-Ergo, Simplify, Z3 and CVC3),
 which are all installed on each of the machines in use.
 
-The master program proceeds by reading the 80 file names, turning them
-into tasks by multiplying them by the number of provers (240 tasks in total).
+The master program proceeds by reading the file names, turning them
+into tasks by multiplying them by the number of provers (more than
+300 tasks in total).
 Each worker in turn invokes the given prover on the given file.
-We set a timeout limit of 10 minutes.
+We set a timeout limit of 1 minute.
 Each task completes with one of the four possible outcomes: \emph{valid},
 \emph{cannot-decide} (depending on
 whether the VC is valid or undecided by the prover), 
@@ -720,37 +723,21 @@ for each possible outcomes.
     \hline
     prover   & valid & cannot & timeout & failure
     \\\hline\hline
-    Z3       &   4.20 &   0.00 &    160  &  20.0    
+    Alt-ergo &  24.7  &  2.4  & 1260.0 &   0.0       
     \\\hline
-    Alt-ergo &   3.60 &   0.57 &    190  &   8.2     
+    Simplify &   0.6  &  0.3  &  300.0 &  43.0   
     \\\hline
-    Simplify &   0.02 &   0.00 &     40  &   1.0   
+    Z3       &  98.6  &  0.0  & 1200.0 &  66.3    
+    \\\hline
+    CVC3     &  46.7  & 28.0  &  720.0 &   0.0   
     \\\hline
   \end{tabular}
 \end{center}
-These figures sum up to more than 7 hours if provers were executed
+These figures sum up to more than 1 hour if provers were executed
 sequentially. However, using our library and our 3-machine
-infrastructure, it completes in 1 hour and 5 minutes, giving us a
-speedup of 6.6$\times$.
+infrastructure, it completes in 4 minutes and 8 seconds, giving us a
+speedup of more than 15$\times$.
 
-% timeout = 600
-%            |  valid       | invalid      | cannot       | timeout      | failure
-% ---------------------------------------------------------------------------------------
-%         z3 |  42 (251.25s) |   0 ( 0.00s) |   0 ( 0.00s) |  16 (9548.79s) |  22 (1223.81s) | 
-%   alt-ergo |  40 (217.55s) |   0 ( 0.00s) |  19 (34.29s) |  19 (11376.70s) |   2 (489.05s) | 
-%   simplify |  32 ( 0.95s) |   0 ( 0.00s) |  34 ( 0.25s) |   4 (2394.60s) |  10 (62.76s) | 
-% 0.43user 0.33system 1:04:57elapsed 0%CPU (0avgtext+0avgdata 0maxresident)k
-
-% total amount of time = 25630 seconds = 7 hours 7 minutes 10 seconds
-% ratio = 6.57
-
-
-% timeout = 120
-%            |  valid       | invalid      | cannot       | timeout      | failure
-% ---------------------------------------------------------------------------------------
-%         z3 |  41 (211.08s) |   0 ( 0.00s) |   0 ( 0.00s) |  20 (2383.89s) |  19 (262.30s) | 
-%   alt-ergo |  40 (237.00s) |   0 ( 0.00s) |  19 (34.45s) |  21 (2514.42s) |   0 ( 0.00s) | 
-%   simplify |  32 ( 0.98s) |   0 ( 0.00s) |  34 ( 0.31s) |   5 (598.92s) |   9 (18.98s) | 
 
 \section{Conclusion and Future Work}\label{sec:future}
 
@@ -770,11 +757,10 @@ w.r.t. deployment of the user program; on the other hand, we provide a
 more generic API together with fault tolerance.  There are other
 distributed computing libraries on top of which one could implement
 the library discussed in this paper. \JoCaml~\cite{jocaml} is one of
-them. However, \JoCaml\ does not allow arbitrary closures to be passed
-between machines, which would limit the genericity of the
-API. Additionally, \JoCaml\ does not provide fault tolerance, which is
-indispensible in a distributed setting.
-% TODO check with Louis
+them. However, \JoCaml\ does not provide fault tolerance, which is
+indispensible in a distributed setting. The user has to include code
+for fault tolerance, as already demonstrated in some \JoCaml\
+experiments~\cite{mandel2008}. 
 
 There are other implementations of distributed computing in the
 context of functional programming. One is the Disco
@@ -823,7 +809,6 @@ We intend to enrich our library with all above features.
 
 % We recommend abbrvnat bibliography style.
 
-\nocite{*}
 \bibliographystyle{abbrvnat}
 \bibliography{./biblio}
 

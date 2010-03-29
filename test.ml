@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*  Factory: a distributed computing library for Ocaml                    *)
+(*  Functory: a distributed computing library for Ocaml                   *)
 (*  Copyright (C) 2010 Jean-Christophe Filliatre and Kalyan Krishnamani   *)
 (*                                                                        *)
 (*  This software is free software; you can redistribute it and/or        *)
@@ -18,7 +18,7 @@ open Format
 
 let () = 
   Arg.parse
-    ["-d", Arg.Unit (fun () -> Factory.Control.set_debug true), 
+    ["-d", Arg.Unit (fun () -> Functory.Control.set_debug true), 
      "sets the debug flag";]
     (fun _ -> ())
     "test: usage:"
@@ -175,29 +175,29 @@ end
 
 let () = printf "Sequential@."
 module TestIntSeq = 
-  TestInt(struct type t = int include Factory.Sequential end)
+  TestInt(struct type t = int include Functory.Sequential end)
 module TestStringSeq = 
-  TestString(struct type t = string include Factory.Sequential end)
+  TestString(struct type t = string include Functory.Sequential end)
 (* module TestMRSeq =  *)
-(*   TestMR(Factory.Sequential) *)
+(*   TestMR(Functory.Sequential) *)
 
 let () = printf "Cores@."
-let () = Factory.Cores.set_number_of_cores 2
+let () = Functory.Cores.set_number_of_cores 2
 module TestIntCores = 
-  TestInt(struct type t = int include Factory.Cores end)
+  TestInt(struct type t = int include Functory.Cores end)
 module TestStringCores = 
-  TestString(struct type t = string include Factory.Cores end)
+  TestString(struct type t = string include Functory.Cores end)
 (* module TestMRCores =  *)
-(*   TestMR(Factory.Cores) *)
+(*   TestMR(Functory.Cores) *)
 
 let () = printf "Network@."
-let () = Factory.Network.declare_workers ~n:2 "localhost"
+let () = Functory.Network.declare_workers ~n:2 "localhost"
 module TestIntNetwork =
-  TestInt(struct type t = int include Factory.Network.Same end)
+  TestInt(struct type t = int include Functory.Network.Same end)
 (* module TestStringNetwork = *)
-(*   TestString(struct type t = string include Factory.Network.Same end) *)
+(*   TestString(struct type t = string include Functory.Network.Same end) *)
 (* module TestStringNetworkStr =  *)
-(*   TestString(struct type t = string include Factory.Network.Str end) *)
+(*   TestString(struct type t = string include Functory.Network.Str end) *)
 
 
 

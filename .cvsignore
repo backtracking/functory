@@ -1,7 +1,7 @@
 Makefile autom4te.cache config.status configure
 .depend
 version.ml
-factory.cma factory.cmxa
+functory.cma functory.cmxa
 master_test.opt worker_test.opt
 master_test.byte worker_test.byte
 test.opt

@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*  Factory: a distributed computing library for Ocaml                    *)
+(*  Functory: a distributed computing library for Ocaml                   *)
 (*  Copyright (C) 2010 Jean-Christophe Filliatre and Kalyan Krishnamani   *)
 (*                                                                        *)
 (*  This software is free software; you can redistribute it and/or        *)
@@ -15,7 +15,7 @@
 (**************************************************************************)
 
 open Format
-open Factory.Network
+open Functory.Network
 
 type kind = Same | Mono | Poly
 
@@ -40,7 +40,7 @@ let () = Arg.parse
   "usage: "
 
 let stop = !stop
-let () = Factory.Control.set_default_port_number !port
+let () = Functory.Control.set_default_port_number !port
 
 let () = 
   if not !worker then begin
@@ -50,7 +50,7 @@ let () =
       declare_workers ~n:12 "moloch"
   end
 
-let () = Factory.Control.set_debug true
+let () = Functory.Control.set_debug true
 
 open Mono
 

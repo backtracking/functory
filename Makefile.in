@@ -1,6 +1,6 @@
 ##########################################################################
 #                                                                        #
-#  Factory: a distributed computing library for Ocaml                    #
+#  Functory: a distributed computing library for Ocaml                   #
 #  Copyright (C) 2010 Jean-Christophe Filliatre and Kalyan Krishnamani   #
 #                                                                        #
 #  This software is free software; you can redistribute it and/or        #
@@ -39,15 +39,15 @@ OBJEXT = @OBJEXT@
 
 INCLUDES = 
 BFLAGS = -dtypes -g $(INCLUDES)
-OFLAGS = -dtypes $(INCLUDES) -for-pack Factory
+OFLAGS = -dtypes $(INCLUDES) -for-pack Functory
 
 # main target
 #############
 
-NAME = factory
+NAME = functory
 
-CMA  = factory.cma
-CMXA = factory.cmxa
+CMA  = functory.cma
+CMXA = functory.cmxa
 
 TESTDIRS = n-queens sums sort sort-nfs
 TESTS := $(patsubst %, tests/%/a.out, $(TESTDIRS))
@@ -66,18 +66,18 @@ CMX = $(CMO:.cmo=.cmx)
 
 GENERATED = version.ml
 
-$(CMA): factory.cmo
+$(CMA): functory.cmo
 	$(OCAMLC) -a $(BFLAGS) -o $@ $^
 
-$(CMXA): factory.cmx
+$(CMXA): functory.cmx
 	$(OCAMLOPT) -a $(OFLAGS) -o $@ $^
 
-factory.cmo: factory.cmi
-factory.cmo: $(CMO)
+functory.cmo: functory.cmi
+functory.cmo: $(CMO)
 	$(OCAMLC) $(BFLAGS) -pack -o $@ $(CMO)
 
-factory.cmx: factory.cmi
-factory.cmx: $(CMX)
+functory.cmx: functory.cmi
+functory.cmx: $(CMX)
 	$(OCAMLOPT) $(INCLUDES) -pack -o $@ $(CMX)
 
 NTCMO = network_test.cmo
@@ -86,7 +86,7 @@ NTCMX = $(NTCMO:.cmo=.cmx)
 network_test.byte: $(CMA) $(NTCMO)
 	$(OCAMLC) $(INCLUDES) -o $@ unix.cma $^
 
-network_test.cmx: factory.cmi
+network_test.cmx: functory.cmi
 network_test.opt: $(CMXA) $(NTCMX)
 	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $(CMXA) $(NTCMX)
 
@@ -96,7 +96,7 @@ WTCMX = $(WTCMO:.cmo=.cmx)
 worker_test.byte: $(CMA) $(WTCMO)
 	$(OCAMLC) $(INCLUDES) -o $@ unix.cma $^
 
-worker_test.cmx: factory.cmi
+worker_test.cmx: functory.cmi
 worker_test.opt: $(CMXA) $(WTCMX)
 	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $(CMXA) $(WTCMX)
 
@@ -149,11 +149,11 @@ install-queens: tests/n-queens/queens64.opt
 install-provers: tests/provers/a.out
 	cp tests/provers/a.out ~/disco-provers.opt
 
-tests/%/a.out: tests/%/main.ml factory.cmxa
-	$(OCAMLOPT) unix.cmxa factory.cmxa tests/$*/main.ml -o $@
+tests/%/a.out: tests/%/main.ml functory.cmxa
+	$(OCAMLOPT) unix.cmxa functory.cmxa tests/$*/main.ml -o $@
 
-tests/n-queens/queens64.opt: tests/n-queens/main64.ml factory.cmxa
-	$(OCAMLOPT) unix.cmxa factory.cmxa tests/n-queens/main64.ml -o $@
+tests/n-queens/queens64.opt: tests/n-queens/main64.ml functory.cmxa
+	$(OCAMLOPT) unix.cmxa functory.cmxa tests/n-queens/main64.ml -o $@
 
 wc:
 	ocamlwc -p *.ml* tests/*/*.ml*
@@ -161,24 +161,24 @@ wc:
 # installation
 ##############
 
-INSTALL_LIBDIR=$(DESTDIR)$(OCAMLLIB)/factory
+INSTALL_LIBDIR=$(DESTDIR)$(OCAMLLIB)/functory
 
 install: install-$(OCAMLBEST)
 
 install-byte: 
 	mkdir -p $(INSTALL_LIBDIR)
-	cp -f factory.mli factory.cmo factory.cmi $(CMA) $(INSTALL_LIBDIR)
+	cp -f functory.mli functory.cmo functory.cmi $(CMA) $(INSTALL_LIBDIR)
 
 install-opt: 
 	mkdir -p $(INSTALL_LIBDIR)
-	cp -f factory.mli factory.cmo factory.cmi $(CMA) $(INSTALL_LIBDIR)
-	cp -f factory$(LIBEXT) factory.cmx $(CMXA) $(INSTALL_LIBDIR)
+	cp -f functory.mli functory.cmo functory.cmi $(CMA) $(INSTALL_LIBDIR)
+	cp -f functory$(LIBEXT) functory.cmx $(CMXA) $(INSTALL_LIBDIR)
 
 ocamlfind-install:
-	ocamlfind install factory META $(BUILD)factory.cmi $(BCMA) $(BCMXA) $(BUILD)factory.a
+	ocamlfind install functory META $(BUILD)functory.cmi $(BCMA) $(BCMXA) $(BUILD)functory.a
 
 ocamlfind-remove:
-	ocamlfind remove factory
+	ocamlfind remove functory
 
 # export
 ########
@@ -201,9 +201,9 @@ source:
 	cd export ; tar cf $(TAR) $(EXPORTDIR) ; gzip -f --best $(TAR)
 	cp export/$(TAR).gz $(WWW)/download/
 
-export-doc: factory.mli
+export-doc: functory.mli
 	mkdir -p $(WWW)/doc/
-	ocamldoc -html -hide Factory -d  $(WWW)/doc/ factory.mli
+	ocamldoc -html -hide Factory -d  $(WWW)/doc/ functory.mli
 
 export-www:
 	cp www/index.html $(WWW)

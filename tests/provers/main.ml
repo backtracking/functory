@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*  Factory: a distributed computing library for Ocaml                    *)
+(*  Functory: a distributed computing library for Ocaml                   *)
 (*  Copyright (C) 2010 Jean-Christophe Filliatre and Kalyan Krishnamani   *)
 (*                                                                        *)
 (*  This software is free software; you can redistribute it and/or        *)
@@ -24,7 +24,7 @@ open Format
 open Factory
 (* let () = Network.declare_workers ~n:1 "localhost" *)
 let () = Network.declare_workers ~n:8 "moloch"
-(* let () = Network.declare_workers ~n:4 "orcus" *)
+let () = Network.declare_workers ~n:4 "orcus"
 let () = Network.declare_workers ~n:8 "belzebuth"
 
 let directories = ref []
@@ -32,7 +32,7 @@ let add_directory d = directories := d :: !directories
 
 let provers = ref []
 let add_prover = function
-  | "alt-ergo" | "simplify" | "z3" as p -> provers := p :: !provers
+  | "alt-ergo" | "simplify" | "z3" | "cvc3" as p -> provers := p :: !provers
   | p -> eprintf "unknown prover %s@." p; exit 1
 
 let timeout = ref 10
@@ -95,7 +95,7 @@ type result =
 let prover_filename file = function
   | "alt-ergo" -> file
   | "simplify" -> Filename.chop_suffix file ".why" ^ ".sx"
-  | "z3" -> Filename.chop_suffix file ".why" ^ ".smt"
+  | "z3" | "cvc3" -> Filename.chop_suffix file ".why" ^ ".smt"
   | _ -> assert false
 
 let make_file file file' = 
@@ -141,6 +141,8 @@ let call_prover file p timeout =
 	sprintf "%s -timeout %d %s" why_dp timeout file
     | "z3" -> 
 	sprintf "%s -smt-solver z3 -timeout %d %s" why_dp timeout file
+    | "cvc3" -> 
+	sprintf "%s -smt-solver cvc3 -timeout %d %s" why_dp timeout file
     | _ -> 
 	assert false
   in

@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*  Factory: a distributed computing library for Ocaml                    *)
+(*  Functory: a distributed computing library for Ocaml                   *)
 (*  Copyright (C) 2010 Jean-Christophe Filliatre and Kalyan Krishnamani   *)
 (*                                                                        *)
 (*  This software is free software; you can redistribute it and/or        *)
@@ -16,7 +16,7 @@
 
 open Format
 open Unix
-open Factory
+open Functory
 
 let server = ref "localhost"
 let port = ref 51000

@@ -1,6 +1,6 @@
 ##########################################################################
 #                                                                        #
-#  Factory: a distributed computing library for Ocaml                    #
+#  Functory: a distributed computing library for Ocaml                   #
 #  Copyright (C) 2010 Jean-Christophe Filliatre and Kalyan Krishnamani   #
 #                                                                        #
 #  This software is free software; you can redistribute it and/or        #
@@ -48,7 +48,7 @@
 
 # check for one particular file of the sources 
 # ADAPT THE FOLLOWING LINE TO YOUR SOURCES!
-AC_INIT(factory.mli)
+AC_INIT(functory.mli)
 
 # Check for Ocaml compilers
 
