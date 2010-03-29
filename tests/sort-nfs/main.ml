@@ -18,14 +18,14 @@
 
 open Format
 
-(* let () = Factory.Control.set_debug true *)
+(* let () = Functory.Control.set_debug true *)
 
-open Factory.Sequential
+open Functory.Sequential
 
-(* open Factory.Cores *)
-(* let () = Factory.Cores.set_number_of_cores 10 *)
+(* open Functory.Cores *)
+(* let () = Functory.Cores.set_number_of_cores 10 *)
 
-(* open Factory.Network *)
+(* open Functory.Network *)
 (* let () = declare_workers ~n:12 "moloch" *)
 (* let () = declare_workers ~n:4 "orcus" *)
 

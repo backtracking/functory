@@ -16,13 +16,13 @@
 
 (* Number of solutions to the n-queens puzzle using Map/Reduce *)
 
-(* open Factory.Sequential *)
+(* open Functory.Sequential *)
 
-(* open Factory.Cores *)
+(* open Functory.Cores *)
 (* let () = set_number_of_cores 2 *)
 
-let () = Factory.Control.set_debug true
-open Factory
+let () = Functory.Control.set_debug true
+open Functory
 (* let () = Network.declare_workers ~n:2 "129.175.4.107" *)
 let () = Network.declare_workers ~n:12 "moloch"
 let () = Network.declare_workers ~n:1 "localhost"

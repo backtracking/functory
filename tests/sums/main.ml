@@ -14,14 +14,14 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(* open Factory.Sequential *)
+(* open Functory.Sequential *)
 
-let () = Factory.Control.set_debug true
+let () = Functory.Control.set_debug true
 
-open Factory.Cores
+open Functory.Cores
 let () = set_number_of_cores 2
 
-open Factory.Network
+open Functory.Network
 let () = declare_workers ~n:4 "moloch"
 let () = declare_workers ~n:2 "orcus"
 

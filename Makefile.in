@@ -203,7 +203,7 @@ source:
 
 export-doc: functory.mli
 	mkdir -p $(WWW)/doc/
-	ocamldoc -html -hide Factory -d  $(WWW)/doc/ functory.mli
+	ocamldoc -html -hide Functory -d  $(WWW)/doc/ functory.mli
 
 export-www:
 	cp www/index.html $(WWW)

@@ -15,8 +15,8 @@
 (**************************************************************************)
 
 open Format
-open Factory.Network
-let () = Factory.Control.set_debug true
+open Functory.Network
+let () = Functory.Control.set_debug true
 let () = declare_workers ~n:1 "moloch"
 let () = declare_workers ~n:1 "localhost"
 

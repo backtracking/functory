@@ -16,12 +16,12 @@
 
 open Format
 
-(* open Factory.Sequential *)
+(* open Functory.Sequential *)
 
-(* open Factory.Cores *)
+(* open Functory.Cores *)
 (* let () = set_number_of_cores 2 *)
 
-open Factory
+open Functory
 (* let () = Network.declare_workers ~n:1 "localhost" *)
 let () = Network.declare_workers ~n:8 "moloch"
 let () = Network.declare_workers ~n:4 "orcus"
@@ -49,7 +49,7 @@ let () =
     add_directory
     "usage: provers [options] dir1 dir2 ..."
 
-let () = if not !is_worker then Factory.Control.set_debug true
+let () = if not !is_worker then Functory.Control.set_debug true
 
 let files = 
   let files = ref [] in
