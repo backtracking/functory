@@ -19,16 +19,23 @@ let state =
   let nc = node "not connected" in
   let alive = node "alive" in
   let pinged = node "pinged" in
-  let error = node "error" in
+  let error = node "unreachable" in
   let b =
-    hbox ~padding:(bp 40.)
-      [nc; alive; vbox ~padding:(bp 20.) [pinged; error]
+    hbox ~padding:(bp 30.)
+      [nc; 
+       hbox ~padding:(bp 50.)
+	 [alive; vbox ~padding:(bp 30.) [pinged; error]]
       ]
   in
-  let arrow x y = Helpers.box_arrow ~sep:(bp 3.) (sub x b) (sub y b) in
+  let arrow ?pos ?outd ?ind lab x y = 
+    Helpers.box_label_arrow ?pos ?outd ?ind ~sep:(bp 3.) 
+      (Picture.tex lab) (sub x b) (sub y b) in
   draw b ++ 
-  arrow nc alive ++ arrow alive pinged ++ 
-  arrow pinged error ++ arrow error alive
+  arrow "" nc alive ++ 
+  arrow ~pos:`Top "\\sf ping ($T_1$)" alive pinged ++ 
+  arrow ~pos:`Right "$T_2$" pinged error ++
+  arrow ~pos:`Bottom "any msg.~~~~~" error alive ++
+  arrow ~outd:(vec (dir 120.)) ~pos:`Bottomright "\\sf pong" pinged alive
 
 let () = Metapost.emit "state" state
 

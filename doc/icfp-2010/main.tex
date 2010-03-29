@@ -25,7 +25,7 @@
 % 11pt          To set in 11-point type instead of 9-point.
 % authoryear    To obtain author/year citation style instead of numeric.
 
-\usepackage{amsmath,graphicx, color}
+\usepackage{amsmath,graphicx,color,url}
 
 \newcommand{\Ocaml}{OCaml}
 \newcommand{\functory}{\textsf{Functory}}
@@ -633,8 +633,9 @@ We can now distinguish the three cases, based on \of{assign_job}:
 
 \section{Experiments}\label{sec:experiments}
 
-Our library, \functory, 
-In this section, we show the potential of our library using two 
+Our library, \functory, is implemented in \Ocaml\ and is available
+from \url{http://www.lri.fr/~filliatr/functory/}.
+In this section, we show the potential of this library using two 
 computationally-extensive examples.
 
 \subsection{N-queens}
@@ -651,12 +652,12 @@ single core. The cores implementation uses the 8 cores of
 the machine. The network implementation uses 8 workers running locally and
 a master running on a remote machine (incurs communication cost).
 
-The first column shows the value of $N$.
-Each computation is divided into a certain number of tasks,
-which is shown in second column.
-Then the last three columns show execution timings in seconds for the
-three implementations. The figures within brackets show the speedup
-ratio w.r.t. sequential implementation.
+The first column shows the value of $N$.  Each computation is divided
+into a certain number of tasks, by placing some of the queens before
+starting the distributed computation.  The number of tasks is shown in
+second column.  Then the last three columns show execution timings in
+seconds for the three implementations. The figures within brackets
+show the speedup ratio w.r.t. sequential implementation.
 \begin{center}
   \begin{tabular}{|r|r|r|r|r|}
     \hline
@@ -736,8 +737,12 @@ for each possible outcomes.
 These figures sum up to more than 1 hour if provers were executed
 sequentially. However, using our library and our 3-machine
 infrastructure, it completes in 4 minutes and 8 seconds, giving us a
-speedup of more than 15$\times$.
-
+speedup of more than 15$\times$. We are still far away from the ideal
+ratio of 20$\times$ (we are using 20 cores), since some provers are
+allocating a lot of memory and time spent in system calls is not
+accounted for in the total observed time. However, a ratio of
+15$\times$ is already a significant improvement for our day-to-day
+experiments. 
 
 \section{Conclusion and Future Work}\label{sec:future}
 
@@ -803,10 +808,11 @@ We intend to enrich our library with all above features.
 
 % This is the text of the appendix, if you need one.
 
-% \acks
+\acks
+The authors are grateful to the ProVal team for support and comments
+on early versions of the library and of this paper.
 
-% Acknowledgments, if needed.
-
+\vfill\pagebreak
 % We recommend abbrvnat bibliography style.
 
 \bibliographystyle{abbrvnat}
