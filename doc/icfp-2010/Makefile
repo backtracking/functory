@@ -18,4 +18,4 @@ state.mps:
 	mlpost -latex main.tex figures.ml
 
 export: main-pp.pdf
-	cp main-pp.pdf ~/WWW/factory/paper.pdf
+	cp main-pp.pdf ~/WWW/functory/paper.pdf

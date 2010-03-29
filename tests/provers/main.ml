@@ -213,13 +213,27 @@ let master ((file, p, _), ()) (res, time) =
   t.time <- t.time +. time;
   []
 
+let rec print_time fmt t =
+  if t < 60. then 
+    fprintf fmt "%.2f seconds" t
+  else if t < 3600. then 
+    let m = floor (t /. 60.) in
+    fprintf fmt "%.0f minutes %a" m print_time (t -. 60. *. m)
+  else 
+    let h = floor (t /. 3600.) in
+    fprintf fmt "%.0f hours %a" h print_time (t -. 3600. *. h)
+
 let () = 
+  let t0 = Unix.time () in
   if !is_worker then
     Network.Same.Worker.compute ()
   else
     Network.Same.compute ~worker ~master tasks;
+  let time_consumed = Unix.time () -. t0 in
+  let sequential_time = ref 0. in
   let print_total t =
-    printf "%3d (%5.2fs) | " t.n t.time
+    printf "%3d (%5.2fs) | " t.n t.time;
+    sequential_time := !sequential_time +. t.time
   in
   let print p pr =
     printf "%10s | " p;
@@ -232,7 +246,12 @@ let () =
   in
   printf "           |  valid       | invalid      | cannot       | timeout      | failure@.";
   printf "---------------------------------------------------------------------------------------@.";
-  Hashtbl.iter print prover_table
+  Hashtbl.iter print prover_table;
+  printf "@.";
+  printf "time consumed  : %a@." print_time time_consumed;
+  printf "sequential time: %a@." print_time !sequential_time;
+  printf "ratio is %.2f@." (!sequential_time /. time_consumed)
+
 
 (*
 Local Variables: 
