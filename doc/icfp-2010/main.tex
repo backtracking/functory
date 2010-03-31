@@ -49,7 +49,7 @@
             INRIA Saclay - \^{I}le-de-France, ProVal, Orsay, F-91893}
            {filliatr@lri.fr}
 \authorinfo{K. Kalyanasundaram}
-           {INRIA Saclay - \^{I}le-de-France, ProVal, Orsay, F-91893}
+           {ProVal, INRIA Saclay - \^{I}le-de-France, Orsay, F-91893}
            {kalyan.krishnamani@inria.fr}
 
 \maketitle
@@ -62,7 +62,7 @@
   multi-core or network, and (3) a reliable fault tolerance mechanism.
   This paper describes the motivation behind this work, as well as
   the design and implementation of the library. It also demonstrates
-  the potential of the library with realistic experiments.
+  the potential of the library using realistic experiments.
 \end{abstract}
 
 \category{D1.1}{Programming techniques}{Applicative (Functional) Programming}
@@ -99,12 +99,12 @@ real-world applications), over multiple cores in the same machine or
 over a network of machines. 
 The most important features of our library are the following:
 \begin{itemize}
-\item \emph{genericity}: 
+\item \emph{Genericity}: 
   it allows various patterns of polymorphic computations;
-\item \emph{simplicity}: switching between multiple cores on the same
+\item \emph{Simplicity}: switching between multiple cores on the same
   machine and a network of machines is as simple as changing a couple
   of lines of code;
-\item \emph{task distribution and fault-tolerance}: 
+\item \emph{Task distribution and fault-tolerance}: 
   it relieves the user from implementing task distribution routines
   and reliable fault-tolerance mechanisms.
 \end{itemize}
@@ -226,8 +226,8 @@ Tasks are pairs, of type \of{'a * 'c}, where the first component is
 passed to the worker and the second component is local to the master.
 The function \ocaml{worker} should be pure and is executed in parallel
 with other \ocaml{worker}s. The function \ocaml{master}, on the
-contrary, can be impure and is never executed in parallel with other
-\ocaml{master}s. The function \ocaml{master} always processes
+contrary, can be impure and is never executed in parallel.
+The function \ocaml{master} always processes
 information locally, typically storing it to internal data structures.
 The next section will describe the usage of this generic interface to
 perform traditional map and fold operations.
@@ -237,18 +237,18 @@ function as above, but instead five different versions
 depending on the execution context. 
 The five possible contexts are the following: 
 \begin{enumerate}
-\item \textbf{purely sequential execution:}
+\item \textbf{Purely sequential execution:}
   this is intended for validating the results;
 
-\item \textbf{several cores on the same machine:} 
+\item \textbf{Several cores on the same machine:} 
   this implementation makes use of \unix\ processes and thus can
   provide a polymorphic \ocaml{compute} function;
 
-\item \textbf{same executable run on master and worker machines:}
+\item \textbf{Same executable run on master and worker machines:}
   this implementation makes use of the ability to marshal \Ocaml\
   closures and thus can still provide a polymorphic \ocaml{compute} function;
 
-\item \textbf{master and workers are different programs, compiled with
+\item \textbf{Master and workers are different programs, compiled with
     the same version of \Ocaml:} 
   we can no longer marshal closures but we can still
   marshal polymorphic values. As a consequence, 
@@ -261,7 +261,7 @@ val master :
   ('a * 'c) list -> unit
 val worker : ('a -> 'b) -> unit -> unit
 \end{ocaml}
-\item \textbf{master and workers are different programs, not even
+\item \textbf{Master and workers are different programs, not even
     compiled with the same version of \Ocaml:} we can no
   longer use marshaling, so the
   \ocaml{compute} function is split into two monomorphic functions
@@ -295,8 +295,8 @@ being given above):
     & & & \ocaml{worker}  & \ocaml{worker} \\\hline
   \end{tabular}
 \end{center}
-The following section introduces other interesting APIs that can be
-derived from this generic API.
+The following section introduces other interesting APIs that we
+derive from this generic API.
 
 \section{Derived API}\label{sec:derived}
 
@@ -789,7 +789,7 @@ library.
 \item 
   Another interesting feature could be the ability
   to add or remove workers dynamically. Currently, our library assumes
-  the list of workers to be used is given \emph{a priori}.
+  that the list of workers to be used is given \emph{a priori}.
 \item
   Our library provides limited support for displaying real-time
   information about the computations. Processing and storing
