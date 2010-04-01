@@ -20,10 +20,10 @@ open Format
 
 (* let () = Functory.Control.set_debug true *)
 
-open Functory.Sequential
+(* open Functory.Sequential *)
 
-(* open Functory.Cores *)
-(* let () = Functory.Cores.set_number_of_cores 10 *)
+open Functory.Cores
+let () = Functory.Cores.set_number_of_cores 2
 
 (* open Functory.Network *)
 (* let () = declare_workers ~n:4 "moloch" *)

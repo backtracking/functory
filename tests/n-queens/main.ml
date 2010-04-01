@@ -18,15 +18,15 @@
 
 (* open Functory.Sequential *)
 
-(* open Functory.Cores *)
-(* let () = set_number_of_cores 2 *)
+open Functory.Cores
+let () = set_number_of_cores 2
 
-let () = Functory.Control.set_debug true
-open Functory
+(* let () = Functory.Control.set_debug true *)
+(* open Functory *)
 (* let () = Network.declare_workers ~n:2 "129.175.4.107" *)
-let () = Network.declare_workers ~n:12 "moloch"
-let () = Network.declare_workers ~n:1 "localhost"
-let () = Network.declare_workers ~n:4 "orcus"
+(* let () = Network.declare_workers ~n:12 "moloch" *)
+(* let () = Network.declare_workers ~n:1 "localhost" *)
+(* let () = Network.declare_workers ~n:4 "orcus" *)
 
 let rec t a b c count =
   if a > 0 then
@@ -47,7 +47,7 @@ let rec tabulate i j f = if i > j then [] else f i :: tabulate (i+1) j f
 let n_queens q = 
   let l = tabulate 0 (q-1) (fun i -> 1 lsl i) in
   let all = lnot ((lnot 0) lsl q) in
-  let rl = Network.Same.map (fun c -> t (all-c) (c*2) (c/2) 0) l in (* <- map here *)
+  let rl = map (fun c -> t (all-c) (c*2) (c/2) 0) l in (* <- map here *)
   List.fold_left (+) 0 rl	                 (* <- reduce locally *)
 
 let test_n_queens q = 

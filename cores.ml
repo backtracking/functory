@@ -18,33 +18,6 @@ open Format
 open Control
 open Unix
 
-type 'a job = {
-  worker : int;
-  pid : int;
-  file : string;
-  task : 'a; 
-}
-let create_worker w (f : 'a -> 'b) (t : 'a * 'c) : ('a * 'c) job =
-  let file = Filename.temp_file "mapfold" "output" in
-  match fork () with
-    | 0 -> (* child *)
-	let r = f (fst t) in
-	let c = open_out file in
-	output_value c r;
-	exit 0
-    | pid -> (* parent *)
-	{ worker = w;
-	  pid = pid;
-	  file = file;
-	  task = t }
-
-
-let ncores = ref 1
-let set_number_of_cores n = ncores := n
-
-let rec listij acc i j = if i > j then acc else listij (j :: acc) i (j-1)
-let workers () = listij [] 1 !ncores
-
 (* main loop: assigns tasks to workers, until no more task *)
 let run 
     ~(create_job : 'worker -> 'task -> unit) 
@@ -73,6 +46,35 @@ let run
     List.iter (fun t -> Stack.push t todo) tl
   done;
   assert (Stack.is_empty todo && !towait = 0)
+
+let ncores = ref 1
+let set_number_of_cores n = ncores := n
+
+let rec listij acc i j = if i > j then acc else listij (j :: acc) i (j-1)
+let workers () = listij [] 1 !ncores
+
+(*** using local files ***************************************************)
+
+type 'a job = {
+  worker : int;
+  pid : int;
+  file : string;
+  task : 'a; 
+}
+
+let create_worker w (f : 'a -> 'b) (t : 'a * 'c) : ('a * 'c) job =
+  let file = Filename.temp_file "mapfold" "output" in
+  match fork () with
+    | 0 -> (* child *)
+	let r = f (fst t) in
+	let c = open_out file in
+	output_value c r;
+	exit 0
+    | pid -> (* parent *)
+	{ worker = w;
+	  pid = pid;
+	  file = file;
+	  task = t }
 
 let compute 
     ~(worker : 'a -> 'b) ~(master : ('a * 'c) -> 'b -> ('a * 'c) list) tasks =
@@ -105,6 +107,60 @@ let compute
 		   Hashtbl.add jobs j.pid j)
     ~wait (workers ()) tasks
 
+(*** using pipes***** ***************************************************)
+
+(****
+type 'a p_job = {
+  p_worker : int;
+  p_pid : int;
+  p_file : file_descr;
+  p_task : 'a; 
+}
+
+let create_worker w (f : 'a -> 'b) (t : 'a * 'c) : ('a * 'c) p_job =
+  let fdin, fdout = Unix.pipe () in
+  match fork () with
+    | 0 -> (* child *)
+	close fdin;
+	let r = f (fst t) in
+	let c = out_channel_of_descr fdout in
+	output_value c r;
+	exit 0
+    | pid -> (* parent *)
+	close fdout;
+	{ p_worker = w;
+	  p_pid = pid;
+	  p_file = fdin;
+	  p_task = t }
+
+let compute 
+    ~(worker : 'a -> 'b) ~(master : ('a * 'c) -> 'b -> ('a * 'c) list) tasks =
+  let jobs = Hashtbl.create 17 in (* fd -> job *)
+  let rec wait () = 
+    let fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) jobs [] in
+    match select fds [] [] (-1.0) with
+      | fd :: _, _, _ ->
+	  let j = Hashtbl.find jobs fd in
+          dprintf "master: got result from worker PID %d@." j.p_pid;
+          dprintf "master: got result from worker %d@." j.p_worker;
+	  Hashtbl.remove jobs fd;
+          let c = in_channel_of_descr j.p_file in
+          let r : 'b = input_value c in
+          close_in c;
+          let l = master j.p_task r in 
+	  j.p_worker, l
+      | [], _, _ ->
+	  assert false
+  in
+  run
+    ~create_job:(fun w t ->
+		   let j = create_worker w worker t in
+		   dprintf "master: started worker %d (PID %d)@." w j.p_pid;
+		   Hashtbl.add jobs j.p_file j)
+    ~wait (workers ()) tasks
+****)
+
+(* derived API *)
 
 include Map_fold.Make(struct let compute = compute end)
 
