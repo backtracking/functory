@@ -57,7 +57,7 @@
 \begin{abstract}
   We present a distributed computing library for
   functional programming languages. The main features of this library
-  include (1) a highly-generic API, (2) several implementations to
+  include (1) a generic API, (2) several implementations to
   adapt to different computing environments such as sequential,
   multi-core or network, and (3) a reliable fault tolerance mechanism.
   This paper describes the motivation behind this work, as well as
@@ -144,7 +144,7 @@ of any large-scale expensive computation that is parallelizable.
 % \end{itemize}
 \paragraph{Distributed Computing.}
 A typical distributed computing library provides the following (we
-borrow some terminology from Google's Mapreduce~\cite{mapreduce}):
+borrow some terminology from Google's mapreduce~\cite{mapreduce}):
 \begin{itemize}
 \item A notion of a \emph{task} which denotes the atomic computation to be
   performed in a distributed manner;
@@ -170,7 +170,7 @@ the network.
 
 \paragraph{A Functional Programming Approach.}
 Our work was initially inspired by Google's
-Mapreduce\footnote{Ironically, Google's approach itself was inspired
+mapreduce\footnote{Ironically, Google's approach itself was inspired
   by functional programming primitives.}. However, our functional
 programming environment allows us to be more generic. 
 The main idea behind our approach is that
@@ -186,7 +186,7 @@ function to handle the results:
 \end{ocaml}
 The function passed to the master is applied whenever a result is
 available and may in turn generate new tasks (hence the return type
-\of{'a list}).  The master is executed as long as there are incomplete
+\of{'a list}).  The master is executed as long as there are pending
 tasks.
 
 Our library makes use of \Ocaml's marshaling capabilities, as much as
@@ -246,7 +246,10 @@ The five possible contexts are the following:
 
 \item \textbf{Same executable run on master and worker machines:}
   this implementation makes use of the ability to marshal \Ocaml\
-  closures and thus can still provide a polymorphic \ocaml{compute} function;
+  closures and thus can still provide a polymorphic \ocaml{compute}
+  function.
+  Depending on whether the program is run as a master or as a worker,
+  the relevant arguments of \ocaml{compute} are used.
 
 \item \textbf{Master and workers are different programs, compiled with
     the same version of \Ocaml:} 
@@ -255,22 +258,24 @@ The five possible contexts are the following:
   the \ocaml{compute} function is split into two
   polymorphic functions, to implement the master and workers 
   respectively:%
+\vspace{-1em}
 \begin{ocaml}
+val worker : ('a -> 'b) -> unit -> unit
 val master : 
   ('a * 'c -> 'b -> ('a * 'c) list) -> 
   ('a * 'c) list -> unit
-val worker : ('a -> 'b) -> unit -> unit
 \end{ocaml}
 \item \textbf{Master and workers are different programs, not even
     compiled with the same version of \Ocaml:} we can no
   longer use marshaling, so the
   \ocaml{compute} function is split into two monomorphic functions
   over strings:%
+\vspace{-1em}
 \begin{ocaml}
+val worker : (string -> string) -> unit -> unit
 val master : 
   (string * 'c -> string -> (string * 'c) list) -> 
   (string * 'c) list -> unit
-val worker : (string -> string) -> unit -> unit
 \end{ocaml}
   Note that the second component of each task is still polymorphic (of
   type \ocaml{'c} here), since it is local to the master.
@@ -332,7 +337,8 @@ Regarding \of{fold} operations, we distinguish two cases:
 \item or \of{fold} operations are computationally expensive and we
   perform them in parallel.
 \end{itemize}
-We thus provide two functions \of{map_local_fold} and \of{map_remote_fold}.
+We thus provide two functions \of{map_local_fold} and \of{map_remote_}
+\of{fold}.
 
 In the case of \of{map_remote_fold}, only one \of{fold} operation can
 be performed at a time (possibly in parallel with \of{map}
@@ -420,10 +426,11 @@ we simply return it.
 The function \of{map_fold_ac} is easier than the previous one, since
 we do not need to store more than one intermediate result. Indeed, as
 soon as two intermediate results are available, we immediately combine
-them using a \of{fold} operation. Thus the \of{master} function either
-stores it or combines it, depending on the availability/non
-availability of the accumulator.  Whenever \of{compute} returns, the
-accumulator must be available and we simply return it.
+them using a \of{fold} operation. Thus, whenever the \of{master}
+receives some result, it either stores it or combines it with the
+accumulator, depending on the availability/non availability of the
+accumulator.  Whenever \of{compute} returns, the accumulator must be
+available and we simply return it.
 
 \paragraph{\of{map_fold_a}.}
 Function \of{map_fold_a} is definitely the trickiest. Indeed, the
@@ -466,10 +473,9 @@ tasks to be performed simultaneously.
 % TODO comment more on the number of cores?
 Thus a program using the \of{Cores} module typically begins with 
 \begin{ocaml}
-open Mapreduce.Cores
+open Cores
 let () = set_number_of_cores 8
 \end{ocaml}
-% TODO rename Mapreduce?
 
 The \of{Cores} module is implemented with \unix\ processes, using the
 \of{fork} and \of{wait} system calls provided by the \of{Unix} library
@@ -512,7 +518,7 @@ be used in each worker machine, analogous to the \of{Cores}
 module. Thus a program using the \of{Network} module typically begins
 with
 \begin{ocaml}
-open Mapreduce.Network
+open Network
 let () = declare_workers ~n:12 "machine1"
 let () = declare_workers ~n:8  "machine2"
 ...
@@ -607,7 +613,7 @@ different execution scenarios (namely, \of{Same}, \of{Poly} and
 \of{Mono}). The exciting thing about our library is that there is
 actually a single, generic implementation, which is then instantiated
 in three different ways, corresponding to the three scenarios.  The
-generic implementation assumes that only string are being transmitting
+generic implementation assumes that only strings are being transmitted
 over the network, as evident from \of{Assign} and \of{Completed}
 messages in Section~\ref{sec:protocol}.  The signature for the generic
 implementation is therefore as follows:
@@ -641,7 +647,8 @@ computationally-extensive examples.
 \subsection{N-queens}
 
 The first example is the classical $N$-queens problem, where we
-compute the total number of solutions for a given $N$.
+compute the total number of ways to place $N$ queens on a $N\times N$
+chessboard in such a way no two queens attack each other.
 The following table shows execution timings for various values of $N$
 and our three different implementations modules \of{Sequential}, \of{Cores} and
 \of{Network}. The purpose of this experiment is to measure the speedup
@@ -650,7 +657,7 @@ computations are performed on the same machine, a 8 cores Intel Xeon
 3.2 GHz running Debian Linux. The sequential implementation uses a
 single core. The cores implementation uses the 8 cores of
 the machine. The network implementation uses 8 workers running locally and
-a master running on a remote machine (incurs communication cost).
+a master running on a remote machine (which incurs communication cost).
 
 The first column shows the value of $N$.  Each computation is divided
 into a certain number of tasks, by placing some of the queens before
@@ -724,24 +731,24 @@ for each possible outcomes.
     \hline
     prover   & valid & cannot & timeout & failure
     \\\hline\hline
-    Alt-ergo &  24.7  &  2.4  & 1260.0 &   0.0       
+    Alt-ergo & 406.0 & 3.0   &  11400.0 & 0.0       
     \\\hline
-    Simplify &   0.6  &  0.3  &  300.0 &  43.0   
+    Simplify &  0.5   & 0.4   &  1200.0 & 222.0   
     \\\hline
-    Z3       &  98.6  &  0.0  & 1200.0 &  66.3    
+    Z3       & 80.7   & 0.0   &  1800.0 & 1695.0   
     \\\hline
-    CVC3     &  46.7  & 28.0  &  720.0 &   0.0   
+    CVC3     & 303.0  & 82.7  &  4200.0 & 659.0   
     \\\hline
   \end{tabular}
 \end{center}
-These figures sum up to more than 1 hour if provers were executed
+These figures sum up to more than 6 hours if provers were executed
 sequentially. However, using our library and our 3-machine
-infrastructure, it completes in 4 minutes and 8 seconds, giving us a
-speedup of more than 15$\times$. We are still far away from the ideal
+infrastructure, it completes in 22 minutes and 37 seconds, giving us a
+speedup of more than 16$\times$. We are still far away from the ideal
 ratio of 20$\times$ (we are using 20 cores), since some provers are
 allocating a lot of memory and time spent in system calls is not
 accounted for in the total observed time. However, a ratio of
-15$\times$ is already a significant improvement for our day-to-day
+16$\times$ is already a significant improvement for our day-to-day
 experiments. 
 
 \section{Conclusion and Future Work}\label{sec:future}
