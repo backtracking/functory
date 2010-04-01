@@ -21,7 +21,7 @@ let state =
   let pinged = node "pinged" in
   let error = node "unreachable" in
   let b =
-    hbox ~padding:(bp 30.)
+    hbox ~padding:(bp 40.)
       [nc; 
        hbox ~padding:(bp 50.)
 	 [alive; vbox ~padding:(bp 30.) [pinged; error]]
@@ -31,16 +31,17 @@ let state =
     Helpers.box_label_arrow ?pos ?outd ?ind ~sep:(bp 3.) 
       (Picture.tex lab) (sub x b) (sub y b) in
   draw b ++ 
-  arrow "" nc alive ++ 
-  arrow ~pos:`Top "\\sf ping ($T_1$)" alive pinged ++ 
-  arrow ~pos:`Right "$T_2$" pinged error ++
+  arrow ~outd:(vec (dir (-40.))) ~pos:`Bottom "connect" nc alive ++ 
+  arrow ~pos:`Top "\\sf ping" alive pinged ++ 
+  arrow ~pos:`Right "" pinged error ++
   arrow ~pos:`Bottom "any msg.~~~~~" error alive ++
-  arrow ~outd:(vec (dir 120.)) ~pos:`Bottomright "\\sf pong" pinged alive
+  arrow ~outd:(vec (dir 140.)) ~pos:`Top "{\\sf pong}/any msg." pinged alive ++
+  arrow ~outd:(vec (dir 140.)) ~pos:`Top "lost connection" alive nc
 
 let () = Metapost.emit "state" state
 
 (*
 Local Variables:
-compile-command: "mlpost -latex main.tex  -xpdf figures.ml"
+compile-command: "mlpost -latex main2.tex  -xpdf figures.ml"
 End:
 *)
