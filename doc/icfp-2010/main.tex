@@ -146,7 +146,7 @@ of any large-scale expensive computation that is parallelizable.
 A typical distributed computing library provides the following (we
 borrow some terminology from Google's MapReduce~\cite{mapreduce}):
 \begin{itemize}
-\item A notion of \emph{task} which denotes an atomic computation
+\item A notion of \emph{tasks} which denote atomic computations
   to be performed in a distributed manner; 
 \item A set of processes (possibly executing on remote machines)
   called \emph{workers} that perform
@@ -228,10 +228,10 @@ sketched in the introduction. It has the following signature:
 Tasks are pairs, of type \of{'a * 'c}, where the first component is
 passed to the worker and the second component is local to the master.
 The \ocaml{worker} function should be pure and is executed in parallel
-with other \ocaml{worker}s. The function \ocaml{master}, on the
-contrary, can be impure and is never executed in parallel.
-The \ocaml{master} function always processes
-information locally, typically storing it to internal data structures.
+in all worker processes. The function \ocaml{master}, on the
+contrary, can be impure and is only executed in the master process.
+The \ocaml{master} function typically stores results 
+in some internal data structure.
 The next section will describe the usage of this generic interface to
 perform the traditional map and fold operations.
 
@@ -263,8 +263,8 @@ The five possible contexts are the following:
   respectively:%
 \vspace{-1em}
 \begin{ocaml}
-val worker_compute : ('a -> 'b) -> unit -> unit
-val master_compute : 
+val Worker.compute : ('a -> 'b) -> unit -> unit
+val Master.compute : 
   ('a * 'c -> 'b -> ('a * 'c) list) -> 
   ('a * 'c) list -> unit
 \end{ocaml}
@@ -275,8 +275,8 @@ val master_compute :
   over strings:%
 \vspace{-1em}
 \begin{ocaml}
-val worker_compute : (string -> string) -> unit -> unit
-val master_compute : 
+val Worker.compute : (string -> string) -> unit -> unit
+val Master.compute : 
   (string * 'c -> string -> (string * 'c) list) -> 
   (string * 'c) list -> unit
 \end{ocaml}
@@ -323,15 +323,15 @@ We start with the sequential implementation provided by the library:
 \end{ocaml}
 The idea is to test our code on small values of $n$ before
 parallelizing the computation for larger values.
-Let us assume that $f$ is defined as a toplevel function
+Let us assume that $f$ is implemented as a top-level \of{worker} function:
 \begin{ocaml}
-  let f i = ...
+  let worker i = ...
 \end{ocaml}
-and that $n$ is obtained from the command line
+and that $n$ is obtained from the command line:
 \begin{ocaml}
   let n = int_of_string Sys.argv.(1)
 \end{ocaml}
-The list of tasks is simply the list of integers 0,1,\dots,$n$,
+The list of tasks is simply the list of integers $0,1,\dots,n$,
 computed as follows:
 \begin{ocaml}
   let tasks = 
@@ -353,9 +353,9 @@ generated, hence the returned empty list.
   let master (i,()) fi = s := !s + fi; []
 \end{ocaml}
 Finally, the whole computation takes place when we call the
-\of{compute} function, passing \of{f} as the worker function:
+\of{compute} function:
 \begin{ocaml}
-  let () = compute ~worker:f ~master tasks
+  let () = compute ~worker ~master tasks
 \end{ocaml}
 
 Now, let us assume we want to make use of a 4-core machine to compute
@@ -391,11 +391,11 @@ which provides a polymorphic API. Let us start with the worker program.
 It is as simple as
 \begin{ocaml}
   open Poly
-  let f i = ...
-  let () = Worker.compute f ()
+  let worker i = ...
+  let () = Worker.compute worker ()
 \end{ocaml}
 The \of{Worker.compute} function enters a loop which waits for
-tasks sent by the master and returns results computed using \of{f}.
+tasks sent by the master and returns results computed using \of{worker}.
 The master program is almost the same as before. First, we replace
 module \of{Same} with module \of{Poly}:
 \begin{ocaml}
@@ -423,20 +423,18 @@ integers to and from strings in both master and worker.
 The modified worker program is as follows:
 \begin{ocaml}
   open Mono
-  let f = ...
-  let f_string i = string_of_int (f (int_of_string i))
-  let () = Worker.compute f_string ()
+  let worker i = ...
+  let worker_string i = string_of_int (worker (int_of_string i))
+  let () = Worker.compute worker_string ()
 \end{ocaml}
-The master program is almost unchanged. We simply need to replace
-\of{Poly} with \of{Mono} and to encode tasks as strings:
+The master program is modified in a similar way.
+We simply replace \of{Poly} with \of{Mono} and encode/decode integers
+as strings, as follows:
 \begin{ocaml}
   let tasks = 
     let l = ref [] in 
     for i = 0 to n do l := (string_of_int i, ()) :: !l done; 
     !l
-\end{ocaml}
-Consequently, \of{master} is now receiving a string as argument:
-\begin{ocaml}
   let master (i,()) fi = s := !s + int_of_string fi; []
 \end{ocaml}
 
@@ -485,8 +483,8 @@ operations), as obvious from~(\ref{eq:map-fold}). However, there are
 cases where several \of{fold} operations can be performed in parallel,
 as early as intermediate results of \of{fold} operations are available.
 This is the case when \of{fold} is an associative operation (which
-implies that type \of{'b} and \of{'c} are the same  and that the
-accumulator should be a neutral element for \of{fold}). Whenever
+implies that type \of{'b} and \of{'c} are the same).
+Whenever
 \of{fold} is also commutative, we can perform even more \of{fold}
 operations in parallel. Thus our API provides two functions
 \of{map_fold_a} and \of{map_fold_ac} for these two particular cases.
@@ -548,7 +546,9 @@ returns, we simply return the current accumulator.
 \paragraph{\of{map_remote_fold}.}
 In this case, combining the accumulator with an intermediate result is
 itself a task to be performed in parallel with \of{map} operations.
-Thus, when an intermediate \of{map} result is available, the
+Thus tasks are of two different kinds and we use a sum type to make
+the distinction.
+When an intermediate \of{map} result is available, the
 accumulator may be already in use in a \of{fold} operation. Hence we
 need to store the intermediate \of{map} result in a table local to the
 master, to be
@@ -625,7 +625,8 @@ of \Ocaml. The idea is pretty simple.  The \of{compute} function
 maintains a global table of pending tasks and keeps track of the
 number of idle cores.  Whenever there is a pending task and an idle
 core, a new sub-process is created using \of{Unix.fork}; once
-completed, the sub-process marshals the result into a local file. The
+completed, the sub-process marshals the result into a 
+local file. The
 main process maintains a table mapping each sub-process ID to the
 input task and the local file name. It waits for any completed
 sub-process using \of{Unix.wait} and recovers the result from the
@@ -638,11 +639,8 @@ new tasks.  The main loop can be depicted in the following way:
   \quad  \quad \textbf{wait} for any completed sub-process \\
   \quad  \quad \quad push new tasks generated by \of{master} \\
 \end{flushleft}
-
-It would be more efficient to use \unix\ pipes instead of local files
-but pipes are severely restricted w.r.t. data size. To be more
-generic, we make no assumptions about the size of the data. Providing
-an alternative implementation using pipes would be straightforward.
+We also have an alternative implementation using
+\unix\ pipes instead of local files.
 
 The scheduling of tasks to the different cores is left to the
 operating system, through \of{Unix.fork}. Thus it may be the case that
@@ -928,8 +926,7 @@ There are other implementations of distributed computing in the
 context of functional programming. One is the Disco
 project~\cite{disco}, which implements exactly Google's MapReduce in
 Erlang~\cite{erlang}. Our library, on the contrary, is not an \Ocaml\
-implementation of Google's MapReduce; rather it is more generic and
-not restricted to just key/value pairs.
+implementation of Google's MapReduce.
 There are other ways to exploit multi-core architectures. One of these
 is data parallelism, which is also relevant in the functional
 programming setting~\cite{parallel-haskell}. Our work
