@@ -204,7 +204,9 @@ these situations, by providing several APIs.
 \medskip
 The paper is organized as follows. In Section~\ref{sec:API}, we
 describe the main idea behind the generic API, and introduce
-\of{master} and \of{worker} programs. In Section~\ref{sec:derived}, we
+\of{master} and \of{worker} programs. Section~\ref{sec:example}
+illustrates the API usage with an example.
+In Section~\ref{sec:derived}, we
 derive some interesting functions from the generic
 API. Section~\ref{sec:implem} delves into the implementation details
 of our library, while Section~\ref{sec:experiments} illustrates the
@@ -261,8 +263,8 @@ The five possible contexts are the following:
   respectively:%
 \vspace{-1em}
 \begin{ocaml}
-val worker : ('a -> 'b) -> unit -> unit
-val master : 
+val worker_compute : ('a -> 'b) -> unit -> unit
+val master_compute : 
   ('a * 'c -> 'b -> ('a * 'c) list) -> 
   ('a * 'c) list -> unit
 \end{ocaml}
@@ -273,8 +275,8 @@ val master :
   over strings:%
 \vspace{-1em}
 \begin{ocaml}
-val worker : (string -> string) -> unit -> unit
-val master : 
+val worker_compute : (string -> string) -> unit -> unit
+val master_compute : 
   (string * 'c -> string -> (string * 'c) list) -> 
   (string * 'c) list -> unit
 \end{ocaml}
@@ -286,29 +288,165 @@ Our library is organized into three modules: \of{Sequential} for the
 pure sequential implementation, \of{Cores} for multiple cores on the
 same machine and \of{Network} for a network of machines, respectively.
 The \of{Network} module itself is organized into three sub-modules,
-corresponding to contexts 3, 4 and 5 above. The different
-API functions are summarized in the following table (their signatures
-being given above):
-\begin{center}
-  \begin{tabular}{|c|c|c|c|c|}
-    \hline
-    \ocaml{Sequential} & \ocaml{Cores} &
-    \multicolumn{3}{|c|}{\ocaml{Network}} 
-    \\\cline{3-5}
-    &       & \ocaml{Same} & \ocaml{Poly} & \ocaml{Mono} \\\hline
-    \ocaml{compute}  & \ocaml{compute}   & \ocaml{compute}  &
-    \ocaml{master}  & \ocaml{master}  \\
-    & & & \ocaml{worker}  & \ocaml{worker} \\\hline
-  \end{tabular}
-\end{center}
-The following section introduces other interesting APIs that we
-derive from this generic API.
+called \of{Same}, \of{Poly} and \of{Mono},
+corresponding to contexts 3, 4 and 5 above. 
+The next section demonstrates the use of these modules.
+
+% The different
+% API functions are summarized in the following table (their signatures
+% being given above):
+% \begin{center}
+%   \begin{tabular}{|c|c|c|c|c|}
+%     \hline
+%     \ocaml{Sequential} & \ocaml{Cores} &
+%     \multicolumn{3}{|c|}{\ocaml{Network}} 
+%     \\\cline{3-5}
+%     &       & \ocaml{Same} & \ocaml{Poly} & \ocaml{Mono} \\\hline
+%     \ocaml{compute}  & \ocaml{compute}   & \ocaml{compute}  &
+%     \ocaml{master}  & \ocaml{master}  \\
+%     & & & \ocaml{worker}  & \ocaml{worker} \\\hline
+%   \end{tabular}
+% \end{center}
+% The following section introduces other interesting APIs that we
+% derive from this generic API.
+
+\section{Illustrative Example}\label{sec:example}
+
+Let us assume we need to compute a sum such as
+\begin{displaymath}
+  s(n) = \sum_{i=0}^{n}f(i)
+\end{displaymath}
+where $f$ is a pure and computationally expensive function.
+We start with the sequential implementation provided by the library:
+\begin{ocaml}
+  open Sequential
+\end{ocaml}
+The idea is to test our code on small values of $n$ before
+parallelizing the computation for larger values.
+Let us assume that $f$ is defined as a toplevel function
+\begin{ocaml}
+  let f i = ...
+\end{ocaml}
+and that $n$ is obtained from the command line
+\begin{ocaml}
+  let n = int_of_string Sys.argv.(1)
+\end{ocaml}
+The list of tasks is simply the list of integers 0,1,\dots,$n$,
+computed as follows:
+\begin{ocaml}
+  let tasks = 
+    let l = ref [] in 
+    for i = 0 to n do l := (i, ()) :: !l done; 
+    !l
+\end{ocaml}
+Each task is actually a pair, where the second component contains
+some information which is kept local to the master process.
+It is irrelevant here and thus the value \of{()} of type \of{unit} is used.
+The current sum is kept into a global reference \of{s}:
+\begin{ocaml}
+  let s = ref 0
+\end{ocaml}
+The master function receives a task \of{(i,())} together with its
+result \of{fi} and simply adds \of{fi} to \of{s}. There is no new task
+generated, hence the returned empty list.
+\begin{ocaml}
+  let master (i,()) fi = s := !s + fi; []
+\end{ocaml}
+Finally, the whole computation takes place when we call the
+\of{compute} function, passing \of{f} as the worker function:
+\begin{ocaml}
+  let () = compute ~worker:f ~master tasks
+\end{ocaml}
+
+Now, let us assume we want to make use of a 4-core machine to compute
+$s(n)$. It is as easy as just replacing the very first line with
+\begin{ocaml}
+  open Cores
+  let () = set_number_of_cores 4
+\end{ocaml}
+while the rest of the code remains unchanged.
+
+Later, we may want to use a network of machines instead, for example
+two machines called \texttt{orcus} and \texttt{belzebuth} with 4 and 8
+cores respectively. Similar to the above, we just replace the first
+lines with
+\begin{ocaml}
+  open Network
+  let () = declare_workers ~n:4 "orcus"
+  let () = declare_workers ~n:8 "belzebuth"
+  open Same
+\end{ocaml}
+Here, \of{Same} is a module which is to be used when master and worker
+are running the same executable. It provides a \of{compute} function
+which has the same signature as in modules \of{Sequential} and
+\of{Cores}, so that the rest of the code remains unchanged. Master and
+worker processes are distinguished at run-time using an environment
+variable \texttt{WORKER} which is set/unset.
+
+If we need to write two different programs for master and worker, for
+reason of binary incompatibility or any other reason, the library API
+is providing functions to do that. If master and worker are still
+compiled with the same version of \Ocaml, we use the \of{Poly} module
+which provides a polymorphic API. Let us start with the worker program.
+It is as simple as
+\begin{ocaml}
+  open Poly
+  let f i = ...
+  let () = Worker.compute f ()
+\end{ocaml}
+The \of{Worker.compute} function enters a loop which waits for
+tasks sent by the master and returns results computed using \of{f}.
+The master program is almost the same as before. First, we replace
+module \of{Same} with module \of{Poly}:
+\begin{ocaml}
+  open Network
+  let () = declare_workers ~n:4 "orcus"
+  let () = declare_workers ~n:8 "belzebuth"
+  open Poly
+\end{ocaml}
+Tasks and \of{master} function are unchanged:
+\begin{ocaml}
+  let tasks = ...
+  let s = ref 0
+  let master (i,()) fi = ...
+\end{ocaml}
+Finally, we start the computation with \of{Master.compute}, which does
+not have a \of{worker} parameter anymore:
+\begin{ocaml}
+  let () = Master.compute ~master tasks
+\end{ocaml}
+
+When master and worker programs are compiled with different
+versions of the \Ocaml\ compiler, our library still provides
+a monomorphic API over strings. As a consequence, we need to convert
+integers to and from strings in both master and worker.
+The modified worker program is as follows:
+\begin{ocaml}
+  open Mono
+  let f = ...
+  let f_string i = string_of_int (f (int_of_string i))
+  let () = Worker.compute f_string ()
+\end{ocaml}
+The master program is almost unchanged. We simply need to replace
+\of{Poly} with \of{Mono} and to encode tasks as strings:
+\begin{ocaml}
+  let tasks = 
+    let l = ref [] in 
+    for i = 0 to n do l := (string_of_int i, ()) :: !l done; 
+    !l
+\end{ocaml}
+Consequently, \of{master} is now receiving a string as argument:
+\begin{ocaml}
+  let master (i,()) fi = s := !s + int_of_string fi; []
+\end{ocaml}
 
 \section{Derived API}\label{sec:derived}
 
 In most cases, the easiest way to parallelize an execution it to make
 use of operations over lists, where processing of the
-list elements are done in parallel.  To facilitate such a processing,
+list elements are done in parallel. 
+The previous section illustrated one such case.
+To facilitate such a processing,
 we now derive the most commonly used list operations from our generic
 API.
 
@@ -467,17 +605,19 @@ module is straightforward and does not require any explanation.
 \subsection{Multiple Cores}
 
 The \of{Cores} module implements the distributed computing library for
-multiple cores on the same machine. It provides a function
+multiple cores on the same machine. As illustrated in
+Section~\ref{sec:example}, 
+it provides a function
 \of{set_number_of_cores: int -> unit} to indicate the number of cores
 to be used. The number passed to this function may be different from
 the actual number of cores in the machine; it is rather the number of
 tasks to be performed simultaneously.
 % TODO comment more on the number of cores?
-Thus a program using the \of{Cores} module typically begins with 
-\begin{ocaml}
-open Cores
-let () = set_number_of_cores 8
-\end{ocaml}
+% Thus a program using the \of{Cores} module typically begins with 
+% \begin{ocaml}
+% open Cores
+% let () = set_number_of_cores 8
+% \end{ocaml}
 
 The \of{Cores} module is implemented with \unix\ processes, using the
 \of{fork} and \of{wait} system calls provided by the \of{Unix} library
@@ -513,18 +653,21 @@ of cores is less or equal than the actual number of cores on the machine.
 \subsection{Network of Machines}
 
 The \of{Network} module implements the distributed computing library
-for a network of machines.  It provides a function
+for a network of machines. 
+As illustrated in Section~\ref{sec:example}, it
+provides a function
 \of{declare_workers: n:int -> string -> unit} to fill a table of
-worker machines. The argument \of{n} indicates the number of cores to
-be used in each worker machine, analogous to the \of{Cores}
-module. Thus a program using the \of{Network} module typically begins
-with
-\begin{ocaml}
-open Network
-let () = declare_workers ~n:12 "hostname1"
-let () = declare_workers ~n:8  "192.168.24.2"
-...
-\end{ocaml}
+worker machines. 
+% The argument \of{n} indicates the number of cores to
+% be used in each worker machine, analogous to the \of{Cores}
+% module. Thus a program using the \of{Network} module typically begins
+% with
+% \begin{ocaml}
+% open Network
+% let () = declare_workers ~n:12 "hostname1"
+% let () = declare_workers ~n:8  "192.168.24.2"
+% ...
+% \end{ocaml}
 
 The \of{Network} module is based on a traditional TCP-based client/server
 architecture, where each worker is a server and the master is the
@@ -617,27 +760,31 @@ actually a single, generic implementation, which is then instantiated
 in three different ways, corresponding to the three scenarios.  The
 generic implementation assumes that only strings are being transmitted
 over the network, as evident from the \of{Assign} and \of{Completed}
-messages in Section~\ref{sec:protocol}.  The signature for the generic
-implementation is therefore as follows:
-\begin{ocaml}
-  generic_master:
-    assign_job:('a -> string * string) ->
-    master:('a * 'c -> string -> ('a * 'c) list)  ->
-    ('a * 'c) list -> unit
-\end{ocaml}
-The first argument \of{assign_job} is a function indicating the two
-strings that are passed in the \of{Assign} message of the protocol.
-We can now distinguish the three cases, based on \of{assign_job}:
-\begin{description}
-\item[\of{Same}:] in this case, \of{assign_job} simply returns
-  the marshaled closure together with the marshaled value.
-\item[\of{Poly}:] in this case, \of{assign_job} is simply
-  returning the marshaled value (the first string being meaningless in
-  this context).
-\item[\of{Mono}:] in this case, \of{assign_job} is immediately
-  returning its argument (the first string being meaningless in
-  this context).
-\end{description}
+messages in Section~\ref{sec:protocol}. Depending on the
+implementation, these strings could be marshaled closures, marshaled
+values or simply user strings.
+
+% The signature for the generic
+% implementation is therefore as follows:
+% \begin{ocaml}
+%   generic_master:
+%     assign_job:('a -> string * string) ->
+%     master:('a * 'c -> string -> ('a * 'c) list)  ->
+%     ('a * 'c) list -> unit
+% \end{ocaml}
+% The first argument \of{assign_job} is a function indicating the two
+% strings that are passed in the \of{Assign} message of the protocol.
+% We can now distinguish the three cases, based on \of{assign_job}:
+% \begin{description}
+% \item[\of{Same}:] in this case, \of{assign_job} simply returns
+%   the marshaled closure together with the marshaled value.
+% \item[\of{Poly}:] in this case, \of{assign_job} is simply
+%   returning the marshaled value (the first string being meaningless in
+%   this context).
+% \item[\of{Mono}:] in this case, \of{assign_job} is immediately
+%   returning its argument (the first string being meaningless in
+%   this context).
+% \end{description}
 
 \section{Experiments}\label{sec:experiments}
 
@@ -814,18 +961,15 @@ library.
 \end{itemize}
 We intend to enrich our library with all above features.
 
-% \appendix
-% \section{Appendix Title}
+%\appendix
 
-% This is the text of the appendix, if you need one.
 
 \acks
 The authors are grateful to the ProVal team for support and comments
 on early versions of the library and of this paper.
 
-\vfill\pagebreak
+%\vfill\pagebreak
 % We recommend abbrvnat bibliography style.
-
 \bibliographystyle{abbrvnat}
 \bibliography{./biblio}
 
