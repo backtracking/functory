@@ -244,6 +244,7 @@ let () =
     print_total pr.failure;
     printf "@."
   in
+  printf "%d tasks@." (List.length tasks);
   printf "           |  valid       | invalid      | cannot       | timeout      | failure@.";
   printf "---------------------------------------------------------------------------------------@.";
   Hashtbl.iter print prover_table;

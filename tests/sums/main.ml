@@ -27,6 +27,13 @@ let () = declare_workers ~n:2 "orcus"
 
 let f x = x+1
 
+let n = int_of_string Sys.argv.(1)
+let tasks = let l = ref [] in for i = 0 to n do l := (i,()) :: !l done; !l
+let s = ref 0
+let master _ fi = s := !s + fi; []
+let () = compute ~worker:f ~master tasks
+
+
 let fold = (+)
 
 let () =
