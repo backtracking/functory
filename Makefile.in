@@ -205,8 +205,10 @@ export-doc: functory.mli
 	mkdir -p $(WWW)/doc/
 	ocamldoc -html -hide Functory -d  $(WWW)/doc/ functory.mli
 
+WWW_FILES=*.html *.xml Media Scripts About_files Mini-Tutorial_files
+
 export-www:
-	cp www/index.html $(WWW)
+	cd www; cp -rf $(WWW_FILES) $(WWW)
 
 BINARY = $(EXPORTDIR)-$(OSTYPE)
 BINARYTAR=$(BINARY).tar
