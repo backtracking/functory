@@ -1,0 +1,315 @@
+.style_SkipStroke {
+    background: transparent;
+    opacity: 1.00;
+}
+.style_1 {
+    color: #003366;
+    opacity: 1.00;
+}
+.paragraph_style_3 {
+    color: #336699;
+    font-family: 'ArialMT', 'Arial', sans-serif;
+    font-size: 14px;
+    font-style: italic;
+    font-variant: normal;
+    font-weight: normal;
+    letter-spacing: 0;
+    line-height: 19px;
+    margin-bottom: 0px;
+    margin-left: 0px;
+    margin-right: 0px;
+    margin-top: 0px;
+    opacity: 1.00;
+    padding-bottom: 0px;
+    padding-top: 0px;
+    text-align: left;
+    text-decoration: none;
+    text-indent: 0px;
+    text-transform: none;
+}
+.style_2 {
+    font-style: normal;
+}
+.paragraph_style_4 {
+    color: #336699;
+    font-family: 'ArialMT', 'Arial', sans-serif;
+    font-size: 14px;
+    font-style: normal;
+    font-variant: normal;
+    font-weight: normal;
+    letter-spacing: 0;
+    line-height: 19px;
+    margin-bottom: 0px;
+    margin-left: 0px;
+    margin-right: 0px;
+    margin-top: 0px;
+    opacity: 1.00;
+    padding-bottom: 0px;
+    padding-top: 0px;
+    text-align: left;
+    text-decoration: none;
+    text-indent: 0px;
+    text-transform: none;
+}
+.style_3 {
+    color: #003366;
+    font-style: normal;
+    opacity: 1.00;
+}
+.paragraph_style {
+    background: #336699;
+    color: #ffffff;
+    font-family: 'Times-Roman', 'Times', 'Times New Roman', serif;
+    font-size: 96px;
+    font-style: normal;
+    font-variant: normal;
+    font-weight: normal;
+    letter-spacing: 0;
+    line-height: 138px;
+    margin-bottom: 0px;
+    margin-left: 0px;
+    margin-right: 0px;
+    margin-top: 0px;
+    opacity: 1.00;
+    padding-bottom: 0px;
+    padding-top: 0px;
+    text-align: left;
+    text-decoration: none;
+    text-indent: 0px;
+    text-transform: none;
+}
+.paragraph_style_1 {
+    color: #336699;
+    font-family: 'ArialMT', 'Arial', sans-serif;
+    font-size: 15px;
+    font-style: normal;
+    font-variant: normal;
+    font-weight: normal;
+    letter-spacing: 0;
+    line-height: 20px;
+    margin-bottom: 0px;
+    margin-left: 0px;
+    margin-right: 0px;
+    margin-top: 0px;
+    opacity: 1.00;
+    padding-bottom: 0px;
+    padding-top: 0px;
+    text-align: left;
+    text-decoration: none;
+    text-indent: 0px;
+    text-transform: none;
+}
+.paragraph_style_2 {
+    color: #336699;
+    font-family: 'ArialMT', 'Arial', sans-serif;
+    font-size: 14px;
+    font-style: normal;
+    font-variant: normal;
+    font-weight: normal;
+    letter-spacing: 0;
+    line-height: 19px;
+    margin-bottom: 0px;
+    margin-left: 0px;
+    margin-right: 0px;
+    margin-top: 0px;
+    opacity: 1.00;
+    padding-bottom: 0px;
+    padding-top: 0px;
+    text-align: left;
+    text-decoration: none;
+    text-indent: 0px;
+    text-transform: none;
+}
+.style {
+    font-style: italic;
+}
+.Body {
+    color: #463c3c;
+    font-family: 'ArialMT', 'Arial', sans-serif;
+    font-size: 15px;
+    font-style: normal;
+    font-variant: normal;
+    font-weight: normal;
+    letter-spacing: 0;
+    line-height: 20px;
+    margin-bottom: 0px;
+    margin-left: 0px;
+    margin-right: 0px;
+    margin-top: 0px;
+    opacity: 1.00;
+    padding-bottom: 0px;
+    padding-top: 0px;
+    text-align: left;
+    text-decoration: none;
+    text-indent: 0px;
+    text-transform: none;
+}
+.graphic_textbox_layout_style_default {
+    padding: 4px;
+}
+.graphic_textbox_layout_style_default_External_801_602 {
+    position: relative;
+}
+.graphic_textbox_layout_style_default_External_140_31 {
+    position: relative;
+}
+.graphic_textbox_layout_style_default_External_413_135 {
+    position: relative;
+}
+.graphic_textbox_style_default_SkipStroke {
+    background: transparent;
+    opacity: 1.00;
+}
+a {
+    color: #463c3c;
+    text-decoration: underline;
+}
+a:visited {
+    color: #666666;
+    text-decoration: underline;
+}
+a.class1 {
+    color: #336699;
+    text-decoration: none;
+}
+a.class1:visited {
+    text-decoration: none;
+}
+a.class1:hover {
+    color: #003366;
+    text-decoration: none;
+}
+a.class2 {
+    color: #336699;
+    text-decoration: none;
+}
+a.class2:visited {
+    text-decoration: none;
+}
+a.class2:hover {
+    color: #003366;
+    text-decoration: none;
+}
+a.class3 {
+    color: #336699;
+    text-decoration: none;
+}
+a.class3:visited {
+    text-decoration: none;
+}
+a.class3:hover {
+    color: #003366;
+    text-decoration: none;
+}
+a.class4 {
+    color: #336699;
+    text-decoration: none;
+}
+a.class4:visited {
+    text-decoration: none;
+}
+a.class4:hover {
+    color: #003366;
+    text-decoration: none;
+}
+a.class5 {
+    color: #336699;
+    text-decoration: none;
+}
+a.class5:visited {
+    text-decoration: none;
+}
+a.class5:hover {
+    color: #003366;
+    text-decoration: none;
+}
+a.class6 {
+    color: #336699;
+    text-decoration: none;
+}
+a.class6:visited {
+    text-decoration: none;
+}
+a.class6:hover {
+    color: #003366;
+    text-decoration: none;
+}
+a.class7 {
+    color: #336699;
+    text-decoration: none;
+}
+a.class7:visited {
+    text-decoration: none;
+}
+a.class7:hover {
+    color: #003366;
+    text-decoration: none;
+}
+a.class8 {
+    color: #33668e;
+    text-decoration: none;
+}
+a.class8:visited {
+    text-decoration: none;
+}
+a.class8:hover {
+    color: #003366;
+    text-decoration: none;
+}
+a:hover {
+    color: #000000;
+    text-decoration: underline;
+}
+ol  { 
+      padding:0;
+      margin:0;
+      text-indent:0;
+      list-style-type:none ;
+      list-style-image:none
+    }
+.Bullet { 
+          text-decoration:none ;
+          text-transform:none ;
+          border: none;          
+        }
+.spacer {
+    font-size: 1px;
+    line-height: 1px;
+}
+.bumper {
+    font-size: 1px;
+    line-height: 1px;
+}
+body { 
+    -webkit-text-size-adjust: none;
+}
+div { 
+    overflow: visible; 
+}
+img { 
+    border: none; 
+}
+.InlineBlock { 
+    display: inline; 
+}
+.InlineBlock { 
+    display: inline-block; 
+}
+.inline-block {
+    display: inline-block;
+    vertical-align: baseline;
+    margin-bottom:0.3em;
+}
+.vertical-align-middle-middlebox {
+    display: table;
+}
+.vertical-align-middle-innerbox {
+    display: table-cell;
+    vertical-align: middle;
+}
+div.paragraph {
+    position: relative;
+}
+li.full-width {
+    width: 100;
+}

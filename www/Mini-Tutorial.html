@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+  <head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+    
+    <meta name="Generator" content="iWeb 2.0.4" />
+    <meta name="iWeb-Build" content="local-build-20100429" />
+    <meta name="viewport" content="width=1000" />
+    <title>Mini-Tutorial</title>
+    <link rel="stylesheet" type="text/css" media="screen,print" href="Mini-Tutorial_files/Mini-Tutorial.css" />
+    <!--[if IE]><link rel='stylesheet' type='text/css' media='screen,print' href='Mini-Tutorial_files/Mini-TutorialIE.css'/><![endif]-->
+    <script type="text/javascript" src="Scripts/iWebSite.js"></script>
+    <script type="text/javascript" src="Mini-Tutorial_files/Mini-Tutorial.js"></script>
+  </head>
+  <body style="background: #ffffff; margin: 0pt; " onload="onPageLoad();">
+    <div style="text-align: center; ">
+      <div style="margin-bottom: 0px; margin-left: auto; margin-right: auto; margin-top: 0px; overflow: hidden; position: relative; word-wrap: break-word;  background: #ffffff; text-align: left; width: 1000px; " id="body_content">
+        <div style="float: left; margin-left: 0px; position: relative; width: 1000px; z-index: 0; " id="nav_layer">
+          <div style="height: 0px; line-height: 0px; " class="bumper"> </div>
+          <div style="clear: both; height: 0px; line-height: 0px; " class="spacer"> </div>
+        </div>
+        <div style="float: left; height: 0px; line-height: 0px; margin-left: 0px; position: relative; width: 1000px; z-index: 10; " id="header_layer">
+          <div style="height: 0px; line-height: 0px; " class="bumper"> </div>
+        </div>
+        <div style="margin-left: 0px; position: relative; width: 1000px; z-index: 5; " id="body_layer">
+          <div style="height: 0px; line-height: 0px; " class="bumper"> </div>
+          <div id="id1" style="height: 1121px; left: 42px; position: absolute; top: 163px; width: 798px; z-index: 1; " class="style_SkipStroke">
+            <div class="text-content graphic_textbox_layout_style_default_External_798_1121" style="padding: 0px; ">
+              <div class="graphic_textbox_layout_style_default">
+                <p style="padding-top: 0pt; " class="paragraph_style">Welcome to the mini tutorial on how to use FUNCTORY. At the end of this tutorial you will be able<br /></p>
+                <p class="paragraph_style">to start using the Functory and enjoy its advantages.<br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style"><span class="style">INSTALLATION</span><br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">On downloading, you just need to issue the following commands from the Functory directory:<br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">            bash$  <span class="style_1">./configure</span><br /></p>
+                <p class="paragraph_style">            bash$  <span class="style_1">make</span><br /></p>
+                <p class="paragraph_style">            bash$  <span class="style_1">sudo make install</span>             <br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style"><span class="style">USAGE</span><br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">Let us take a very simple example and illustrate the usage of Functory. <br /></p>
+                <p class="paragraph_style">Assume you want to apply a function map such as<br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">            <span class="style_1">let map x = x + 1</span><br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">to some list of elements such as<br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">            <span class="style_1">[1;2;3;4;5]</span><br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">and further, sum the results with a function fold such as<br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">            <span class="style_1">let fold = (+)</span><br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">You can do that using function map_local_fold from Functory library as follows:-<br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">            <span class="style_1">let () = Printf.printf “%d@.” (map_local_fold ~map ~fold 0 [1;2;3;4;5])<br /></span></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">The Factory library allows you to perform this computation in three different ways: either sequentially, or using<br /></p>
+                <p class="paragraph_style">several cores on the same machine, or using a network of different machines.<br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">To use the sequential implementation, you simply use the following line of code<br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">            <span class="style_1">open Factory.Sequential</span><br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">To use several cores (say 4, for example) on a single machine, you should add instead<br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">            <span class="style_1">open Factory.Cores<br /></span></p>
+                <p class="paragraph_style"><span class="style_1">            let () = set_number_of_cores 4</span><br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">Finally, to use a network of, say 2 cores on machine “mach1” and 4 cores on machine “mach2”, you should <br /></p>
+                <p class="paragraph_style">add instead<br /></p>
+                <p class="paragraph_style_1"><br /></p>
+                <p class="paragraph_style_1">             open Factory.Network<br /></p>
+                <p class="paragraph_style_1">             let () = declare_workers ~n:2 “mach1”<br /></p>
+                <p class="paragraph_style_1">             let () = declare_workers ~n:4 “mach2”<br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">Your program is compiled in the following way (in any case):<br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">            <span class="style_1">ocamlopt -I +factory unix.cmxa factory.cmxa &lt;your files...&gt;</span><br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p class="paragraph_style">and then run as any usual OCaml program. In the network case, the same program needs to be run on<br /></p>
+                <p class="paragraph_style">the three machines - two workers and one master. (It is also possible to run different programs for master<br /></p>
+                <p class="paragraph_style">and workers: see documentation for details)<br /></p>
+                <p class="paragraph_style"><br /></p>
+                <p style="padding-bottom: 0pt; " class="paragraph_style">              </p>
+              </div>
+            </div>
+          </div>
+          
+
+
+          <div id="id2" style="height: 135px; left: 588px; position: absolute; top: 0px; width: 413px; z-index: 1; " class="style_SkipStroke">
+            <div class="text-content graphic_textbox_layout_style_default_External_413_135" style="padding: 0px; ">
+              <div class="graphic_textbox_layout_style_default">
+                <p style="padding-bottom: 0pt; padding-top: 0pt; " class="paragraph_style_2">Functory</p>
+              </div>
+            </div>
+          </div>
+          
+
+
+          <div id="id3" style="height: 31px; left: 448px; position: absolute; top: 1px; width: 140px; z-index: 1; " class="style_SkipStroke">
+            <div class="text-content graphic_textbox_layout_style_default_External_140_31" style="padding: 0px; ">
+              <div class="graphic_textbox_layout_style_default">
+                <p style="padding-bottom: 0pt; padding-top: 0pt; " class="paragraph_style_3"><a class="class1" href="About.html" title="About.html">About</a></p>
+              </div>
+            </div>
+          </div>
+          
+
+
+          <div id="id4" style="height: 31px; left: 448px; position: absolute; top: 32px; width: 140px; z-index: 1; " class="style_SkipStroke">
+            <div class="text-content graphic_textbox_layout_style_default_External_140_31" style="padding: 0px; ">
+              <div class="graphic_textbox_layout_style_default">
+                <p style="padding-bottom: 0pt; padding-top: 0pt; " class="paragraph_style_3"><a class="class2" href="" title="">Mini Tutorial</a></p>
+              </div>
+            </div>
+          </div>
+          
+
+
+          <div id="id5" style="height: 31px; left: 448px; position: absolute; top: 63px; width: 140px; z-index: 1; " class="style_SkipStroke">
+            <div class="text-content graphic_textbox_layout_style_default_External_140_31" style="padding: 0px; ">
+              <div class="graphic_textbox_layout_style_default">
+                <p style="padding-bottom: 0pt; padding-top: 0pt; " class="paragraph_style_3"><a class="class3" href="http://www.lri.fr/~filliatr/functory/doc/index.html" title="http://www.lri.fr/~filliatr/functory/doc/index.html">Documentation</a></p>
+              </div>
+            </div>
+          </div>
+          
+
+
+          <div id="id6" style="height: 31px; left: 448px; position: absolute; top: 94px; width: 140px; z-index: 1; " class="style_SkipStroke">
+            <div class="text-content graphic_textbox_layout_style_default_External_140_31" style="padding: 0px; ">
+              <div class="graphic_textbox_layout_style_default">
+                <p style="padding-bottom: 0pt; padding-top: 0pt; " class="paragraph_style_3"><a class="class4" href="http://www.lri.fr/~filliatr/functory/download/" title="http://www.lri.fr/~filliatr/functory/download/">Download</a></p>
+              </div>
+            </div>
+          </div>
+          <div style="height: 1284px; line-height: 1284px; " class="spacer"> </div>
+        </div>
+        <div style="height: 150px; margin-left: 0px; position: relative; width: 1000px; z-index: 15; " id="footer_layer">
+          <div style="height: 0px; line-height: 0px; " class="bumper"> </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
+
+
