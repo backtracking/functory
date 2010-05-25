@@ -1,0 +1,67 @@
+Response to review #5A:
+-----------------------
+
+> The major weakness however is that the task creation is
+> completely static, i.e., all tasks must be created ahead of time. 
+
+It is true that in the derived API (Figure 1 on page 4) the tasks are
+completely static. But in the low-level API, new tasks can be
+generated dynamically, as mentioned on page 2, first paragraph (right
+below the type of the master function).
+
+> The author claims that strategy utilizes efficient storage of data
+
+Actually, we did not, and only mentioned that as an interesting
+extension to our library (last paragraph of Section 7, first bullet).
+
+
+Response to review #5B:
+-----------------------
+
+> I wondered why oc4mc wasn't used for the single machine version
+
+As far as we understand, oc4mc is a modification of OCaml (available
+for a single architecture). On the contrary, our library does not
+require any modification of the compiler.
+
+
+Response to review #5C:
+-----------------------
+
+> (also, the example code is heavily imperative with lots of unnecessary refs).
+
+It is true that the example code in Section 3 is making use of
+imperative features. The reason is that it uses the low-level API of
+Section 2. However, the derived API of Section 4 provides fold-like
+functions and thus allows pure functional code, even if we did not show
+in the paper.
+
+> the connections to functional programming are tenuous
+
+Our library API is mostly composed of higher-order functions: in the
+low-level API (Section 2), master is a higher-order function; in the
+derived API (Figure 1), all functions are higher-order map/fold.
+
+Additionally, our library is heavily relying on OCaml module
+system: first, to provide three different implementations with the
+same interface; second, to achieve maximal code reuse in the library
+itself using functors (as explained at the end of page 3 for instance).
+
+Responses for explicit questions for authors:
+---------------------------------------------
+
+> What happens if a worker raises an exception?
+
+It is considered as a worker failure. We leave it to the user to catch
+it and handle it (using a sum type for instance).
+
+> It appears that your local implementation does not handle faults in the
+> workers (e.g., if you run out of a system resource). Is that the case?
+
+Yes, it is. One possibility to overcome this would be to change the
+resource limits in the user worker function (right after the fork).
+
+> In the network implementation, how to you initiate the workers?
+
+As of now, we do not provide any facility in order to do this.
+Currently, we assume the user deploys the workers manually.
