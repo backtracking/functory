@@ -118,71 +118,64 @@ the title.
 
 
 
-In addition to the above, distributed computing environments also
-implement mechanisms for fault tolerance, efficient storage, and
-distribution of tasks. This is required to handle network failures
-that may occur, as well as to optimize the usage of machines in the
-network. Another concern of importance is the transmission of messages
-over the network. This requires efficient 
-\emph{marshaling} of data, that is encoding and decoding of data 
-for transmission over different computing environments.  It is desirable to
-maintain architecture independence while transmitting marshalled data,
-as machines in a distributed computing environment often run on
-different hardware architectures and make use of varying software
-platforms. For example, machine word size or endianness may be different
-across machines on the network.
+% In addition to the above, distributed computing environments also
+% implement mechanisms for fault tolerance, efficient storage, and
+% distribution of tasks. This is required to handle network failures
+% that may occur, as well as to optimize the usage of machines in the
+% network. Another concern of importance is the transmission of messages
+% over the network. This requires efficient 
+% \emph{marshaling} of data, that is encoding and decoding of data 
+% for transmission over different computing environments.  It is desirable to
+% maintain architecture independence while transmitting marshalled data,
+% as machines in a distributed computing environment often run on
+% different hardware architectures and make use of varying software
+% platforms. For example, machine word size or endianness may be different
+% across machines on the network.
 
-\paragraph{A Functional Programming Approach.}
-Our work was initially inspired by Google's
-MapReduce\footnote{Ironically, Google's approach itself was inspired
-  by functional programming primitives.}. However, our functional
-programming environment allows us to be more generic. 
-The main idea behind our approach is that
-workers may implement any polymorphic function:
-\begin{ocaml}
-  worker: 'a -> 'b
-\end{ocaml}
-where \of{'a} denotes the type of tasks and \of{'b} the type of results.
-Then the master is given a list of initial tasks, together with a
-function to handle the results:
-\begin{ocaml}
-  master: ('a -> 'b -> 'a list) -> 'a list -> unit
-\end{ocaml}
-The function passed to the master is applied whenever a result is
-available and may in turn generate new tasks (hence the return type
-\of{'a list}).  The master is executed as long as there are pending
-tasks.
+% \paragraph{A Functional Programming Approach.}
+% Our work was initially inspired by Google's
+% MapReduce\footnote{Ironically, Google's approach itself was inspired
+%   by functional programming primitives.}. However, our functional
+% programming environment allows us to be more generic. 
+% The main idea behind our approach is that
+% workers may implement any polymorphic function:
+% \begin{ocaml}
+%   worker: 'a -> 'b
+% \end{ocaml}
+% where \of{'a} denotes the type of tasks and \of{'b} the type of results.
+% Then the master is given a list of initial tasks, together with a
+% function to handle the results:
+% \begin{ocaml}
+%   master: ('a -> 'b -> 'a list) -> 'a list -> unit
+% \end{ocaml}
+% The function passed to the master is applied whenever a result is
+% available and may in turn generate new tasks (hence the return type
+% \of{'a list}).  The master is executed as long as there are pending
+% tasks.
 
-Our library makes use of \Ocaml's marshaling capabilities as much as
-possible. Whenever master and worker executables are exactly the same,
-we can marshal polymorphic values and closures. However, it is not
-always possible to have master and workers running the same
-executable. In this case, we cannot marshal closures anymore but we
-can still marshal polymorphic values as long as the same version of
-\Ocaml\ is used to compile master and workers. When different versions
-of \Ocaml\ are used, we can no longer marshal values but we can still
-transmit strings between master and workers. Our library adapts to all
-these situations, by providing several APIs.
+% Our library makes use of \Ocaml's marshaling capabilities as much as
+% possible. Whenever master and worker executables are exactly the same,
+% we can marshal polymorphic values and closures. However, it is not
+% always possible to have master and workers running the same
+% executable. In this case, we cannot marshal closures anymore but we
+% can still marshal polymorphic values as long as the same version of
+% \Ocaml\ is used to compile master and workers. When different versions
+% of \Ocaml\ are used, we can no longer marshal values but we can still
+% transmit strings between master and workers. Our library adapts to all
+% these situations, by providing several APIs.
 
-\medskip
-The paper is organized as follows. In Section~\ref{sec:API}, we
-describe the main idea behind the generic API, and introduce
-\of{master} and \of{worker} programs. Section~\ref{sec:example}
-illustrates the API usage with an example.
-In Section~\ref{sec:derived}, we
-derive some interesting functions from the generic
-API. Section~\ref{sec:implem} delves into the implementation details
-of our library, while Section~\ref{sec:experiments} illustrates the
-potential of the presented library through experimental evaluation. We
-compare our approach with relevant related work in
-Section~\ref{sec:future} and outline our future work.
-
-Our library, \functory, is implemented in \Ocaml\ and is available
-from \url{http://www.lri.fr/~filliatr/functory/}.
-
-TODO : refer to the technical report available on-line
-
-\section{API}\label{sec:API}
+% \medskip
+% The paper is organized as follows. In Section~\ref{sec:API}, we
+% describe the main idea behind the generic API, and introduce
+% \of{master} and \of{worker} programs. Section~\ref{sec:example}
+% illustrates the API usage with an example.
+% In Section~\ref{sec:derived}, we
+% derive some interesting functions from the generic
+% API. Section~\ref{sec:implem} delves into the implementation details
+% of our library, while Section~\ref{sec:experiments} illustrates the
+% potential of the presented library through experimental evaluation. We
+% compare our approach with relevant related work in
+% Section~\ref{sec:future} and outline our future work.
 
 Our work was initially inspired by Google's
 MapReduce\footnote{Ironically, Google's approach itself was inspired
@@ -198,6 +191,27 @@ terminology:
   of distributing the tasks among the workers and managing results
   produced by the workers.
 \end{itemize}
+
+Our library, \functory, is implemented in \Ocaml.
+It makes use of \Ocaml's marshaling capabilities as much as
+possible. Whenever master and worker executables are exactly the same,
+we can marshal polymorphic values and closures. However, it is not
+always possible to have master and workers running the same
+executable. In this case, we cannot marshal closures anymore but we
+can still marshal polymorphic values as long as the same version of
+\Ocaml\ is used to compile master and workers. When different versions
+of \Ocaml\ are used, we can no longer marshal values but we can still
+transmit strings between master and workers. Our library adapts to all
+these situations, by providing several APIs.
+
+
+Our library is available
+at \url{http://www.lri.fr/~filliatr/functory/}.
+A report is also available there, which provides more
+technical details. 
+
+\section{API}\label{sec:API}
+
 The main function of our API combines these three notions of tasks,
 master and workers into a single higher-order polymorphic function
 \of{compute}:
@@ -271,22 +285,16 @@ val Master.compute :
 % corresponding to contexts 3, 4 and 5 above. 
 % The next section demonstrates the use of these modules.
 
-  \begin{ocaml}
-    val map : 
-      f:('a -> 'b) -> 'a list -> 'b list 
-    val map_local_fold : 
-      map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
-      'c -> 'a list -> 'c 
-    val map_remote_fold : 
-      map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
-      'c -> 'a list -> 'c 
-    val map_fold_ac : 
-      map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
-      'b -> 'a list -> 'b 
-    val map_fold_a : 
-      map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
-      'b -> 'a list -> 'b
-  \end{ocaml}
+In addition to this low-level API, our library also provides more
+traditional \of{map} and \of{fold} higher-order functions with
+distributed computation. For instance, 
+\begin{ocaml}
+  val map_local_fold : 
+    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
+    'c -> 'a list -> 'c 
+\end{ocaml}
+applies \of{map} to each element of the list in a distributed way and
+folds the results locally to the master. 
 
 \section{Illustrative Example}\label{sec:example}
 
@@ -295,127 +303,36 @@ Let us assume we need to compute a sum such as
   s(n) = \sum_{i=0}^{n}f(i)
 \end{displaymath}
 where $f$ is a pure and computationally expensive function.
-We start with the sequential implementation provided by the library:
+Using the sequential implementation and the low-level \of{compute}
+function, the code looks like:
 \begin{ocaml}
-  open Sequential
+1.  open Sequential
+2.  let f i = ...
+3.  let n = int_of_string Sys.argv.(1)
+4.  let tasks = ... (* the lists [0; 1; ...; n] *)
+5.  let s = ref 0
+6.  let master (i,()) fi = s := !s + fi; []
+7.  let () = compute ~worker:f ~master tasks
 \end{ocaml}
-The idea is to test our code on small values of $n$ before
-parallelizing the computation for larger values.
-Let us assume that $f$ is implemented as a top-level \of{worker} function:
+To switch to the multi-core implementation, say with 4 cores, we
+simply replace line 1 with
 \begin{ocaml}
-  let worker i = ...
+1a.  open Cores
+1b.  let () = set_number_of_cores 4
 \end{ocaml}
-and that $n$ is obtained from the command line:
+Similarly, in order to use a network of two machines \texttt{m1} and
+\texttt{m2}, with 4 and 8 cores respectively, line 1 is replaced with
 \begin{ocaml}
-  let n = int_of_string Sys.argv.(1)
-\end{ocaml}
-The list of tasks is simply the list of integers $0,1,\dots,n$,
-computed as follows:
-\begin{ocaml}
-  let tasks = 
-    let l = ref [] in 
-    for i = 0 to n do l := (i, ()) :: !l done; 
-    !l
-\end{ocaml}
-Each task is actually a pair, where the second component contains
-some information which is kept local to the master process.
-It is irrelevant here and thus the value \of{()} of type \of{unit} is used.
-The current sum is kept into a global reference \of{s}:
-\begin{ocaml}
-  let s = ref 0
-\end{ocaml}
-The master function receives a task \of{(i,())} together with its
-result \of{fi} and simply adds \of{fi} to \of{s}. There is no new task
-generated, hence the returned empty list.
-\begin{ocaml}
-  let master (i,()) fi = s := !s + fi; []
-\end{ocaml}
-Finally, the whole computation takes place when we call the
-\of{compute} function:
-\begin{ocaml}
-  let () = compute ~worker ~master tasks
+1a.  open Network
+1b.  let () = declare_workers ~n:4 "m1"
+1c.  let () = declare_workers ~n:8 "m2"
 \end{ocaml}
 
-Now, let us assume we want to make use of a 4-core machine to compute
-$s(n)$. It is as easy as just replacing the very first line with
+We could simplify the code even further using the derived API, for
+example by replacing lines 5-7 with
 \begin{ocaml}
-  open Cores
-  let () = set_number_of_cores 4
+5.  let s = map_local_fold ~map:f ~fold:(+) 0 tasks
 \end{ocaml}
-while the rest of the code remains unchanged.
-
-Later, we may want to use a network of machines instead, for example
-two machines called \texttt{orcus} and \texttt{belzebuth} with 4 and 8
-cores respectively. Similar to the above, we just replace the first
-lines with
-\begin{ocaml}
-  open Network
-  let () = declare_workers ~n:4 "orcus"
-  let () = declare_workers ~n:8 "belzebuth"
-  open Same
-\end{ocaml}
-Here, \of{Same} is a module which is to be used when master and worker
-are running the same executable. It provides a \of{compute} function
-which has the same signature as in modules \of{Sequential} and
-\of{Cores}, so that the rest of the code remains unchanged. Master and
-worker processes are distinguished at run-time using an environment
-variable \texttt{WORKER} which is set/unset.
-
-If we need to write two different programs for master and worker, for
-reason of binary incompatibility or any other reason, the library API
-is providing functions to do that. If master and worker are still
-compiled with the same version of \Ocaml, we use the \of{Poly} module
-which provides a polymorphic API. Let us start with the worker program.
-It is as simple as
-\begin{ocaml}
-  open Poly
-  let worker i = ...
-  let () = Worker.compute worker ()
-\end{ocaml}
-The \of{Worker.compute} function enters a loop which waits for
-tasks sent by the master and returns results computed using \of{worker}.
-The master program is almost the same as before. First, we replace
-module \of{Same} with module \of{Poly}:
-\begin{ocaml}
-  open Network
-  let () = declare_workers ~n:4 "orcus"
-  let () = declare_workers ~n:8 "belzebuth"
-  open Poly
-\end{ocaml}
-Tasks and \of{master} function are unchanged:
-\begin{ocaml}
-  let tasks = ...
-  let s = ref 0
-  let master (i,()) fi = ...
-\end{ocaml}
-Finally, we start the computation with \of{Master.compute}, which does
-not have a \of{worker} parameter anymore:
-\begin{ocaml}
-  let () = Master.compute ~master tasks
-\end{ocaml}
-
-When master and worker programs are compiled with different
-versions of the \Ocaml\ compiler, our library still provides
-a monomorphic API over strings. As a consequence, we need to convert
-integers to and from strings in both master and worker.
-The modified worker program is as follows:
-\begin{ocaml}
-  open Mono
-  let worker i = ...
-  let worker_string i = string_of_int (worker (int_of_string i))
-  let () = Worker.compute worker_string ()
-\end{ocaml}
-The master program is modified in a similar way.
-We simply replace \of{Poly} with \of{Mono} and encode/decode integers
-as strings, as follows:
-\begin{ocaml}
-  let tasks = 
-    let l = ref [] in 
-    for i = 0 to n do l := (string_of_int i, ()) :: !l done; 
-    !l
-  let master (i,()) fi = s := !s + int_of_string fi; []
-\end{ocaml}
-
 
 
 \section{Experiments}\label{sec:experiments}
