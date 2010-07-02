@@ -39,9 +39,9 @@
 \copyrightdata{[to be supplied]} 
 
 \titlebanner{submitted to Workshop on ML 2010}        % These are ignored unless
-\preprintfooter{Distributed Computing for the Common Man}   % 'preprint' option specified.
+\preprintfooter{Functory: Distributed Computing for the Common Man}   % 'preprint' option specified.
 
-\title{Distributed Computing for the Common Man}
+\title{Functory: Distributed Computing for the Common Man}
 %\subtitle{Subtitle Text, if any}
 
 \authorinfo{Jean-Christophe Filli\^{a}tre}
@@ -79,7 +79,7 @@ work was initially motivated by the computing needs that exist in our
 own research team. Our applications include large-scale deductive
 program verification, which amounts to checking the validity of a
 large number of logical formulas using a variety of automated theorem
-provers~\cite{filliatre07cav}. Our computing infrastructure consists
+provers. Our computing infrastructure consists
 of a few powerful multi-core machines (typically 8 to 16 cores) and
 several desktop PCs (typically dual-core). However, for our
 application needs, there is no library that helps in exploiting such a
@@ -106,7 +106,7 @@ The most important features of our library are the following:
   of lines of code;
 \item \emph{Task distribution and fault-tolerance}: 
   it relieves the user from implementing task distribution routines
-  and reliable fault-tolerance mechanisms.
+  and fault-tolerance mechanisms.
 \end{itemize}
 It is worth noting that the library is not targeted at applications
 running on server farms, crunching enormous amounts of data. Neither
@@ -369,6 +369,9 @@ single machine and a network of 8 workers).
     \\\hline
   \end{tabular}
 \end{center}
+As evident from the last row, the speedup almost reaches 8, which is
+also the number of cores we use.
+
 % From the table above, it is clear that the \of{Cores} and \of{Network}
 % implementations provide a significant speedup. As evident from the
 % last row, the speedup is almost 8, which is also the number of
@@ -414,6 +417,21 @@ These figures sum up to more than 6 hours if provers were executed
 sequentially. However, using our library and our 3-machine
 infrastructure, it completes in 22 minutes and 37 seconds, giving us a
 speedup of more than 16$\times$. 
+
+\section{Conclusion}
+
+We presented \functory, a distributed programming environment for \Ocaml.
+The main features are the genericity of the interface,
+which makes use of polymorphic higher-order functions, and the ability
+to easily switch between sequential, multi-core, and network
+implementations. A distinguishing feature of our library is a
+robust fault-tolerance mechanism which relieves
+the user of cumbersome implementation details.
+
+The most relevant application domains for this library are the ones
+where computation time is much greater than communication time, which
+is the case in many real-world applications. This results in a speedup
+ratio which is close to the total number of cores.
 
 \end{document}
 
