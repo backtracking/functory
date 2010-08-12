@@ -85,6 +85,7 @@ let compute
         dprintf "master: got result from worker PID %d@." p;
         begin try
           let j = Hashtbl.find jobs p in
+	  Hashtbl.remove jobs p;
           dprintf "master: got result from worker %d@." j.worker;
           let c = open_in (*in_channel_of_descr *) j.file in
           let r : 'b = input_value c in

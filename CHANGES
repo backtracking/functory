@@ -1,4 +1,8 @@
 
+version 0.2, August 12, 2010
+----------------------------
+ o fixed memory leak
+
 version 0.1, March 25, 2010
 ---------------------------
  o first public release

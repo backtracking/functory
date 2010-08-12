@@ -60,8 +60,7 @@ opt: $(CMA) $(CMXA)
 ######################################
 
 CMO = control.cmo sequential.cmo map_fold.cmo \
-      cores.cmo binary.cmo protocol.cmo \
-      network.cmo 
+      cores.cmo binary.cmo protocol.cmo network.cmo 
 CMX = $(CMO:.cmo=.cmx)
 
 GENERATED = version.ml
@@ -118,7 +117,7 @@ test.byte: $(CMA) $(TCMO)
 test.opt: $(CMXA) $(TCMX)
 	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $^
 
-VERSION=0.1
+VERSION=0.2
 
 version.ml: Makefile
 	echo "let version = \""$(VERSION)"\"" > version.ml
