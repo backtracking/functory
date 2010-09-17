@@ -60,21 +60,22 @@ let tasks =
 
 let worker (xmi, xma, ymi, yma, w, h) = draw xmi xma ymi yma w h
 
-let og = ref false
-
 let images = Array.create_matrix n n [||]
 
-let master ((_,_,_,_,w,h), (i,j)) m = images.(i).(j) <- m; []
-(*
-  if not !og then begin 
-    Graphics.open_graph (Printf.sprintf " %dx%d" width height); og := true 
-  end;
-  let img = Graphics.make_image m in
-  (*Graphics.draw_image img (i * w) (j * h); *)
-  []
-*)
+let master ((_,_,_,_,w,h), (i,j)) m = images.(i).(j) <- m; [] 
 
-let () = compute ~worker ~master tasks 
+(* let og = ref false *)
+
+(* let master ((_,_,_,_,w,h), (i,j)) m = *)
+(*   if not !og then begin  *)
+(*     Graphics.open_graph (Printf.sprintf " %dx%d" width height); og := true  *)
+(*   end; *)
+(*   let img = Graphics.make_image m in *)
+(*   Graphics.draw_image img (i * w) (j * h); *)
+(*   [] *)
+(* Ocaml BUG? *)
+
+let () = compute ~worker ~master tasks; ignore (Graphics.read_key ())
 
 (* let () = *)
 (*   Graphics.open_graph (Printf.sprintf " %dx%d" width height); *)
@@ -82,8 +83,23 @@ let () = compute ~worker ~master tasks
 (*     let img = Graphics.make_image images.(i).(j) in *)
 (*     Graphics.draw_image img (i * width / n) (j * height / n); *)
 (*   done done; *)
-(*   (\*ignore (Graphics.read_key ())*\) *)
+(*   ignore (Graphics.read_key ()); *)
 (*   () *)
+
+(*
+run on moloch
+
+# cores  # tasks timing
+1        1       3.319
+2        4       1.846
+        16       1.720
+4        4       1.853   --> we don't control scheduling and the system
+                             uses 2 processors only
+        16       0.918
+
+8      
+*)
+
 
 (*
 Local Variables: 
