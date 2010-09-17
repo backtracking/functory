@@ -76,14 +76,14 @@ let master ((_,_,_,_,w,h), (i,j)) m = images.(i).(j) <- m; []
 
 let () = compute ~worker ~master tasks 
 
-let () =
-  Graphics.open_graph (Printf.sprintf " %dx%d" width height);
-  for i = 0 to n-1 do for j = 0 to n-1 do
-    let img = Graphics.make_image images.(i).(j) in
-    Graphics.draw_image img (i * width / n) (j * height / n);
-  done done;
-  (*ignore (Graphics.read_key ())*)
-  ()
+(* let () = *)
+(*   Graphics.open_graph (Printf.sprintf " %dx%d" width height); *)
+(*   for i = 0 to n-1 do for j = 0 to n-1 do *)
+(*     let img = Graphics.make_image images.(i).(j) in *)
+(*     Graphics.draw_image img (i * width / n) (j * height / n); *)
+(*   done done; *)
+(*   (\*ignore (Graphics.read_key ())*\) *)
+(*   () *)
 
 (*
 Local Variables: 

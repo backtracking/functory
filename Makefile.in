@@ -149,7 +149,7 @@ install-provers: tests/provers/a.out
 	cp tests/provers/a.out ~/disco-provers.opt
 
 tests/%/a.out: tests/%/main.ml functory.cmxa
-	$(OCAMLOPT) unix.cmxa functory.cmxa tests/$*/main.ml -o $@
+	$(OCAMLOPT) graphics.cmxa unix.cmxa functory.cmxa tests/$*/main.ml -o $@
 
 tests/n-queens/queens64.opt: tests/n-queens/main64.ml functory.cmxa
 	$(OCAMLOPT) unix.cmxa functory.cmxa tests/n-queens/main64.ml -o $@
