@@ -1,6 +1,7 @@
 
-open Graphics
-(*open Functory.Sequential*)
+open Functory.Sequential
+open Functory.Cores
+let () = set_number_of_cores 2
 
 let max_iter = 200 (* nombre maximum d'itérations *)
 let f_max_iter = float max_iter (* optim *)
@@ -8,12 +9,12 @@ let f_max_iter = float max_iter (* optim *)
 (* couleur = interpolation linéaire entre le rouge (loin) et le vert (près) *)
 let interpolation n =
   let f = float n /. f_max_iter in
-  rgb (truncate ((1. -. f) *. 255.)) (truncate (f *. 255.)) 0
+  Graphics.rgb (truncate ((1. -. f) *. 255.)) (truncate (f *. 255.)) 0
 
 let color xc yc =
   let rec iter i x y =
     if i = max_iter then
-      black
+      Graphics.black
     else 
       let x2 = x *. x in
       let y2 = y *. y in
@@ -25,7 +26,7 @@ let color xc yc =
   iter 0 xc yc
 
 let draw xmin xmax ymin ymax w h =
-  let m = Array.create_matrix h w black in
+  let m = Array.create_matrix h w Graphics.black in
   let dx = (xmax -. xmin) /. float w in
   let dy = (ymax -. ymin) /. float h in
   for i = 0 to w - 1 do
@@ -37,8 +38,8 @@ let draw xmin xmax ymin ymax w h =
   done;
   m
 
-let w = int_of_string Sys.argv.(1)
-let h = w * 2 / 3
+let width = int_of_string Sys.argv.(1)
+let height = width * 2 / 3
 let n = int_of_string Sys.argv.(2)
 
 let xmin = -1.1
@@ -46,16 +47,46 @@ let xmax = -0.8
 let ymin =  0.2
 let ymax =  0.4 
 
-let () = open_graph (Printf.sprintf " %dx%d" w h)
-
-let () = 
+let tasks = 
+  let t = ref [] in
   for i = 0 to n-1 do for j = 0 to n-1 do
     let xmi = xmin +. float i *. (xmax -. xmin) /. float n in
     let xma = xmin +. float (i+1) *. (xmax -. xmin) /. float n in
     let ymi = ymin +. float j *. (ymax -. ymin) /. float n in
     let yma = ymin +. float (j+1) *. (ymax -. ymin) /. float n in
-    let m = draw xmi xma ymi yma (w/n) (h/n) in
-    draw_image (make_image m) (i * w / n) (j * h / n)
+    t := ((xmi, xma, ymi, yma, width / n, height / n), (i,j)) :: !t
   done done;
-  (* ignore (read_key ()) *)
+  !t
+
+let worker (xmi, xma, ymi, yma, w, h) = draw xmi xma ymi yma w h
+
+let og = ref false
+
+let images = Array.create_matrix n n [||]
+
+let master ((_,_,_,_,w,h), (i,j)) m = images.(i).(j) <- m; []
+(*
+  if not !og then begin 
+    Graphics.open_graph (Printf.sprintf " %dx%d" width height); og := true 
+  end;
+  let img = Graphics.make_image m in
+  (*Graphics.draw_image img (i * w) (j * h); *)
+  []
+*)
+
+let () = compute ~worker ~master tasks 
+
+let () =
+  Graphics.open_graph (Printf.sprintf " %dx%d" width height);
+  for i = 0 to n-1 do for j = 0 to n-1 do
+    let img = Graphics.make_image images.(i).(j) in
+    Graphics.draw_image img (i * width / n) (j * height / n);
+  done done;
+  (*ignore (Graphics.read_key ())*)
   ()
+
+(*
+Local Variables: 
+compile-command: "make -C ../.. tests/mandelbrot/a.out"
+End: 
+*)
