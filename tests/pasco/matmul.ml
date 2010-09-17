@@ -1,10 +1,14 @@
 
 open Format
-open Functory.Sequential
 
-(* Network *)
-(* let () = declare_workers ~n:12 "localhost" *)
-(* open Same *)
+(* open Functory.Sequential *)
+
+(* open Functory.Cores *)
+(* let () = set_number_of_cores 8 *)
+
+open Functory.Network
+let () = declare_workers ~n:8 "localhost"
+open Same
 
 open Gmp.Z
 
@@ -12,7 +16,6 @@ let read_matrix ?(by_column=false) file =
   let c = open_in file in
   let s = input_line c in
   let n, m = Scanf.sscanf s "%d %d" (fun n m -> n, m) in
-  printf "n=%d, m=%d@." n m;
   let mat = 
     (if by_column then Array.create_matrix m n else Array.create_matrix n m)
     zero
@@ -43,18 +46,61 @@ let naive_multiplication a b =
   done;
   c
 
-let _ = naive_multiplication a b
+let parall_multiplication a b =
+  let n = Array.length a in
+  assert (n > 0);
+  let m = Array.length a.(0) in
+  assert (m = Array.length b.(0));
+  let p = Array.length b in
+  let c = Array.create_matrix n p zero in
+  let tasks = ref [] in
+  for i = 0 to n-1 do for j = 0 to p-1 do
+    tasks := ((a.(i), b.(j)), (i,j)) :: !tasks
+  done done;
+  let worker (ai, bj) =
+    let c = ref zero in
+    for k = 0 to m-1 do
+	c := add !c (mul ai.(k) bj.(k))
+    done;
+    !c
+  in
+  let master (_, (i,j)) r = 
+    printf ".@?";
+    c.(i).(j) <- r; [] in
+  compute ~worker ~master !tasks;
+  c
 
-(* let worker = fib_ui *)
+let parall_line_multiplication a b =
+  let n = Array.length a in
+  assert (n > 0);
+  let m = Array.length a.(0) in
+  assert (m = Array.length b.(0));
+  let p = Array.length b in
+  let c = Array.create n [||] in
+  let tasks = ref [] in
+  for i = 0 to n-1 do tasks := (a.(i), i) :: !tasks done;
+  let worker ai =
+    let c = Array.create p zero in
+    for j = 0 to p-1 do for k = 0 to m-1 do
+      c.(j) <- add c.(j) (mul ai.(k) b.(j).(k))
+    done done;
+    c
+  in
+  let master (_, i) r = c.(i) <- r; [] in
+  compute ~worker ~master !tasks;
+  c
 
-(* let tasks = [100000, ()] *)
+let dump c =
+  let n = Array.length c in
+  let m = Array.length c.(0) in
+  printf "%d %d@." n m;
+  let dump_coeff x = printf "%a@." print x in
+  Array.iter (Array.iter dump_coeff) c
 
-(* let master _ r = *)
-(*   Format.printf "result = %a@." print r; *)
-(*   [] *)
-
-(* let () = compute ~worker ~master tasks *)
-
+(* let _ = naive_multiplication a b *)
+let c = parall_multiplication a b
+(* let c = parall_line_multiplication a b *)
+let () = dump c
 
 (*
 Local Variables: 
