@@ -1,0 +1,36 @@
+GCD of univariate polynomials with integer coefficients.
+
+
+Problem specification:
+
+The problem is to compute as quickly as possible the gcd of two
+univariate polynomials with integer coefficients.  Participants
+are free to use any piece of software for integer arithmetic or
+polynomial operations or any other library of their choice.
+
+
+Specification of the program input/output:
+
+The participant must provide a program with the following specification:
+    * Polynomial file storage format: a polynomial having N non-zero terms
+      will be stored in a file having N+1 lines.
+    * First line: the number N of non-zero terms
+    * Each of the following lines will contain the degree of a term
+      followed by its coefficient.  These are separated by a space.
+      The terms will be given in order of descending degree.
+
+For example, the polynomial 10*x^4 - 11*x^3 + 12*x^2 - 13 would be
+
+4
+4 10
+3 -11
+2 12
+0 -13
+
+
+Usage: To compute gcd(A,B) = C, run the program
+
+  gcd A B C
+
+where the arguments A, B and C are files storing polynomials
+
