@@ -1,7 +1,7 @@
 
 open Functory.Sequential
 open Functory.Cores
-let () = set_number_of_cores 2
+let () = set_number_of_cores (int_of_string Sys.argv.(3))
 
 let max_iter = 200 (* nombre maximum d'itérations *)
 let f_max_iter = float max_iter (* optim *)
