@@ -144,3 +144,9 @@ open IntPoly
 
 (* let () = for i = 1 to 20 do ignore (eval p 2) done *)
 
+
+(*
+Local Variables: 
+compile-command: "make -C ../.. tests/pasco/poly"
+End: 
+*)
