@@ -24,7 +24,7 @@ MANDIR=@mandir@
 
 # other variables set by ./configure
 OCAMLC   = @OCAMLC@
-OCAMLOPT = @OCAMLOPT@ -g
+OCAMLOPT = @OCAMLOPT@ -g -annot
 OCAMLDEP = @OCAMLDEP@
 OCAMLLEX = @OCAMLLEX@
 OCAMLYACC= @OCAMLYACC@

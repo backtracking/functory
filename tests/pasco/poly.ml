@@ -148,20 +148,22 @@ module P = MakePoly (GmpRing)
 
 open Format
 
-let two = Gmp.Z.of_int 2
+let two = of_int 2
 let p1 = P.plus (P.monom one 0) (P.monom one 2) (* 1+X^2 *)
-let () = printf "%a@." P.print p1
+let () = printf "P1 = %a@." P.print p1
 let p2 = P.mult p1 p1
 let () = printf "P2 = %a@." P.print p2
 let () = printf "P2(2) = %a@." print (P.eval p2 two)
 
-(* let rec random_poly acc = function *)
-(*   | -1 -> acc *)
-(*   | n -> random_poly (plus (monom (Random.int 1000) n) acc) (n-1) *)
+let rec random_poly acc = function
+  | -1 -> acc
+  | n -> random_poly (P.plus (P.monom (of_int (Random.int 1000)) n) acc) (n-1)
 
-(* let p = random_poly zero 1_000_000 *)
+let p1 = random_poly P.zero 100
+let p2 = random_poly P.zero 100
+let () = printf "(P1 + P2)(2) = %a@." print (P.eval (P.mult p1 p2) two)
 
-(* let () = for i = 1 to 20 do ignore (eval p 2) done *)
+let () = for i = 1 to 10 do ignore (P.mult p1 p2) done
 
 
 (*

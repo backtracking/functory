@@ -1,3 +1,7 @@
+
+open Functory.Cores
+let () = set_number_of_cores 7
+
 module type RING = sig
   type t
   val zero : t
@@ -65,6 +69,25 @@ struct
 	  else (a2, x + x1) :: times m q
 
   let mult p = List.fold_left (fun r m -> plus r (times m p)) zero
+
+  (* map_fold_ac or map_local_fold in not efficient enoug: too many tasks *)
+
+  let t = 7
+  (* optimal when equal to the number of cores 
+     best result: 3 times speedup (6 or 7 cores on moloch) *)
+
+  let split_in n l =
+    let a = Array.create n [] in
+    let rec fill i = function
+      | [] -> List.map List.rev (Array.to_list a)
+      | m :: p -> a.(i) <- m :: a.(i); fill ((i+1) mod n) p
+    in
+    fill 0 l
+
+  let mult p1 p2 =
+    let map s1 = mult s1 p2 in
+    let fold = plus in
+    map_fold_ac ~map ~fold zero (split_in t p1)
 
   let rec pow c x = match x with
       (* given c, x calculates c^x *)
@@ -155,17 +178,20 @@ let p2 = P.mult p1 p1
 let () = printf "P2 = %a@." P.print p2
 let () = printf "P2(2) = %a@." print (P.eval p2 two)
 
-(* let rec random_poly acc = function *)
-(*   | -1 -> acc *)
-(*   | n -> random_poly (plus (monom (Random.int 1000) n) acc) (n-1) *)
 
-(* let p = random_poly zero 1_000_000 *)
+let rec random_poly acc = function
+  | -1 -> acc
+  | n -> random_poly (P.plus (P.monom (of_int (Random.int 1000)) n) acc) (n-1)
 
-(* let () = for i = 1 to 20 do ignore (eval p 2) done *)
+let p1 = random_poly P.zero 2_000
+let p2 = random_poly P.zero 2_000
+let () = printf "(P1 + P2)(2) = %a@." print (P.eval (P.mult p1 p2) two)
+
+let () = for i = 1 to 10 do ignore (P.mult p1 p2) done
 
 
 (*
 Local Variables: 
-compile-command: "make -C ../.. tests/pasco/poly"
+compile-command: "make -C ../.. tests/pasco/dpoly"
 End: 
 *)
