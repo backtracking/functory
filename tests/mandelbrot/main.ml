@@ -96,8 +96,7 @@ run on moloch
 4        4       1.853   --> we don't control scheduling and the system
                              uses 2 processors only
         16       0.918
-
-8      
+8       64       0.505   
 *)
 
 
