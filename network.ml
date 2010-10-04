@@ -57,6 +57,7 @@ module Worker = struct
       (fun s -> let x, y = decode_string_pair s in f x y)
 
   type running_task = {
+    id : int;
     pid : int;
     file : file_descr;
   }
@@ -73,7 +74,8 @@ module Worker = struct
     let fdin = descr_of_in_channel cin in
     let fdout = descr_of_out_channel cout in
     let pids = Hashtbl.create 17 in (* ID -> running_task *)
-    let handle_message_from_master _ = 
+    let fds = Hashtbl.create 17 in  (* FD -> running_task *)
+    let handle_message_from_master () = 
       let m = Master.receive fdin in
       dprintf "received: %a@." Master.print m;
       match m with
@@ -103,15 +105,17 @@ module Worker = struct
 		  end
 	      | pid -> 
 		  close fout;
-		  let t = { pid = pid; file = fin } in
-		  Hashtbl.add pids id t
+		  let t = { id = id; pid = pid; file = fin } in
+		  Hashtbl.add pids id t;
+		  Hashtbl.add fds fin t
 	    end
 	| Master.Kill id ->
 	    begin 
 	      try
 		let t = Hashtbl.find pids id in
 		kill t.pid Sys.sigkill;
-		Hashtbl.remove pids id
+		Hashtbl.remove pids id;
+		Hashtbl.remove fds t.file
 	      with Not_found ->
 		() (* ignored Kill *)
 	    end
@@ -120,24 +124,36 @@ module Worker = struct
 	| Master.Ping ->
 	    Worker.send fdout Worker.Pong
     in
-    let wait_for_completed_task id t =
+    let wait_for_completed_task id t = (* only to handle failures *)
       match waitpid [WNOHANG] t.pid with
-	| 0, _ -> (* not yet completed *)
+	| 0, _ (* not yet completed *)
+	| _, WEXITED 0 (* already completed *) -> 
 	    ()
-	| _, WEXITED 0 -> 
-	    Hashtbl.remove pids id;
-	    let c = in_channel_of_descr t.file in
-	    let r : string = input_value c in
-	    close_in c;
-	    Worker.send fdout (Worker.Completed (id, r))
 	| _ -> (* failure *)
 	    Hashtbl.remove pids id;
+	    Hashtbl.remove fds t.file;
 	    Worker.send fdout (Worker.Aborted id)
     in
+    (* there's something to read from fd *)
+    let handle fd =
+      if fd == fdin then 
+	handle_message_from_master ()
+      else begin
+	let t = Hashtbl.find fds fd in
+	Hashtbl.remove pids t.id;	
+	Hashtbl.remove fds  t.file;
+	let c = in_channel_of_descr t.file in
+	let r : string = input_value c in
+	close_in c;
+	Worker.send fdout (Worker.Completed (t.id, r))
+      end
+    in
+    (* main loop *)
     try 
       while true do    
-	let l,_,_ = select [fdin] [] [] 1. in
-	List.iter handle_message_from_master l;
+	let l = Hashtbl.fold (fun fd _ acc -> fd :: acc) fds [fdin] in
+	let l,_,_ = select l [] [] 1. in
+	List.iter handle l;
 	Hashtbl.iter wait_for_completed_task pids
       done;
       assert false

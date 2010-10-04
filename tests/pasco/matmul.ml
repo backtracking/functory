@@ -8,7 +8,7 @@ open Format
 
 open Functory.Network
 let () = declare_workers ~n:3 "localhost"
-let () = declare_workers ~n:3 "belzebuth"
+(* let () = declare_workers ~n:3 "belzebuth" *)
 let () = Functory.Control.set_debug true
 open Same
 
