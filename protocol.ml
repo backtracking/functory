@@ -78,11 +78,11 @@ module Master = struct
 
   let print fmt = function
     | Assign (id, f, a) ->
-	fprintf fmt "assign %d f=%S a=%S" id f a
+	fprintf fmt "assign %d f=... a=..." id (* f a *)
     | Kill id ->
 	fprintf fmt "kill %d" id
     | Stop s ->
-	fprintf fmt "stop result=%S" s
+	fprintf fmt "stop result=..." (* s *)
     | Ping ->
 	fprintf fmt "ping"
 

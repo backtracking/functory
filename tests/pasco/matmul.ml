@@ -4,10 +4,12 @@ open Format
 (* open Functory.Sequential *)
 
 (* open Functory.Cores *)
-(* let () = set_number_of_cores 8 *)
+(* let () = set_number_of_cores 6 *)
 
 open Functory.Network
-let () = declare_workers ~n:8 "localhost"
+let () = declare_workers ~n:3 "localhost"
+let () = declare_workers ~n:3 "belzebuth"
+let () = Functory.Control.set_debug true
 open Same
 
 open Gmp.Z
@@ -64,9 +66,7 @@ let parall_multiplication a b =
     done;
     !c
   in
-  let master (_, (i,j)) r = 
-    printf ".@?";
-    c.(i).(j) <- r; [] in
+  let master (_, (i,j)) r = c.(i).(j) <- r; [] in
   compute ~worker ~master !tasks;
   c
 
@@ -80,10 +80,12 @@ let parall_line_multiplication a b =
   let tasks = ref [] in
   for i = 0 to n-1 do tasks := (a.(i), i) :: !tasks done;
   let worker ai =
+    printf "computation starts@.";
     let c = Array.create p zero in
     for j = 0 to p-1 do for k = 0 to m-1 do
       c.(j) <- add c.(j) (mul ai.(k) b.(j).(k))
     done done;
+    printf "computation done@.";
     c
   in
   let master (_, i) r = c.(i) <- r; [] in
@@ -98,9 +100,9 @@ let dump c =
   Array.iter (Array.iter dump_coeff) c
 
 (* let _ = naive_multiplication a b *)
-let c = parall_multiplication a b
-(* let c = parall_line_multiplication a b *)
-let () = dump c
+(* let c = parall_multiplication a b *)
+let c = parall_line_multiplication a b
+(* let () = dump c *)
 
 (*
 Local Variables: 

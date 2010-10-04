@@ -18,7 +18,7 @@ open Format
 open Unix
 open Control
 
-(* let () = set_debug true *)
+let () = set_debug true
 
 let default_port_number = ref 51000
 
@@ -89,6 +89,9 @@ module Worker = struct
 		    let r : string = compute f a in
 		    let c = out_channel_of_descr fout in
 		    output_value c r;
+		    dprintf "  id %d: output_value done@." id;
+		    flush c;
+		    close_out c;
 		    dprintf "  id %d: computation done@." id;
 		    exit 0
 		  with e ->

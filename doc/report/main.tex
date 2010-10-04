@@ -946,6 +946,35 @@ from \url{http://www.lri.fr/~filliatr/functory/}.
 In this section, we show the potential of this library using two 
 computationally extensive examples.
 
+\subsubsection{Matrix Multiplication}
+
+$\of{n} = \of{p} = \of{m} = 100$
+
+coefficients have several thousands of digits; we use GMP
+
+%            parall  line
+
+% # tasks    10,000   100
+
+% sequential  20.3   20.2
+% cores 2     22.7   11.3
+% cores 4     12.3    6.1
+% cores 6      8.6    4.3
+% cores 8      8.0    3.5
+
+% network is localhost (moloch) + belzebuth / same number of workers on each
+
+% network 3+3 142
+% network 6+6  31.7
+
+\begin{center}
+  \begin{tabular}{|l|l|l|}
+    \hline
+    sequential & cores & network \\\hline
+    20.3 & 
+  \end{tabular}
+\end{center}
+
 \subsection{N-queens}
 
 The following table shows execution times for various values of $N$
