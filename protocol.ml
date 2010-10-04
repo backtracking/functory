@@ -76,13 +76,20 @@ module Master = struct
     | Stop of string
     | Ping
 
+  let print_string fmt s =
+    let n = String.length s in
+    if n <= 10 then 
+      fprintf fmt "%S" s 
+    else
+      fprintf fmt "<length %d>" n
+
   let print fmt = function
     | Assign (id, f, a) ->
-	fprintf fmt "assign %d f=... a=..." id (* f a *)
+	fprintf fmt "assign %d f=%a a=%a" id print_string f print_string a 
     | Kill id ->
 	fprintf fmt "kill %d" id
     | Stop s ->
-	fprintf fmt "stop result=..." (* s *)
+	fprintf fmt "stop result=%a" print_string s
     | Ping ->
 	fprintf fmt "ping"
 
