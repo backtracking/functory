@@ -16,6 +16,7 @@ module type RING  = sig
   val add : t -> t -> t
   val mult : t -> t -> t
   val equal : t -> t -> bool
+  val gcd : t -> t -> t
   val print : formatter -> t -> unit
 end
   
@@ -28,10 +29,10 @@ module type POLYNOMIAL = sig
   val add : t -> t -> t
   val equal : t -> t -> bool
   val mult : t -> t -> t
-  val coeff_gcd : c -> c -> c
   val eval : t -> c -> c
-  val cont : t -> c list
+  val cont : t -> c
   (* val gcd : t -> t -> t *)
+  val from_list : (c * int) list -> t
   val print : formatter -> t -> unit
 end
 
@@ -46,24 +47,18 @@ struct
 
   (* helper functions *)
 
-  let coeff_gcd x y = 
-    let rec gcd x y = 
-      if x = 0 then y
-      else if y = 0 then x
-      else if x > y then gcd y (x mod y)
-      else gcd x (y mod x)
-    in
-      if (x < 0) or (y < 0) then
-	(0 - 1) * (gcd (abs x) (abs y))
-      else
-	gcd x y
+  (* let coeff_gcd x y =  *)
+  (*     if (x < 0) or (y < 0) then *)
+  (* 	(0 - 1) * (gcd (abs x) (abs y)) *)
+  (*     else *)
+  (* 	gcd x y *)
 	  
   (* coeff list *)
   let cont p = 
     let coeff_list p = 
       List.map (fun x -> fst x) p 
     in
-      List.fold_left (coeff_gcd) (List.nth (coeff_list p) 1) (coeff_list p)
+      List.fold_left D.gcd (List.nth (coeff_list p) 1) (coeff_list p)
       
   (* pp *)
   (* let pp p = List.map (fun x -> x / cont p) p *)
@@ -154,11 +149,23 @@ struct
   let mult a b = a * b 
   let equal a b = (a = b)
   let print = pp_print_int
+  let rec gcd x y = 
+    if x = 0 then y
+    else if y = 0 then x
+    else if x > y then gcd y (x mod y)
+    else gcd x (y mod x)
 end
 
 (* tests *)
 module P = MakePoly (ZRing)
 let p1 = P.add (P.monom 4 0) (P.add (P.monom 2 3) (P.monom 1 1))
-let () = P.print std_formatter p1
-let () = Printf.printf "%d\n" (P.eval p1 2)
+let () = printf "%a@." P.print p1
+let () = printf "%d@." (P.eval p1 2)
 
+let u = P.add (P.monom (-26) 2) (P.monom 39 0)
+
+(*
+Local Variables: 
+compile-command: "make -C ../.. tests/pasco/poly2"
+End: 
+*)

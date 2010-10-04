@@ -69,6 +69,7 @@ let create_worker w (f : 'a -> 'b) (t : 'a * 'c) : ('a * 'c) job =
 	let r = f (fst t) in
 	let c = open_out file in
 	output_value c r;
+	close_out c;
 	exit 0
     | pid -> (* parent *)
 	{ worker = w;

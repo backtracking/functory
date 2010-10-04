@@ -1,6 +1,8 @@
 
+(* open Functory.Sequential *)
 open Functory.Cores
 let () = set_number_of_cores 7
+let computation = ref 0.
 
 module type RING = sig
   type t
@@ -74,7 +76,7 @@ struct
 
   let t = 7
   (* optimal when equal to the number of cores 
-     best result: 3 times speedup (6 or 7 cores on moloch) *)
+     best result: 4 times speedup (6 or 7 cores on moloch) with mult2 *)
 
   let split_in n l =
     let a = Array.create n [] in
@@ -84,10 +86,42 @@ struct
     in
     fill 0 l
 
-  let mult p1 p2 =
-    let map s1 = mult s1 p2 in
+  let time f x =                                                   
+    let u = (Unix.times()).Unix.tms_utime in                                  
+    let y = f x in
+    let ut = (Unix.times()).Unix.tms_utime -. u in
+    y, ut
+
+  (* solution 1: split p1 into t pieces, and multiply each by p2 *)
+  let mult1 p1 p2 =
+    let map s1 = 
+      let p = mult s1 p2 in
+      Format.printf "mult1: %d x %d -> %d@." (List.length s1) (List.length p2)
+      	(List.length p);
+      p
+    in
     let fold = plus in
     map_fold_ac ~map ~fold zero (split_in t p1)
+
+  (* solution 2: split both p1 and p2 in sqrt(t) pieces, and multiply *)
+  let mult2 p1 p2 =
+    let s = truncate (ceil (sqrt (float t))) in
+    let l1 = split_in s p1 in
+    let l2 = split_in s p2 in
+    let tl = 
+      List.flatten (List.map (fun p1 -> List.map (fun p2 -> p1,p2) l2) l1) 
+    in
+    Format.printf "mult2: %d tasks@." (List.length tl);
+    let map (s1, s2) = 
+      let p = mult s1 s2 in
+      Format.printf "mult2: %d x %d -> %d@." (List.length s1) (List.length s2)
+      	(List.length p);
+      p
+    in
+    let fold = plus in
+    map_fold_ac ~map ~fold zero tl
+
+  let mult = mult2
 
   let rec pow c x = match x with
       (* given c, x calculates c^x *)
@@ -171,24 +205,23 @@ module P = MakePoly (GmpRing)
 
 open Format
 
-let two = Gmp.Z.of_int 2
-let p1 = P.plus (P.monom one 0) (P.monom one 2) (* 1+X^2 *)
-let () = printf "%a@." P.print p1
-let p2 = P.mult p1 p1
-let () = printf "P2 = %a@." P.print p2
-let () = printf "P2(2) = %a@." print (P.eval p2 two)
-
+(* let two = Gmp.Z.of_int 2 *)
+(* let p1 = P.plus (P.monom one 0) (P.monom one 2) (\* 1+X^2 *\) *)
+(* let () = printf "%a@." P.print p1 *)
+(* let p2 = P.mult p1 p1 *)
+(* let () = printf "P2 = %a@." P.print p2 *)
+(* let () = printf "P2(2) = %a@." print (P.eval p2 two) *)
 
 let rec random_poly acc = function
   | -1 -> acc
   | n -> random_poly (P.plus (P.monom (of_int (Random.int 1000)) n) acc) (n-1)
 
-let p1 = random_poly P.zero 2_000
-let p2 = random_poly P.zero 2_000
-let () = printf "(P1 + P2)(2) = %a@." print (P.eval (P.mult p1 p2) two)
+let p1 = random_poly P.zero 3_000
+let p2 = random_poly P.zero 3_000
+(* let () = printf "(P1 + P2)(2) = %a@." print (P.eval (P.mult p1 p2) two) *)
 
 let () = for i = 1 to 10 do ignore (P.mult p1 p2) done
-
+let () = Format.printf "computation time: %f@." !computation
 
 (*
 Local Variables: 

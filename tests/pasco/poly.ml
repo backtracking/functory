@@ -2,9 +2,12 @@ module type RING = sig
   type t
   val zero : t
   val one : t
+  val neg : t -> t
   val plus : t -> t -> t
   val mult : t -> t -> t
   val eq : t -> t -> bool
+  val gcd : t -> t -> t
+  val div_mod : t -> t -> t * t
   val print : Format.formatter -> t -> unit
 end
 
@@ -17,93 +20,143 @@ module type POLYNOMIAL = sig
   val plus : t -> t -> t
   val mult : t -> t -> t
   val eq : t -> t -> bool
+  val cont : t -> c
+  val pseudo_rem : t -> t -> t
+  val gcd : t -> t -> t (* Generalized Euclidean Algorithm *)
+  val from_list : (c * int) list -> t
   val print : Format.formatter -> t -> unit
   val eval : t -> c -> c
 end
 
-module MakePoly (A: RING) : POLYNOMIAL
-  with type c = A.t = 
+module MakePoly (D: RING) : POLYNOMIAL with type c = D.t = 
 struct
-  type c = A.t
+  type c = D.t
   type monom = (c * int) (* (coeff, power) *)
-  type t = monom list
+  type t = monom list (* sorted in decreasing order of degrees *)
   let zero = []
-  let one = [A.one, 0]
+  let one = [D.one, 0]
+
   let rec eq p1 p2 = 
     match p1, p2 with
 	[], [] -> true
       | (a1, x1) :: q1, (a2, x2) :: q2 -> 
-	  (x1 = x2) && A.eq a1 a2 && eq q1 q2
+	  (x1 = x2) && D.eq a1 a2 && eq q1 q2
       | _ -> false
+
   let monom a x = 
     if x < 0 then
       failwith "fail monom: power can not be negative";
-    if A.eq a A.zero then
+    if D.eq a D.zero then
       []
     else
       [(a, x)]
+
   let rec plus p1 p2 = match p1, p2 with 
     | (a1, x1 as m1) :: q1, (a2, x2 as m2) :: q2 -> 
-	if x1 < x2 then
+	if x1 > x2 then
 	  m1 :: plus q1 p2
 	else if x1 = x2 then
-	  let a = A.plus a1 a2 in 
-	  if A.eq a A.zero then plus q1 q2
+	  let a = D.plus a1 a2 in 
+	  if D.eq a D.zero then plus q1 q2
 	  else (a, x1) :: plus q1 q2
 	else
 	  m2 :: plus p1 q2
     | [], _ -> p2
     | _, [] -> p1
 
+  let from_list = List.fold_left (fun p (c, d) -> plus (monom c d) p) zero
+
   let rec times (a, x as m) p = 
     (* assume a <> 0 *)
     match p with 
       | [] -> []
       | (a1, x1) :: q ->
-	  let a2 = A.mult a a1 in 
-	  if A.eq a2 A.zero then times m q
+	  let a2 = D.mult a a1 in 
+	  if D.eq a2 D.zero then times m q
 	  else (a2, x + x1) :: times m q
 
   let mult p = List.fold_left (fun r m -> plus r (times m p)) zero
 
   let rec pow c x = match x with
       (* given c, x calculates c^x *)
-    | 0 -> A.one 
+    | 0 -> D.one 
     | 1 -> c
     | x ->
 	let l = pow c (x/2) in 
-	let l2 = A.mult l l in
-	  if x mod 2 = 0 then l2 else A.mult c l2
+	let l2 = D.mult l l in
+	if x mod 2 = 0 then l2 else D.mult c l2
 
   let eval p c = 
     let rec eval_loop acc = function
       | [] ->
 	  acc
       | [a0, x0] ->
-	  A.mult (pow c x0) (A.plus a0 acc)
+	  D.mult (pow c x0) (D.plus a0 acc)
       | (an, xn) :: ((an_1, xn_1) :: _ as q) ->
-	  eval_loop (A.mult (pow c (xn - xn_1)) (A.plus an acc)) q
+	  eval_loop (D.mult (pow c (xn - xn_1)) (D.plus an acc)) q
     in
-    eval_loop A.zero (List.rev p)
+    eval_loop D.zero p
 
   (* with continuations -> not efficient *)
   let evalk p c =
     let rec eval_loop x k = function
       | [] ->
-	  k A.zero
+	  k D.zero
       | (a0, x0) :: p ->
-	  eval_loop x0 (fun r -> k (A.mult (pow c (x0-x)) (A.plus a0 r))) p
+	  eval_loop x0 (fun r -> k (D.mult (pow c (x0-x)) (D.plus a0 r))) p
     in
-    eval_loop 0 (fun r -> r) p
+    eval_loop 0 (fun r -> r) (List.rev p)
 
-(* match List.rev p with *)
-(*       [] -> A.zero *)
-(*     | (h :: t) ->    *)
-(* 	let dm (a1, x1) (a2, x2) = *)
-(* 	  A.plus (A.mult (pow c (x1 - 1)) a1) a2, x2 *)
-(* 	in *)
-(* 	let a1, x2 = List.fold_left dm h t in  *)
-(* 	  A.mult (pow c x2) a1  *)
+  (* coeff list *)
+  let cont p = 
+    List.fold_left (fun cont (c, _) -> D.gcd cont c) D.zero p
+      
+  let exact_div c p = 
+    let divide (x, d) =
+      let q, r = D.div_mod x c in
+      assert (D.eq r D.zero);
+      q, d
+    in
+    List.map divide p
+    
+  let pp p = exact_div (cont p) p
+
+  let degree = function
+    | [] -> -1
+    | (_, d) :: _ -> d
+
+  let pseudo_rem u v =
+    let vn, n = match v with
+      | (vn, n) :: _ -> vn, n
+      | [] -> invalid_arg "pseudo_div: v should be non zero"
+    in
+    let rec loop = function
+      | u when degree u < n -> 
+	u
+      | (um, m) :: _ as u ->
+	let u = times (vn, 0) u in
+	let u = plus u (times (D.neg um, m - n) v) in
+	loop u
+      | [] ->
+	assert false
+    in
+    loop u
+
+  let gcd u v =
+    let cu = cont u and cv = cont v in
+    let u = exact_div cu u and v = exact_div cv v in
+    let d = D.gcd cu cv in
+    assert (not (D.eq d D.zero));
+    let rec loop u v =
+      let r = pseudo_rem u v in
+      if r = [] then
+	times (d, 0) v
+      else if degree r = 0 then
+	[d, 0]
+      else
+	loop v (pp r)
+    in
+    loop u v
 
   open Format
 
@@ -113,10 +166,10 @@ struct
       (fun acc (a,k) -> 
          (* acc is false for the first monom *) 
           if acc then fprintf fmt " + ";
-          fprintf fmt "%ax^%d" A.print a k;
+          fprintf fmt "%ax^%d" D.print a k;
           true
       ) false p in
-    if (not b) then (A.print fmt A.zero);
+    if (not b) then (D.print fmt D.zero);
     fprintf fmt ")"
 end
 
@@ -127,11 +180,18 @@ struct
   let zero = 0
   let one = 1
   let plus a b = a + b
+  let neg a = -a
   let mult a b = a * b
   let eq a b = (a = b)
+  let rec gcd x y = if x = 0 then y else gcd (y mod x) x
+  let gcd x y = gcd (abs x) (abs y)
+  let div_mod x y = x / y, x mod y
   let print = Format.pp_print_int
 end
 
+module P = MakePoly (IntRing)
+
+(***
 open Gmp.Z
 
 module GmpRing = struct
@@ -141,12 +201,11 @@ module GmpRing = struct
   let plus = add
   let mult = mul
   let eq = equal
+  let gcd = gcd
   let print = print
 end
 
 module P = MakePoly (GmpRing)
-
-open Format
 
 let two = of_int 2
 let p1 = P.plus (P.monom one 0) (P.monom one 2) (* 1+X^2 *)
@@ -164,7 +223,24 @@ let p2 = random_poly P.zero 100
 let () = printf "(P1 + P2)(2) = %a@." print (P.eval (P.mult p1 p2) two)
 
 let () = for i = 1 to 10 do ignore (P.mult p1 p2) done
+***)
 
+open Format
+
+
+(*
+#install_printer P.print;;
+*)
+let u = P.from_list [1,8; 1,6; -3,4; -3,3; 8,2; 2,1; -5,0]
+let v = P.from_list [3,6; 5,4; -4,2; -9,1; 21,0]
+let r = P.pseudo_rem u v
+let () = printf "r = %a@." P.print r
+let g = P.gcd u v
+let () = printf "gcd u v = %a@." P.print g
+
+let u = P.from_list [ 3, 3;  2, 2]
+let v = P.from_list [21, 1; 14, 0]
+let _ = printf "gcd u v = %a@." P.print (P.gcd u v)
 
 (*
 Local Variables: 
