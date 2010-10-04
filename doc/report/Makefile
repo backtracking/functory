@@ -1,9 +1,9 @@
 
-quick: main-pp.tex 
+quick: main-pp.tex  state.mps
 	pdflatex main-pp
 	xpdf -remote tmp -reload
 
-main-pp.pdf: main-pp.tex biblio.bib
+main-pp.pdf: main-pp.tex biblio.bib state.mps
 	pdflatex main-pp
 	bibtex main-pp
 	pdflatex main-pp

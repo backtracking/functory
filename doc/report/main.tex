@@ -17,7 +17,7 @@
 %-----------------------------------------------------------------------------
 
 
-\documentclass[preprint]{sigplanconf}
+\documentclass[a4paper,12pt]{article}
 
 % The following \documentclass options may be useful:
 %
@@ -25,7 +25,7 @@
 % 11pt          To set in 11-point type instead of 9-point.
 % authoryear    To obtain author/year citation style instead of numeric.
 
-\usepackage{amsmath,graphicx,color,url}
+\usepackage{fullpage,comment,amsmath,graphicx,color,url}
 
 \newcommand{\Ocaml}{OCaml}
 \newcommand{\functory}{\textsf{Functory}}
@@ -34,26 +34,16 @@
 
 \begin{document}
 
-\conferenceinfo{ICFP '10}{September 27-29, 2010, Baltimore, Maryland.} 
-\copyrightyear{2010} 
-\copyrightdata{[to be supplied]} 
-
-\titlebanner{Technical Report}        % These are ignored unless
-\preprintfooter{Functory: Distributed Computing for the Common Man}   % 'preprint' option specified.
-
 \title{Functory: Distributed Computing for the Common Man\thanks{This
     research was partly supported by the French national project U3CAT
     (\emph{Unification of Critical C Code Analysis Techniques},
     ANR-08-SEGI-021).}} 
 %\subtitle{Subtitle Text, if any}
 
-\authorinfo{Jean-Christophe Filli\^{a}tre}
-           {CNRS, LRI, Univ Paris-Sud 11, Orsay F-91405\\
-            INRIA Saclay - \^{I}le-de-France, ProVal, Orsay, F-91893}
-           {filliatr@lri.fr}
-\authorinfo{K. Kalyanasundaram}
-           {ProVal, INRIA Saclay - \^{I}le-de-France, Orsay, F-91893}
-           {kalyan.krishnamani@inria.fr}
+\author{Jean-Christophe Filli\^{a}tre \quad K. Kalyanasundaram \\
+  CNRS, LRI, Univ Paris-Sud 11, Orsay F-91405\\
+  INRIA Saclay - \^{I}le-de-France, ProVal, Orsay, F-91893 \\
+   \url{filliatr@lri.fr, kalyan.krishnamani@inria.fr}}
 
 \maketitle
 
@@ -67,11 +57,6 @@
   the design and implementation of the library. It also demonstrates
   the potential of the library using realistic experiments.
 \end{abstract}
-
-\category{D1.1}{Programming techniques}{Applicative (Functional) Programming}
-
-\terms
-Distributed Computing, Functional Programming
 
 %\keywords
 
@@ -207,8 +192,8 @@ these situations, by providing several APIs.
 \medskip
 The paper is organized as follows. In Section~\ref{sec:API}, we
 describe the main idea behind the generic API, and introduce
-\of{master} and \of{worker} programs. Section~\ref{sec:example}
-illustrates the API usage with an example.
+\of{master} and \of{worker} programs. 
+% Section~\ref{sec:example} illustrates the API usage with an example.
 In Section~\ref{sec:derived}, we
 derive some interesting functions from the generic
 API. Section~\ref{sec:implem} delves into the implementation details
@@ -313,6 +298,7 @@ The next section demonstrates the use of these modules.
 % The following section introduces other interesting APIs that we
 % derive from this generic API.
 
+\begin{comment}
 \section{Illustrative Example}\label{sec:example}
 
 Let us assume we need to compute a sum such as
@@ -440,6 +426,7 @@ as strings, as follows:
     !l
   let master (i,()) fi = s := !s + int_of_string fi; []
 \end{ocaml}
+\end{comment}
 
 \section{Derived API}\label{sec:derived}
 
@@ -599,6 +586,171 @@ generic API.
 
 % TODO cannot be instantiated in the monomorphic case
 
+\section{Illustrative Case Studies}
+
+\subsection{Matrix Multiplication}
+
+As a first example, let us consider matrix multiplication.
+We assume two matrices \of{a} and \of{b}, respectively of size
+$\of{n}\times\of{p}$ and $\of{p}\times\of{m}$, given as input, as well as
+a matrix \of{c} of size $\of{n}\times\of{m}$ to store the result.
+Assuming \of{a} being a row-matrix and \of{b} a column-matrix,
+the standard matrix multiplication would be as follows:
+\begin{ocaml}
+  for i = 0 to n-1 do
+    for j = 0 to p-1 do
+      for k = 0 to m-1 do
+	c.(i).(j) <- c.(i).(j) + a.(i).(k) * b.(j).(k)
+      done
+    done
+  done  
+\end{ocaml}
+and runs in $O(\of{n}\times\of{p}\times\of{m})$, assuming constant
+time addition and multiplication (denoted $+$ and $\times$).
+An easy way to distribute this computation is obviously to turn each
+computation of the inner loop over \of{k} into a task.
+To do so, we first prepare the list of tasks:
+\begin{ocaml}
+  let tasks = 
+    let l = ref [] in
+    for i = 0 to n-1 do for j = 0 to p-1 do
+      tasks := ((a.(i), b.(j)), (i,j)) :: !tasks
+    done done;
+    !l
+\end{ocaml}
+Each task consists of row \of{a.(i)} and column \of{b.(j)} as first
+tuple, together with position \of{(i,j)} as a second tuple.
+The worker is receiving the first tuple as argument and computes
+the dot product:
+\begin{ocaml}
+  let worker (ai, bj) =
+    let c = ref 0 in
+    for k = 0 to m-1 do c := !c + ai.(k) * bj.(k) done;
+    !c
+\end{ocaml}
+The master is a one line function which receives the result \of{r}
+from the worker and simply stores it into \of{c}, according to the
+position contained in the input task. It produces no new task.
+\begin{ocaml}
+  let master (_, (i,j)) r = c.(i).(j) <- r; []
+\end{ocaml}
+Finally, the overall computation is started by invoking \of{compute}
+as follows:
+\begin{ocaml}
+  let () = compute ~worker ~master !tasks
+\end{ocaml}
+The total number of tasks is $\of{n}\times\of{m}$.
+
+Using the sequential implementation provided by \of{Functory} is as
+simple as including the following line in the code:
+\begin{ocaml}
+  open Sequential
+\end{ocaml}
+Then the computation is roughly similar to the standard multiplication
+described above. 
+
+Now, let us assume we want to make use of a 4-core machine to perform
+the same computation. 
+This is achieved by just replacing the line above by
+\begin{ocaml}
+  open Cores
+  let () = set_number_of_cores 4
+\end{ocaml}
+while the rest of the code remains unchanged.
+
+Later, we may want to use a network of machines instead, for example
+two machines called \texttt{orcus} and \texttt{belzebuth} with 4 and 8
+cores respectively. Similar to the above, we turn the above lines into
+\begin{ocaml}
+  open Network
+  let () = declare_workers ~n:4 "orcus"
+  let () = declare_workers ~n:8 "belzebuth"
+  open Same
+\end{ocaml}
+Here, \of{Same} is a module which is to be used when master and worker
+are running the same executable. It provides a \of{compute} function
+which has the same signature as in modules \of{Sequential} and
+\of{Cores}, so that the rest of the code remains unchanged. Master and
+worker processes are distinguished at run-time using an environment
+variable \texttt{WORKER} which is set/unset.
+
+If we need to write two different programs for master and worker, for
+reason of binary incompatibility or any other reason, the library API
+is providing functions to do that. If master and worker are still
+compiled with the same version of \Ocaml, we use the \of{Poly} module
+which provides a polymorphic API. Let us start with the worker program.
+It now looks like:
+\begin{ocaml}
+  open Poly
+  let worker (ai, bj) = ...
+  let () = Worker.compute worker ()
+\end{ocaml}
+The \of{Worker.compute} function enters a loop which waits for
+tasks sent by the master and returns results computed using \of{worker}.
+The master program is almost the same as before. First, we replace
+module \of{Same} with module \of{Poly}:
+\begin{ocaml}
+  open Network
+  let () = declare_workers ~n:4 "orcus"
+  let () = declare_workers ~n:8 "belzebuth"
+  open Poly
+\end{ocaml}
+Tasks and \of{master} function are unchanged:
+\begin{ocaml}
+  let tasks = ...
+  let master (_, (i,j)) r = ...
+\end{ocaml}
+Finally, we start the computation with \of{Master.compute}, which does
+not have a \of{worker} parameter anymore:
+\begin{ocaml}
+  let () = Master.compute ~master tasks
+\end{ocaml}
+
+When master and worker programs are compiled with different
+versions of the \Ocaml\ compiler, our library still provides
+a monomorphic API over strings. As a consequence, we need to convert
+tasks and results to and from strings in both master and worker.
+The modified worker program then looks as follows:
+\begin{ocaml}
+  open Mono
+  let worker (ai, bj) = ...
+  let worker_string t = string_of_int (worker (task_of_string i))
+  let () = Worker.compute worker_string ()
+\end{ocaml}
+The master program is modified in a similar way.
+We simply replace \of{Poly} with \of{Mono} and encode/decode integers
+as strings, as follows:
+\begin{ocaml}
+  let tasks = ... string_of_task ...
+  let master (_, (i,j)) r = c.(i).(j) <- int_of_string r; []
+\end{ocaml}
+where \of{string_of_task} and \of{task_of_string} are user-defined
+functions to convert tasks to and from strings.
+
+\subsection{N-queens}\label{sec:n-queens}
+
+The first example is the classical $N$-queens problem, where we
+compute the total number of ways to place $N$ queens on a $N\times N$
+chessboard in such a way no two queens attack each other.
+We use a standard backtracking algorithm for this problem, which
+places the queens one by one starting from the first row.
+Distributing the computation is thus quite easy: we consider all
+possible ways to place queens on the first $D$ rows and then perform
+the subsequent search in parallel. Choosing $D=1$ will result in
+exactly $N$ tasks. More subtly, $D=2$ will result in $N^2-3N+2$ tasks.
+% TODO: make a picture to illustrate positioning of 2 queens on the
+% first 2 rows
+
+Each tasks only consists of three integers and results in one integer,
+which is the total number of solutions for this task.
+We make use of function \of{map_local_fold} from the derived API,
+where \of{map} is performing the search and \of{fold} simply adds the
+intermediate results.
+
+\subsection{Mandelbrot Set}
+
+\subsection{Polynomial Multiplication}
+
 \section{Implementation Details}\label{sec:implem}
 
 We now describe the implementations of the various modules introduced
@@ -608,9 +760,9 @@ module is straightforward and does not require any explanation.
 \subsection{Multiple Cores}
 
 The \of{Cores} module implements the distributed computing library for
-multiple cores on the same machine. As illustrated in
-Section~\ref{sec:example}, 
-it provides a function
+multiple cores on the same machine. 
+% As illustrated in Section~\ref{sec:example}, 
+It provides a function
 \of{set_number_of_cores: int -> unit} to indicate the number of cores
 to be used. The number passed to this function may be different from
 the actual number of cores in the machine; it is rather the number of
@@ -655,8 +807,8 @@ of cores is less or equal than the actual number of cores on the machine.
 
 The \of{Network} module implements the distributed computing library
 for a network of machines. 
-As illustrated in Section~\ref{sec:example}, it
-provides a function
+% As illustrated in Section~\ref{sec:example}, 
+It provides a function
 \of{declare_workers: n:int -> string -> unit} to fill a table of
 worker machines. 
 % The argument \of{n} indicates the number of cores to
@@ -796,9 +948,6 @@ computationally extensive examples.
 
 \subsection{N-queens}
 
-The first example is the classical $N$-queens problem, where we
-compute the total number of ways to place $N$ queens on a $N\times N$
-chessboard in such a way no two queens attack each other.
 The following table shows execution times for various values of $N$
 and our three different implementations: \of{Sequential}, \of{Cores}, and
 \of{Network}. The purpose of this experiment is to measure the speedup
@@ -809,9 +958,7 @@ single core. The multi-core implementation uses the 8 cores of
 the machine. The network implementation uses 8 workers running locally and
 a master running on a remote machine (which incurs communication cost).
 
-The first column shows the value of $N$.  Each computation is divided
-into a certain number of tasks, by placing some of the queens before
-starting the distributed computation.  The number of tasks is shown in
+The first column shows the value of $N$.  The number of tasks is shown in
 second column.  Then the last three columns show execution times in
 seconds for the three implementations. The figures within brackets
 show the speedup w.r.t. sequential implementation.
@@ -964,7 +1111,7 @@ We intend to enrich our library with all above features.
 %\appendix
 
 
-\acks
+\paragraph{Acknowledgements.}
 The authors are grateful to the ProVal team for support and comments
 on early versions of the library and of this paper.
 
