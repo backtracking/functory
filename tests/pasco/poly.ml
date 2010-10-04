@@ -7,6 +7,7 @@ module type RING = sig
   val mult : t -> t -> t
   val eq : t -> t -> bool
   val gcd : t -> t -> t
+  val exact_div : t -> t -> t
   val div_mod : t -> t -> t * t
   val print : Format.formatter -> t -> unit
 end
@@ -20,10 +21,12 @@ module type POLYNOMIAL = sig
   val plus : t -> t -> t
   val mult : t -> t -> t
   val eq : t -> t -> bool
+  val degree : t -> int
   val cont : t -> c
   val pseudo_rem : t -> t -> t
   val gcd : t -> t -> t (* Generalized Euclidean Algorithm *)
   val from_list : (c * int) list -> t
+  val to_list : t -> (c * int) list
   val print : Format.formatter -> t -> unit
   val eval : t -> c -> c
 end
@@ -35,6 +38,20 @@ struct
   type t = monom list (* sorted in decreasing order of degrees *)
   let zero = []
   let one = [D.one, 0]
+
+  open Format
+
+  let print fmt p =
+    fprintf fmt "(";
+    let b = List.fold_left 
+      (fun acc (a,k) -> 
+         (* acc is false for the first monom *) 
+          if acc then fprintf fmt " + ";
+          fprintf fmt "%ax^%d" D.print a k;
+          true
+      ) false p in
+    if (not b) then (D.print fmt D.zero);
+    fprintf fmt ")"
 
   let rec eq p1 p2 = 
     match p1, p2 with
@@ -65,6 +82,8 @@ struct
     | _, [] -> p1
 
   let from_list = List.fold_left (fun p (c, d) -> plus (monom c d) p) zero
+
+  let to_list p = p
 
   let rec times (a, x as m) p = 
     (* assume a <> 0 *)
@@ -112,11 +131,7 @@ struct
     List.fold_left (fun cont (c, _) -> D.gcd cont c) D.zero p
       
   let exact_div c p = 
-    let divide (x, d) =
-      let q, r = D.div_mod x c in
-      assert (D.eq r D.zero);
-      q, d
-    in
+    let divide (x, d) = (D.exact_div x c, d) in
     List.map divide p
     
   let pp p = exact_div (cont p) p
@@ -148,7 +163,9 @@ struct
     let d = D.gcd cu cv in
     assert (not (D.eq d D.zero));
     let rec loop u v =
+      Format.printf "deg(u)=%d deg(v)=%d@." (degree u) (degree v);
       let r = pseudo_rem u v in
+      Format.printf "cont(r) = %a@." D.print (cont r);
       if r = [] then
 	times (d, 0) v
       else if degree r = 0 then
@@ -158,19 +175,6 @@ struct
     in
     loop u v
 
-  open Format
-
-  let print fmt p =
-    fprintf fmt "(";
-    let b = List.fold_left 
-      (fun acc (a,k) -> 
-         (* acc is false for the first monom *) 
-          if acc then fprintf fmt " + ";
-          fprintf fmt "%ax^%d" D.print a k;
-          true
-      ) false p in
-    if (not b) then (D.print fmt D.zero);
-    fprintf fmt ")"
 end
 
 
@@ -185,28 +189,32 @@ struct
   let eq a b = (a = b)
   let rec gcd x y = if x = 0 then y else gcd (y mod x) x
   let gcd x y = gcd (abs x) (abs y)
+  let exact_div x y = x / y
   let div_mod x y = x / y, x mod y
   let print = Format.pp_print_int
 end
 
 module P = MakePoly (IntRing)
 
-(***
 open Gmp.Z
 
 module GmpRing = struct
   type t = Gmp.Z.t
   let zero = zero
   let one = one
+  let neg = neg
   let plus = add
   let mult = mul
   let eq = equal
+  let exact_div = divexact
+  let div_mod = euclidean_division
   let gcd = gcd
   let print = print
 end
 
-module P = MakePoly (GmpRing)
+module G = MakePoly (GmpRing)
 
+(***
 let two = of_int 2
 let p1 = P.plus (P.monom one 0) (P.monom one 2) (* 1+X^2 *)
 let () = printf "P1 = %a@." P.print p1
@@ -231,16 +239,16 @@ open Format
 (*
 #install_printer P.print;;
 *)
-let u = P.from_list [1,8; 1,6; -3,4; -3,3; 8,2; 2,1; -5,0]
-let v = P.from_list [3,6; 5,4; -4,2; -9,1; 21,0]
-let r = P.pseudo_rem u v
-let () = printf "r = %a@." P.print r
-let g = P.gcd u v
-let () = printf "gcd u v = %a@." P.print g
+(* let u = P.from_list [1,8; 1,6; -3,4; -3,3; 8,2; 2,1; -5,0] *)
+(* let v = P.from_list [3,6; 5,4; -4,2; -9,1; 21,0] *)
+(* let r = P.pseudo_rem u v *)
+(* let () = printf "r = %a@." P.print r *)
+(* let g = P.gcd u v *)
+(* let () = printf "gcd u v = %a@." P.print g *)
 
-let u = P.from_list [ 3, 3;  2, 2]
-let v = P.from_list [21, 1; 14, 0]
-let _ = printf "gcd u v = %a@." P.print (P.gcd u v)
+(* let u = P.from_list [ 3, 3;  2, 2] *)
+(* let v = P.from_list [21, 1; 14, 0] *)
+(* let _ = printf "gcd u v = %a@." P.print (P.gcd u v) *)
 
 (*
 Local Variables: 
