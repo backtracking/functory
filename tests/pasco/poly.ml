@@ -126,7 +126,7 @@ struct
     in
     eval_loop 0 (fun r -> r) (List.rev p)
 
-  (* coeff list *)
+  (* gcd of all coefficients *)
   let cont p = 
     List.fold_left (fun cont (c, _) -> D.gcd cont c) D.zero p
       
@@ -163,9 +163,9 @@ struct
     let d = D.gcd cu cv in
     assert (not (D.eq d D.zero));
     let rec loop u v =
-      Format.printf "deg(u)=%d deg(v)=%d@." (degree u) (degree v);
+      (* Format.printf "deg(u)=%d deg(v)=%d@." (degree u) (degree v); *)
       let r = pseudo_rem u v in
-      Format.printf "cont(r) = %a@." D.print (cont r);
+      (* Format.printf "cont(r) = %a@." D.print (cont r); *)
       if r = [] then
 	times (d, 0) v
       else if degree r = 0 then

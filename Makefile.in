@@ -151,8 +151,8 @@ install-provers: tests/provers/a.out
 tests/%/a.out: tests/%/main.ml functory.cmxa
 	$(OCAMLOPT) graphics.cmxa unix.cmxa functory.cmxa tests/$*/main.ml -o $@
 
-tests/pasco/%: tests/pasco/poly.ml tests/pasco/%.ml functory.cmxa
-	$(OCAMLOPT) -I +gmp -I tests/pasco/ gmp.cmxa unix.cmxa functory.cmxa tests/pasco/poly.ml tests/pasco/$*.ml -o $@
+tests/pasco/%: tests/pasco/poly.ml tests/pasco/dpoly.ml tests/pasco/%.ml functory.cmxa
+	$(OCAMLOPT) -I +gmp -I tests/pasco/ gmp.cmxa unix.cmxa functory.cmxa tests/pasco/poly.ml tests/pasco/dpoly.ml tests/pasco/$*.ml -o $@
 
 tests/n-queens/queens64.opt: tests/n-queens/main64.ml functory.cmxa
 	$(OCAMLOPT) unix.cmxa functory.cmxa tests/n-queens/main64.ml -o $@
