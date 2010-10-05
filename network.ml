@@ -290,8 +290,50 @@ end
 
 (** Master *****************************************************************)
 
-module IntSet = 
-  Set.Make(struct type t = int let compare = Pervasives.compare end)
+(* 
+  Master implementation 
+
+  Each available worker is represented as a record of type "worker" below.
+  Each worker is given a distinct ID, stored in field "worker_id".
+  The field "sockaddr" stores the connection socket, to be used to (re)connect.
+  Fields "fdin" and "fdout" are only meaningful for a connected worker, and
+  contain the socket to communicate with the worker.
+  The field "job" contains either None, for an idle worker, or Some j for a 
+  worker currently perfoming the task with ID j (tasks have IDs, distinct
+  from worker IDs).
+
+  New workers are declared with function "declare_workers" and stored
+  in the global list "workers".
+
+  The master loop is implemented in function "main_master".
+  It maintains a queue of tasks to do (todo) and a set of idle workers 
+  (idle_workers). It loops as long as there is some task to do or
+  some task currently running, with the following 3 steps.
+
+  The first step is to check and update the status of each worker, 
+  which could be:
+  - Disconnected: we try to connect and, if so, declare the worker idle
+  - Pinged: we look for a possible timeout and, if so, remove from idle workers
+    and reschedule its task, if any
+  - Ok/Error: we send ping, if appropriate
+
+  The second step is to start new tasks, if possible: if there is some idle
+  worker and some task to do, we try to assign the latter to the former 
+  (with "create_job"). On failure, we backtrack and put the task back into the
+  todo queue.
+
+  The last step consists in listening to workers, using "select".
+  For each worker returned by select, we call "listen_for_worker", which
+  does the following. First, it set the status to Ok, since we just received
+  a message. Then it handles the message, which can be:
+  - Pong: if idle, the worker is put back in the idle worker set
+          (most likely it was already in that set)
+  - Completed: we make the worker idle (with "make_idle") and update the task
+               status; in particular we kill all other jobs for that task, if
+               any (it could have been rescheduled)
+  - Aborted: we make the worker idle and put the task back into the todo queue
+
+*)
 
 type worker_state =
   | Disconnected
@@ -465,7 +507,7 @@ let main_master
     w.job <- Some id;
     WorkerSet.remove idle_workers w
   in
-  let reschedule_tasks ~remove w = match w.job with
+  let reschedule_task ~remove w = match w.job with
     | None ->
         () (* may be idle *)
     | Some jid ->
@@ -480,7 +522,7 @@ let main_master
   let manage_disconnection w =
     w.state <- Disconnected;
     WorkerSet.remove idle_workers w;
-    reschedule_tasks ~remove:true w
+    reschedule_task ~remove:true w
   in
   let make_idle w =
     w.job <- None;
@@ -561,7 +603,7 @@ let main_master
 	       dprintf "worker %a timed out@." print_worker w;
 	       w.state <- Error current;
 	       WorkerSet.remove idle_workers w;
-	       reschedule_tasks ~remove:false w
+	       reschedule_task ~remove:false w
 	     end
 	 | Ok t when current > t +. !ping_interval ->
 	     send_ping w;
