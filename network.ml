@@ -18,7 +18,7 @@ open Format
 open Unix
 open Control
 
-let () = set_debug false
+let () = set_debug true
 
 let default_port_number = ref 51000
 
@@ -86,6 +86,15 @@ let print_exception fmt = function
   a deadlock with the worker waiting for P to complete before reading from
   the pipe, and P waiting for the worker to read from the pipe in order to
   complete (its writing to the pipe)
+
+  ANOTHER CAVEAT: one could have the worker handle several computations in
+  parallel (corresponding to the number of cores to use on that machine).
+  But then we could have a deadlock between the master and the worker, with
+  the master trying to send a large Assign message, waiting for the worker to
+  read it, while the worker tries to send a large Completed message, waiting
+  for the master to read it.
+  We avoid this caveat by having the worker performing only one computation at
+  a time, and having several instances of that worker, one for each ``core''.
 
 *)
 
@@ -296,9 +305,7 @@ type worker = {
   mutable state : worker_state;
   mutable fdin : file_descr;
   mutable fdout : file_descr;
-  ncores : int;
-  mutable idle_cores : int;
-  mutable jobs : IntSet.t;
+  mutable job : int option; (* None means idle / Some j means running job j *)
 }
 
 type 'a task = {
@@ -317,10 +324,13 @@ let print_sockaddr fmt = function
   | ADDR_UNIX s -> fprintf fmt "%s" s
   | ADDR_INET (ia, port) -> fprintf fmt "%s:%d" (string_of_inet_addr ia) port
 
-let print_worker fmt w = 
-  fprintf fmt "@[%d @[(%a,@ %d cores, %d idle cores, %d jobs)@]@]" 
-    w.worker_id print_sockaddr w.sockaddr 
-    w.ncores w.idle_cores (IntSet.cardinal w.jobs)
+let print_worker fmt w = match w.job with
+  | None -> 
+      fprintf fmt "@[%d @[(%a,@ idle)@]@]" 
+      w.worker_id print_sockaddr w.sockaddr 
+  | Some j -> 
+      fprintf fmt "@[%d @[(%a,@ running task %d)@]@]" 
+      w.worker_id print_sockaddr w.sockaddr j
 
 module WorkerSet : sig
   type t
@@ -384,9 +394,7 @@ let declare_workers =
 	state = Disconnected;
 	fdin = stdin; 
 	fdout = stdout;
-	ncores = 1 (*n*);
-	idle_cores = n;
-	jobs = IntSet.empty;
+	job = None; (* idle *)
       } 
       in
       workers := w :: !workers
@@ -427,7 +435,7 @@ let main_master
   List.iter 
     (fun w -> match w.state with
        | Ok _ | Pinged _ -> 
-	   if w.idle_cores > 0 then WorkerSet.add idle_workers w
+	   if w.job = None then WorkerSet.add idle_workers w
        | Disconnected | Error _ -> 
 	   ())
     !workers;
@@ -454,31 +462,29 @@ let main_master
     w.state <- Pinged (Unix.time ());
     t.task_workers <- (id, w)  :: t.task_workers;
     Hashtbl.replace running_tasks id t;
-    w.jobs <- IntSet.add id w.jobs;
-    assert (w.idle_cores > 0);
-    w.idle_cores <- w.idle_cores - 1;
-    if w.idle_cores = 0 then WorkerSet.remove idle_workers w
+    w.job <- Some id;
+    WorkerSet.remove idle_workers w
   in
-  let reschedule_tasks ~remove w = 
-    IntSet.iter 
-      (fun jid -> 
-	 assert (Hashtbl.mem running_tasks jid);
-	 let t = Hashtbl.find running_tasks jid in
-	 if remove then begin
-	   Hashtbl.remove running_tasks jid;
-	   t.task_workers <- List.filter (fun (_,w') -> w' != w) t.task_workers
-	 end;
-	 Queue.add t todo)
-      w.jobs
+  let reschedule_tasks ~remove w = match w.job with
+    | None ->
+        () (* may be idle *)
+    | Some jid ->
+        assert (Hashtbl.mem running_tasks jid);
+        let t = Hashtbl.find running_tasks jid in
+	if remove then begin
+	  Hashtbl.remove running_tasks jid;
+	  t.task_workers <- List.filter (fun (_,w') -> w' != w) t.task_workers
+	end;
+	Queue.add t todo
   in
   let manage_disconnection w =
     w.state <- Disconnected;
     WorkerSet.remove idle_workers w;
     reschedule_tasks ~remove:true w
   in
-  let increase_idle_cores w =
-    w.idle_cores <- w.idle_cores + 1;
-    if w.idle_cores > 0 then WorkerSet.add idle_workers w
+  let make_idle w =
+    w.job <- None;
+    WorkerSet.add idle_workers w 
   in
   (* kill job jid on worker w *)
   let kill w jid =
@@ -486,8 +492,7 @@ let main_master
     Hashtbl.remove running_tasks jid;
     if w.state <> Disconnected then begin
       send w (Protocol.Master.Kill jid);
-      w.jobs <- IntSet.remove jid w.jobs;
-      increase_idle_cores w
+      make_idle w
     end
   in
   (* kill jobs different from jid *)
@@ -500,23 +505,21 @@ let main_master
     w.state <- Ok (Unix.time ());
     match m with
       | Protocol.Worker.Pong ->
-	  if w.idle_cores > 0 then WorkerSet.add idle_workers w
+	  if w.job = None then WorkerSet.add idle_workers w
       | Protocol.Worker.Completed (id, r) ->
-	  increase_idle_cores w;
+	  make_idle w;
 	  let t = Hashtbl.find running_tasks id in
 	  dprintf "completed task: job id=%d, %a@." id print_task t;
 	  Hashtbl.remove running_tasks id;
-	  w.jobs <- IntSet.remove id w.jobs;
 	  if not t.task_done then begin
 	    t.task_done <- true;
 	    kill_jobs id t.task_workers;
 	    List.iter push_new_task (master t.task r)
 	  end 
       | Protocol.Worker.Aborted id ->
-	  increase_idle_cores w;
+	  make_idle w;
 	  let t = Hashtbl.find running_tasks id in
 	  Hashtbl.remove running_tasks id;
-	  w.jobs <- IntSet.remove id w.jobs;
 	  push_new_task t.task
   in
   let last_printed_state = ref (0,0,0) in
@@ -549,9 +552,7 @@ let main_master
 	     begin try 
 	       connect_worker w;
 	       dprintf "new connection to %a@." print_worker w;
-	       WorkerSet.add idle_workers w;
-	       w.idle_cores <- w.ncores; (* we assume all cores are back *)
-	       w.jobs <- IntSet.empty;
+	       make_idle w
 	     with e ->
 	       ()
 	     end
@@ -577,14 +578,16 @@ let main_master
     (* 2. if possible, start new jobs *)
     while not (WorkerSet.is_empty idle_workers) && not (Queue.is_empty todo) do
       let t = Queue.pop todo in
-      if not t.task_done then
+      if not t.task_done then begin
 	let w = WorkerSet.choose idle_workers in
 	try 
 	  create_job w t 
 	with e -> 
 	  dprintf "@[<hov 2>create_job for worker %a failed:@ %a@]"
 	    print_worker w print_exception e;
+	  Queue.push t todo;
 	  manage_disconnection w
+      end
     done;
 
     print_state ();
