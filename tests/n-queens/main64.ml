@@ -29,7 +29,7 @@ open Functory
 let () = Network.declare_workers ~n:4 "localhost"
 (* let () = Network.declare_workers ~n:2 "orcus" *)
 (* (\* let () = Network.declare_workers ~n:2 "129.175.4.126" *\) *)
-(* let () = Network.declare_workers ~n:5 "belzebuth" *)
+let () = Network.declare_workers ~n:5 "belzebuth"
 open Network.Same
 
 let rec t a b c count =

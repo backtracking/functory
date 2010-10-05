@@ -154,6 +154,9 @@ tests/%/a.out: tests/%/main.ml functory.cmxa
 tests/pasco/%: tests/pasco/poly.ml tests/pasco/dpoly.ml tests/pasco/%.ml functory.cmxa
 	$(OCAMLOPT) -I +creal -I tests/pasco/ creal.cmxa unix.cmxa functory.cmxa tests/pasco/poly.ml tests/pasco/dpoly.ml tests/pasco/$*.ml -o $@
 
+install-pasco: tests/pasco/matmul
+	cp tests/pasco/matmul ~
+
 tests/n-queens/queens64.opt: tests/n-queens/main64.ml functory.cmxa
 	$(OCAMLOPT) unix.cmxa functory.cmxa tests/n-queens/main64.ml -o $@
 
