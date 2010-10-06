@@ -737,17 +737,38 @@ places the queens one by one starting from the first row.
 Distributing the computation is thus quite easy: we consider all
 possible ways to place queens on the first $D$ rows and then perform
 the subsequent search in parallel. Choosing $D=1$ will result in
-exactly $N$ tasks. More subtly, $D=2$ will result in $N^2-3N+2$ tasks.
+exactly $N$ tasks; choosing $D=2$ will result in $N^2-3N+2$ tasks; and
+so on.
 % TODO: make a picture to illustrate positioning of 2 queens on the
 % first 2 rows
 
-Each tasks only consists of three integers and results in one integer,
+Each task only consists of three integers and its result is one integer,
 which is the total number of solutions for this task.
 We make use of function \of{map_local_fold} from the derived API,
 where \of{map} is performing the search and \of{fold} simply adds the
 intermediate results.
 
 \subsection{Mandelbrot Set}
+
+Drawing the Mandelbrot set is another classical example that could be
+distributed easily, since the color of each point can be computed
+independently of the others. 
+Let us assume we are given the coordinates of the region to be drawn,
+along with the width \of{w} and height \of{h} of the resulting image
+(in pixels). 
+Let us assume the total number of tasks $\of{t} \ge 1$ is given as a
+parameter. It is immediate to split the image into \of{t} sub-images,
+each of which is computed in parallel with and independently of the
+others. For instance, the image could be split into horizontal slices
+or, more generally, into rectangular blocks.
+
+Each task is thus four floating-point numbers denoting the region
+coordinates, together with two integers denoting the dimensions of the
+sub-image to be drawn. The result of the task is a matrix of pixels,
+of size $(\of{w}\times\of{h}) / \of{t}$. 
+For instance, drawing a $800\times 600$ image using 20 tasks will
+result in 20 sub-images of size $176,000$ bytes each,
+assuming each pixel is encoded in four bytes.
 
 \subsection{Polynomial Multiplication}
 
@@ -962,10 +983,12 @@ coefficients have several thousands of digits; we use GMP
 % cores 6      8.6    4.3
 % cores 8      8.0    3.5
 
-% network is localhost (moloch) + belzebuth / same number of workers on each
+% network is localhost(moloch) + belzebuth
 
-% network 3+3 142
-% network 6+6  31.7
+% network 3+3        12.7
+% network 6+  112     7.2
+% network  +6   ?    36.4
+% network 6+6  76.1  11.9
 
 \begin{center}
   \begin{tabular}{|l|l|l|}
@@ -1027,6 +1050,10 @@ communication time amounts to just 4.6\%\ of the total execution time.
 As expected, the network implementation is only beneficial when the
 computation time for each individual task is significant, which is the
 case in realistic examples.
+
+\subsection{Mandelbrot Set}
+
+
 
 \subsection{SMT Solvers}
 

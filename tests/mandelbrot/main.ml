@@ -1,19 +1,22 @@
 
-open Functory.Sequential
+(* open Functory.Sequential *)
+
 (* open Functory.Cores *)
 (* let () = set_number_of_cores (int_of_string Sys.argv.(3)) *)
 
-let () = Format.printf "bing@."
-
-let max_iter = 200 (* nombre maximum d'itérations *)
-let f_max_iter = float max_iter (* optim *)
+open Functory.Network
+let () = declare_workers ~n:8 "moloch"
+(* let () = Functory.Control.set_debug true *)
+open Same
 
 (* couleur = interpolation linéaire entre le rouge (loin) et le vert (près) *)
 let interpolation n =
+  let f_max_iter = 200. in
   let f = float n /. f_max_iter in
   Graphics.rgb (truncate ((1. -. f) *. 255.)) (truncate (f *. 255.)) 0
 
 let color xc yc =
+  let max_iter = 200 in (* nombre maximum d'itérations *)
   let rec iter i x y =
     if i = max_iter then
       Graphics.black
@@ -28,7 +31,6 @@ let color xc yc =
   iter 0 xc yc
 
 let draw xmin xmax ymin ymax w h =
-  Format.printf "w=%d h=%d@." w h;
   let m = Array.create_matrix h w Graphics.black in
   let dx = (xmax -. xmin) /. float w in
   let dy = (ymax -. ymin) /. float h in
@@ -61,43 +63,56 @@ let tasks =
 
 let worker (xmi, xma, ymi, yma, w, h) = draw xmi xma ymi yma w h
 
-(* let images = Array.create t [||] *)
+let images = Array.create t [||]
 
-(* let master ((_,_,_,_,w,h), j) m = images.(j) <- m; []  *)
+let master ((_,_,_,_,w,h), j) m = images.(j) <- m; []
 
-let og = ref false
+let () = compute ~worker ~master tasks
 
-let master ((_,_,_,_,_,h), j) m =
-  if not !og then begin
-    Graphics.open_graph (Printf.sprintf " %dx%d" width height); og := true
-  end;
-  let img = Graphics.make_image m in
-  Graphics.draw_image img 0 (j * h);
-  []
+(* let og = ref false *)
+
+(* let master ((_,_,_,_,_,h), j) m = *)
+(*   if not !og then begin *)
+(*     Graphics.open_graph (Printf.sprintf " %dx%d" width height); og := true *)
+(*   end; *)
+(*   let img = Graphics.make_image m in *)
+(*   Graphics.draw_image img 0 (j * h); *)
+(*   [] *)
+
+(* let () = compute ~worker ~master tasks; ignore (Graphics.read_key ()) *)
 (* Ocaml BUG? *)
 
-let () = compute ~worker ~master tasks; ignore (Graphics.read_key ())
-
-(* let () = *)
-(*   Graphics.open_graph (Printf.sprintf " %dx%d" width height); *)
-(*   for i = 0 to n-1 do for j = 0 to n-1 do *)
-(*     let img = Graphics.make_image images.(i).(j) in *)
-(*     Graphics.draw_image img (i * width / n) (j * height / n); *)
-(*   done done; *)
-(*   ignore (Graphics.read_key ()); *)
-(*   () *)
-
 (*
-run on moloch
+run on moloch 
 
-# cores  # tasks timing
-1        1       3.319
-2        4       1.846
-        16       1.720
-4        4       1.853   --> we don't control scheduling and the system
-                             uses 2 processors only
-        16       0.918
-8       64       0.505   
+width = 9,000 => height = 6,000 => 54 million pixels
+
+     tasks     timing  speedup
+
+sequential       29.4        1
+
+cores
+2       10       15.8        1.86
+        30       15.7        1.87 *
+       100       16.1        1.83
+      1000       19.6        1.50
+
+4       10        9.50       3.09 
+        30        8.26       3.56 *
+       100        8.37       3.51
+      1000       10.6        2.77
+
+8       10        9.40       3.13
+        30        4.24       6.93 *
+       100        4.38       6.71
+      1000        6.86       4.29
+
+network = 8 workers on moloch, remote master on belzebuth
+
+        10       13.1
+        30        7.6
+       100        7.5
+      1000       11.2
 *)
 
 
