@@ -120,6 +120,7 @@ module Worker = struct
 
   let server_fun compute cin cout =
     dprintf "new connection@.";
+    let old_sigpipe_handler = Sys.signal Sys.sigpipe Sys.Signal_ignore in
     let fdin = descr_of_in_channel cin in
     let fdout = descr_of_out_channel cout in
     let running_task = ref (None : running_task option) in
@@ -221,6 +222,7 @@ module Worker = struct
 	  end;
 	  exit 0 
       | ExitOnStop r ->
+	  ignore (Sys.signal Sys.sigpipe old_sigpipe_handler);
 	  r
       | e -> 
 	  let s = match e with
@@ -468,6 +470,7 @@ let main_master
     ~(master : 'a * 'c -> string -> ('a * 'c) list) 
     (tasks : ('a * 'c) list)
     =
+  let old_sigpipe_handler = Sys.signal Sys.sigpipe Sys.Signal_ignore in
   (* the tasks still to be done *)
   let todo = Queue.create () in
   let push_new_task t = Queue.add (create_task t) todo in
@@ -653,6 +656,7 @@ let main_master
 
   done;
   assert (Queue.is_empty todo && Hashtbl.length running_tasks = 0);
+  ignore (Sys.signal Sys.sigpipe old_sigpipe_handler);
   ()
 
 type worker_type = ?stop:bool -> ?port:int -> unit -> unit

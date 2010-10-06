@@ -145,6 +145,9 @@ install-test: tests/fault/a.out
 install-queens: tests/n-queens/queens64.opt
 	cp tests/n-queens/queens64.opt ~
 
+install-data-test: tests/data-test/a.out
+	cp tests/data-test/a.out ~/data.opt
+
 install-provers: tests/provers/a.out
 	cp tests/provers/a.out ~/disco-provers.opt
 
