@@ -1,7 +1,9 @@
 
 open Functory.Sequential
-open Functory.Cores
-let () = set_number_of_cores (int_of_string Sys.argv.(3))
+(* open Functory.Cores *)
+(* let () = set_number_of_cores (int_of_string Sys.argv.(3)) *)
+
+let () = Format.printf "bing@."
 
 let max_iter = 200 (* nombre maximum d'itérations *)
 let f_max_iter = float max_iter (* optim *)
@@ -26,6 +28,7 @@ let color xc yc =
   iter 0 xc yc
 
 let draw xmin xmax ymin ymax w h =
+  Format.printf "w=%d h=%d@." w h;
   let m = Array.create_matrix h w Graphics.black in
   let dx = (xmax -. xmin) /. float w in
   let dy = (ymax -. ymin) /. float h in
@@ -40,7 +43,7 @@ let draw xmin xmax ymin ymax w h =
 
 let width = int_of_string Sys.argv.(1)
 let height = width * 2 / 3
-let n = int_of_string Sys.argv.(2)
+let t = int_of_string Sys.argv.(2)
 
 let xmin = -1.1
 let xmax = -0.8
@@ -48,31 +51,29 @@ let ymin =  0.2
 let ymax =  0.4 
 
 let tasks = 
-  let t = ref [] in
-  for i = 0 to n-1 do for j = 0 to n-1 do
-    let xmi = xmin +. float i *. (xmax -. xmin) /. float n in
-    let xma = xmin +. float (i+1) *. (xmax -. xmin) /. float n in
-    let ymi = ymin +. float j *. (ymax -. ymin) /. float n in
-    let yma = ymin +. float (j+1) *. (ymax -. ymin) /. float n in
-    t := ((xmi, xma, ymi, yma, width / n, height / n), (i,j)) :: !t
-  done done;
-  !t
+  let l = ref [] in
+  for j = 0 to t-1 do
+    let ymi = ymin +. float j *. (ymax -. ymin) /. float t in
+    let yma = ymin +. float (j+1) *. (ymax -. ymin) /. float t in
+    l := ((xmin, xmax, ymi, yma, width, height / t), j) :: !l
+  done;
+  !l
 
 let worker (xmi, xma, ymi, yma, w, h) = draw xmi xma ymi yma w h
 
-let images = Array.create_matrix n n [||]
+(* let images = Array.create t [||] *)
 
-let master ((_,_,_,_,w,h), (i,j)) m = images.(i).(j) <- m; [] 
+(* let master ((_,_,_,_,w,h), j) m = images.(j) <- m; []  *)
 
-(* let og = ref false *)
+let og = ref false
 
-(* let master ((_,_,_,_,w,h), (i,j)) m = *)
-(*   if not !og then begin  *)
-(*     Graphics.open_graph (Printf.sprintf " %dx%d" width height); og := true  *)
-(*   end; *)
-(*   let img = Graphics.make_image m in *)
-(*   Graphics.draw_image img (i * w) (j * h); *)
-(*   [] *)
+let master ((_,_,_,_,_,h), j) m =
+  if not !og then begin
+    Graphics.open_graph (Printf.sprintf " %dx%d" width height); og := true
+  end;
+  let img = Graphics.make_image m in
+  Graphics.draw_image img 0 (j * h);
+  []
 (* Ocaml BUG? *)
 
 let () = compute ~worker ~master tasks; ignore (Graphics.read_key ())
