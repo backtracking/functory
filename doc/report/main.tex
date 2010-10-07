@@ -787,7 +787,7 @@ different programs for master and workers, using the \of{Network.Poly}
 module (actually, a single source code with a command line option).
 This has to be done since the worker code makes use of global
 variables, which prevents us from using
-\of{Network.Same}, as described in Section~\ref{sec:API}. 
+\of{Network.Same} (as explained below in Section~\ref{sec:implem}). 
 Alternately, we could have refactored the worker
 code to avoid global variables.
 

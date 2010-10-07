@@ -7,8 +7,8 @@ open Format
 (* let () = set_number_of_cores 6 *)
 
 open Functory.Network
-let () = declare_workers ~n:6 "localhost"
-let () = declare_workers ~n:6 "belzebuth"
+let () = declare_workers ~n:(int_of_string Sys.argv.(3)) "moloch"
+(* let () = declare_workers ~n:6 "belzebuth" *)
 (* let () = Functory.Control.set_debug true *)
 open Same
 
@@ -98,8 +98,10 @@ let dump c =
   Array.iter (Array.iter dump_coeff) c
 
 (* let _ = naive_multiplication a b *)
-(* let c = parall_multiplication a b *)
-let c = parall_line_multiplication a b
+let c = match Sys.argv.(4) with
+  | "mm1" -> parall_multiplication a b 
+  | "mm2" -> parall_line_multiplication a b
+  | _ -> assert false
 (* let () = dump c *)
 let () = printf "multiplication done@."
 
