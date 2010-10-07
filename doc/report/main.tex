@@ -242,6 +242,8 @@ The five possible contexts are the following:
   Depending on whether the program is run as a master or as a worker,
   the relevant arguments of \ocaml{compute} are used.
 
+% TODO: explain the issue with closures referring to global variables here
+
 \item \textbf{Master and workers are different programs, compiled with
     the same version of \Ocaml:} 
   we can no longer marshal closures but we can still
@@ -256,6 +258,7 @@ val Master.compute :
   ('a * 'c -> 'b -> ('a * 'c) list) -> 
   ('a * 'c) list -> unit
 \end{ocaml}
+
 \item \textbf{Master and workers are different programs, not even
     compiled with the same version of \Ocaml:} we can no
   longer use marshaling, so the
@@ -588,6 +591,10 @@ generic API.
 
 \section{Illustrative Case Studies}
 
+In this section, we show how to use \functory\ on several case studies.
+We focus here on the use of the API. Experimental results of these
+case studies are given in Section~\ref{sec:experiments}.
+
 \subsection{Matrix Multiplication}
 
 As a first example, let us consider matrix multiplication.
@@ -747,6 +754,8 @@ which is the total number of solutions for this task.
 We make use of function \of{map_local_fold} from the derived API,
 where \of{map} is performing the search and \of{fold} simply adds the
 intermediate results.
+In the network configuration, we make use of the \of{Network.Same}
+module, workers and master being the same executable.
 
 \subsection{Mandelbrot Set}
 
@@ -770,7 +779,19 @@ For instance, drawing a $800\times 600$ image using 20 tasks will
 result in 20 sub-images of size $176,000$ bytes each,
 assuming each pixel is encoded in four bytes.
 
-\subsection{Polynomial Multiplication}
+In the network configuration, we deliberately choose to have two
+different programs for master and workers, using the \of{Network.Poly}
+module (actually, a single source code with a command line option).
+This has to be done since the worker code makes use of global
+variables, which prevents us from using
+\of{Network.Same}, as described in Section~\ref{sec:API}. 
+Alternately, we could have refactored the worker
+code to avoid global variables.
+
+% \subsection{Polynomial Multiplication}
+% TODO?
+
+\subsection{SMT Solvers}
 
 \section{Implementation Details}\label{sec:implem}
 
@@ -1017,7 +1038,7 @@ show the speedup w.r.t. sequential implementation.
 \begin{center}
   \begin{tabular}{|r|r|r|r|r|}
     \hline
-    N & \#tasks  & sequential& cores                 & network 
+    N & \#tasks  & \of{Sequential}& \of{Cores}                 & \of{Network} 
     \\\hline\hline
     16 &   16    &  15.2     &   2.04 (7.45$\times$) &  2.35  (6.47$\times$) 
     \\\hline
@@ -1053,6 +1074,45 @@ case in realistic examples.
 
 \subsection{Mandelbrot Set}
 
+This benchmark consists in drawing the fragment of the Mandelbrot set
+with lower left corner $(-1.1, 0.2)$ and upper right corner $(-0.8,
+0.4)$, as a $9,000\times6,000$ image. The sequential computation of
+this image consumes 29.4 seconds. For \of{Cores} and \of{Network}
+implementations, the computation times in seconds are tabulated below.
+
+% TODO compute ratios for Network
+\begin{center}
+  \begin{tabular}{|r|r|r|r|r|}
+    \hline
+    \#cores  &\#tasks & \of{Cores} & \of{Network} \\
+    \hline
+    2       & 10 & 15.8       (1.86) &  20.3       \\
+            & 30 & 15.7       (\underline{1.87}) &  18.7       \\
+            & 100 & 16.1      (1.83) &  19.8       \\
+            & 1000 & 19.6     (1.50) &  38.6      \\
+    \hline
+    4       & 10 & 9.50       (3.09)  &  14.4       \\
+            & 30 & 8.26       (\underline{3.56})  &  11.4   \\
+            & 100 & 8.37      (3.51)  &  11.4   \\
+            & 1000 & 10.6     (2.77)  &  20.5    \\
+    \hline
+    8       & 10 & 9.40       (3.13)  &  12.6      \\
+            & 30 & 4.24       (\underline{6.93})  &   7.6      \\
+            & 100 & 4.38      (6.71)  &   7.5      \\
+            & 1000 & 6.86     (4.29)  &  11.3      \\
+    \hline
+  \end{tabular}
+\end{center}
+The best timings are achieved for the \of{Cores} configuration, where
+communications happen within the same machine and are thus cheaper.
+There are two significant differences with respect to the n-queens
+benchmark.  On one hand, the number of tasks can be controlled more
+easily than in the case of n-queens. We experimentally figured out the
+optimal number of tasks to be 30. One the other hand, each computation
+result is an image, rather than just an integer as in the case of
+n-queens. Consequently, communication costs are much greater. 
+In this particular experiment, the total size of the results
+transmitted is more than 200 Mb.
 
 
 \subsection{SMT Solvers}
