@@ -589,13 +589,15 @@ generic API.
 
 % TODO cannot be instantiated in the monomorphic case
 
-\section{Illustrative Case Studies}
+\section{Illustrative Case Studies}\label{sec:studies}
 
 In this section, we show how to use \functory\ on several case studies.
 We focus here on the use of the API. Experimental results of these
 case studies are given in Section~\ref{sec:experiments}.
+The source code for all these case studies is contained in the
+distribution, in sub-directory \texttt{tests}.
 
-\subsection{Matrix Multiplication}
+\subsection{Matrix Multiplication}\label{sec:matrix}
 
 As a first example, let us consider matrix multiplication.
 We assume two matrices \of{a} and \of{b}, respectively of size
@@ -612,8 +614,9 @@ the standard matrix multiplication would be as follows:
     done
   done  
 \end{ocaml}
-and runs in $O(\of{n}\times\of{p}\times\of{m})$, assuming constant
-time addition and multiplication (denoted $+$ and $\times$).
+and runs in $O(\of{n}\times\of{p}\times\of{m})$, 
+assuming addition and multiplication over coefficients to be 
+denoted $+$ and $\times$ respectively.
 An easy way to distribute this computation is obviously to turn each
 computation of the inner loop over \of{k} into a task.
 To do so, we first prepare the list of tasks:
@@ -725,11 +728,11 @@ The modified worker program then looks as follows:
   let () = Worker.compute worker_string ()
 \end{ocaml}
 The master program is modified in a similar way.
-We simply replace \of{Poly} with \of{Mono} and encode/decode integers
+We simply replace \of{Poly} with \of{Mono} and encode/decode coefficients
 as strings, as follows:
 \begin{ocaml}
   let tasks = ... string_of_task ...
-  let master (_, (i,j)) r = c.(i).(j) <- int_of_string r; []
+  let master (_, (i,j)) r = c.(i).(j) <- coeff_of_string r; []
 \end{ocaml}
 where \of{string_of_task} and \of{task_of_string} are user-defined
 functions to convert tasks to and from strings.
@@ -791,7 +794,30 @@ code to avoid global variables.
 % \subsection{Polynomial Multiplication}
 % TODO?
 
-\subsection{SMT Solvers}
+\subsection{SMT Solvers}\label{sec:SMT}
+
+Here we demonstrate the potential of our library for our application
+needs as mentioned in the introduction. In this case study,
+we consider 80 challenging verification conditions
+(VC) obtained from the Why platform~\cite{filliatre07cav}.  Each
+VC is stored in a file, which is accessible over
+NFS. The purpose of the experiment is to check the validity of each VC
+using several automated provers (namely Alt-Ergo, Simplify, Z3 and CVC3),
+which are all installed on each of the machines in use.
+
+The master program proceeds by reading the file names, turning them
+into tasks by multiplying them by the number of provers (more than
+300 tasks in total).
+Each worker in turn invokes the given prover on the given file, within
+a timeout limit.
+Each task completes with one of the four possible outcomes: \emph{valid},
+\emph{unknown} (depending on
+whether the VC is valid or undecided by the prover), 
+\emph{timeout} and \emph{failure}.
+
+The result of each computation is a pair denoting the status and the
+time spent in the prover call. The master collects these results and
+sums up the timings for each prover and each possible status.
 
 \section{Implementation Details}\label{sec:implem}
 
@@ -985,39 +1011,8 @@ values or simply user strings.
 
 Our library, \functory, is implemented in \Ocaml\ and is available
 from \url{http://www.lri.fr/~filliatr/functory/}.
-In this section, we show the potential of this library using two 
-computationally extensive examples.
-
-\subsubsection{Matrix Multiplication}
-
-$\of{n} = \of{p} = \of{m} = 100$
-
-coefficients have several thousands of digits; we use GMP
-
-%            parall  line
-
-% # tasks    10,000   100
-
-% sequential  20.3   20.2
-% cores 2     22.7   11.3
-% cores 4     12.3    6.1
-% cores 6      8.6    4.3
-% cores 8      8.0    3.5
-
-% network is localhost(moloch) + belzebuth
-
-% network 3+3        12.7
-% network 6+  112     7.2
-% network  +6   ?    36.4
-% network 6+6  76.1  11.9
-
-\begin{center}
-  \begin{tabular}{|l|l|l|}
-    \hline
-    sequential & cores & network \\\hline
-    20.3 & 
-  \end{tabular}
-\end{center}
+In this section, we show the experimental results pertaining to the
+case studies of Section~\ref{sec:studies}.
 
 \subsection{N-queens}
 
@@ -1085,7 +1080,7 @@ implementations, the computation times in seconds are tabulated below.
   \begin{tabular}{|r|r|r|r|r|}
     \hline
     \#cores  &\#tasks & \of{Cores} & \of{Network} \\
-    \hline
+    \hline\hline
     2       & 10 & 15.8       (1.86) &  20.3       \\
             & 30 & 15.7       (\underline{1.87}) &  18.7       \\
             & 100 & 16.1      (1.83) &  19.8       \\
@@ -1114,31 +1109,85 @@ n-queens. Consequently, communication costs are much greater.
 In this particular experiment, the total size of the results
 transmitted is more than 200 Mb.
 
+\subsection{Matrix Multiplication}
+
+This benchmark was inspired by the PASCO'10 programming contest~\cite{PASCO}.
+It consists of multiplication of
+two square matrices of dimension 100, that is $\of{n} = \of{p} =
+\of{m} = 100$, with integer coefficients.
+Coefficients have several thousands of digits, hence we use
+GMP~\cite{GMP} to handle operations over coefficients.
+
+We compare the performances of two different implementations. In the
+first one, called \of{mm1}, each task consists of the computation of a single
+coefficient of the resultant matrix, as described in Section~\ref{sec:matrix}.
+In the second one, called \of{mm2}, each task consists of the
+computation of a whole row of the resultant matrix.
+As a consequence, the total number of tasks in
+$\of{n}\times\of{m}=10,000$ for \of{mm1} and only $\of{n}=100$ for \of{mm2}.
+The experimental results (in seconds) are tabulated below.
+\begin{center}
+  \begin{tabular}{|r|r|r|}
+    \hline
+    & \of{mm1}       & \of{mm2}  \\
+    & (10,000 tasks) & (100 tasks) \\
+    \hline\hline
+\of{Sequential} & 20.3 &  20.2 \\
+\hline
+ \of{Cores} 
+ (2 cores)     &   22.7  &  11.3\\
+ (4 cores)     &   12.3  &   6.1\\
+ (6 cores)     &    8.6  &   4.3\\
+ (8 cores)     &    8.0  &   3.5\\
+ \hline
+  \end{tabular}
+\end{center}
+We do not include results for the network configuration, as they do
+not achieve any benefit with respect to the sequential
+implementation. The reason is that the communication cost dominates the
+computation cost in such a way that the total execution time is
+always greater than 30 seconds. Indeed, irrespective of the
+implementation (\of{mm1} or \of{mm2}), the total size of the
+transmitted data is 
+$O(\of{n}\times\of{m}\times\of{p})$, which in our case amounts to
+billions of bytes.
+
+A less naive implementation would have the worker read the input matrices
+only once, \emph{e.g.} from a file, and then have the master send only
+row and column indices. This would reduce the communication cost to
+$O(\of{n}\times\of{m})$ only.
+
+%             mm1     mm2
+
+% # tasks    10,000   100
+
+% sequential  20.3   20.2
+
+% cores 2     22.7   11.3
+% cores 4     12.3    6.1
+% cores 6      8.6    4.3
+% cores 8      8.0    3.5
+
+% network = workers on moloch + master on belzebuth
+
+% cores 2     93     32.3
+% cores 4     87     33.7
+% cores 6     92     33.5
+% cores 8     88     32.5
+
+
+
 
 \subsection{SMT Solvers}
 
-Here we demonstrate the potential of our library for our application
-needs as mentioned in the introduction. Our computing
-infrastructure consists of 3 machines with 4, 8 and 8 cores
-respectively. The benchmark we use for
-experimentation consists of around 80 challenging verification conditions
-(VC) obtained from the Why platform~\cite{filliatre07cav}.  Each
-VC is stored in a file, which is accessible over
-NFS. The purpose of the experiment is to check the validity of each VC
-using several automated provers (namely Alt-Ergo, Simplify, Z3 and CVC3),
-which are all installed on each of the machines in use.
-
-The master program proceeds by reading the file names, turning them
-into tasks by multiplying them by the number of provers (more than
-300 tasks in total).
-Each worker in turn invokes the given prover on the given file.
-We set a timeout limit of 1 minute.
-Each task completes with one of the four possible outcomes: \emph{valid},
-\emph{unknown} (depending on
-whether the VC is valid or undecided by the prover), 
-\emph{timeout} and \emph{failure}.
+As explained in Section~\ref{sec:SMT}, this benchmark consists of 80
+verification conditions, each being checked by 4 different SMT
+solvers. Each task is executed with a timeout limit of 1 minute.
+Our computing
+infrastructure for this experiment consists of 3 machines with 4, 8 and 8 cores
+respectively. 
 The figure below shows the total time in minutes spent by each prover
-for each possible outcomes.
+for each possible outcome.
 \begin{center}
   \begin{tabular}{|r||r|r|r|r|}
     \hline
@@ -1232,8 +1281,7 @@ The authors are grateful to the ProVal team for support and comments
 on early versions of the library and of this paper.
 
 %\vfill\pagebreak
-% We recommend abbrvnat bibliography style.
-\bibliographystyle{abbrvnat}
+\bibliographystyle{plain}
 \bibliography{./biblio}
 
 \end{document}

@@ -226,9 +226,9 @@ let rec print_time fmt t =
 let () = 
   let t0 = Unix.time () in
   if !is_worker then
-    Network.Same.Worker.compute ()
+    Network.Poly.Worker.compute worker ()
   else
-    Network.Same.compute ~worker ~master tasks;
+    Network.Poly.Master.compute ~master tasks;
   let time_consumed = Unix.time () -. t0 in
   let sequential_time = ref 0. in
   let print_total t =

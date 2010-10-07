@@ -1,6 +1,6 @@
 
 quick: main-pp.tex  state.mps
-	pdflatex main-pp
+	rubber -pdf main-pp
 	xpdf -remote tmp -reload
 
 main-pp.pdf: main-pp.tex biblio.bib state.mps
