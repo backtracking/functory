@@ -1,11 +1,18 @@
 
 (* open Functory.Sequential *)
 
-open Functory.Cores
-let () = set_number_of_cores (int_of_string Sys.argv.(3))
-  
+(* open Functory.Cores *)
+(* let () = set_number_of_cores (int_of_string Sys.argv.(3)) *)
+
+open Functory.Network
+let () = declare_workers ~n:2 "moloch"
+(* let () = Functory.Control.set_debug true *)
+open Poly
+
+let is_worker = Array.length Sys.argv >= 2 && Sys.argv.(1) = "-w"
+
 let max_iter = 200 (* nombre maximum d'itérations *)
-let f_max_iter = float max_iter
+let f_max_iter = float max_iter 
 
 (* couleur = interpolation linéaire entre le rouge (loin) et le vert (près) *)
 let interpolation n =
@@ -39,6 +46,10 @@ let draw xmin xmax ymin ymax w h =
   done;
   m
 
+let worker (xmi, xma, ymi, yma, w, h) = draw xmi xma ymi yma w h
+
+let () = if is_worker then begin Worker.compute worker (); assert false end
+
 let width = int_of_string Sys.argv.(1)
 let height = width * 2 / 3
 let t = int_of_string Sys.argv.(2)
@@ -57,13 +68,11 @@ let tasks =
   done;
   !l
 
-let worker (xmi, xma, ymi, yma, w, h) = draw xmi xma ymi yma w h
-
-let images = Array.create t [||]
+let images = Array.create t ([||] : Graphics.color array array)
 
 let master ((_,_,_,_,w,h), j) m = images.(j) <- m; []
 
-let () = compute ~worker ~master tasks
+let () = Master.compute ~master tasks
 
 (* let og = ref false *)
 
@@ -103,12 +112,22 @@ cores
        100        4.38       6.71
       1000        6.86       4.29
 
-network = 8 workers on moloch, remote master on belzebuth
+network = workers on moloch, remote master on belzebuth
 
-        10       13.1
+2       10       20.3
+        30       18.7 *
+       100       19.8
+      1000       38.6
+
+4       10       14.4
+        30       11.4 *
+       100       11.4 *
+      1000       20.5
+
+8       10       12.6
         30        7.6
        100        7.5
-      1000       11.2
+      1000       11.3
 *)
 
 
