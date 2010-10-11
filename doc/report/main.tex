@@ -933,6 +933,115 @@ architectures, so that master and workers could be run on completely
 different platforms w.r.t. endianness, version of \Ocaml\ and
 operating system.
 
+\subsubsection{Network Sub-modules} % TODO: change title
+
+As mentioned in Section~\ref{sec:API}, the \of{Network} module
+actually provides three different implementations, according to three
+different execution scenarios. There are provided in three
+sub-modules, as described below.
+
+\paragraph{\of{Same}.} This module is used when master and workers are
+running the same executable. The master and workers have to be
+differentiated in some manner. We use an environment variable
+\texttt{WORKER} for this purpose. When set, it indicates that the
+executable acts as a worker. At run-time, a worker immediately 
+enters a loop waiting for tasks from the master, without even getting
+into the user code. 
+As explained in Section~\ref{sec:API}, 
+the master function has the following signature.
+\begin{ocaml}
+ val compute : 
+      worker:('a -> 'b) -> 
+      master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit  
+\end{ocaml}
+The master uses marshaling to send both a closure of type 
+\of{'a -> 'b} and a task of type \of{'a} to the worker. The resulting strings
+are passed as argument \of{f} and \of{x} in message
+\of{Assign}. Similarly, the worker uses marshaling to send back the
+result of the computation of type \of{'b}, which is the argument
+\of{s} in message \of{Completed}.
+
+Though the ability to run the same executable helps a lot in deploying
+the program in different machines, it comes at a small price. Since
+the worker is not getting into the user code, closures which are
+transmitted from the master can not refer to global variables in the
+user code. Indeed, the initialization code for these global variables
+is never reached on the worker side. For instance, the Mandelbrot set
+example could be written as follows:
+\begin{ocaml}
+  let max_iterations = 200
+  let worker (xmi, xma, ymi, yma, w, h) =
+    ... draw sub-image using max_iterations ...
+\end{ocaml}
+That is, the global function \of{worker} makes use of the global
+variable \of{max_iterations}. The worker gets the function to compute
+from the master, namely the closure corresponding to function
+\of{worker} in that case, but on the worker side the initialization of
+\of{max_iterations} is never executed.
+
+One obvious solution is  not to use global variables in the
+worker code. This is not always possible, though. 
+To overcome this, the \of{Same} sub-module also provides a
+\of{Worker.compute} function to start the worker loop manually from
+the user code. This way, it can be started at any point, in particular
+after the initialization of the required global variables.
+Master and worker are still running the same executable, but are 
+distinguished using a user-defined way (command-line argument,
+environment variable, etc.).
+
+\bigskip
+There are situations where it is not possible
+to run the same executable for master and workers.
+For instance, architectures or operating systems could be different
+across the network.
+For that reason, the \of{Network} module provides two other
+implementations. 
+
+\paragraph{\of{Poly}.} When master and workers are compiled with the
+same version of \Ocaml, we can no longer marshal closures but we can
+still marshal polymorphic values. Indeed, an interesting property of
+marshaling in \Ocaml\ is to be fully architecture-independent, as long
+as a single version of \Ocaml\ is used. It is worth pointing out that
+absence of marshaled closures
+now enables the use of two different programs for master and workers. This
+is not mandatory, though, since master and workers could still be
+distinguished at run-time as in the previous case. 
+
+On the worker side, the main loop is started manually using
+\of{Worker.compute}. The computation to be performed on each task is
+given as an argument to this function. It thus looks as follows:
+\begin{ocaml}
+  Worker.compute : ('a -> 'b) -> unit -> unit
+\end{ocaml}
+On the master side, the \of{compute} function is simpler than in the
+previous case, as it has one argument less, and thus has the following
+signature. 
+\begin{ocaml}
+  Master.compute : master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit 
+\end{ocaml}
+For realistic applications, where master and workers are completely
+different programs, possibly written by different teams, this is the
+module of choice in our library, since it can still pass polymorphic
+values over the network. The issues of marshaling are automatically
+taken care of by \Ocaml\ run-time.
+
+% TODO : explain the new derived API
+
+\paragraph{\of{Mono}.} 
+
+% TODO
+
+% \bigskip
+
+% There is
+% actually a single, generic implementation, which is then instantiated
+% in three different ways, corresponding to the three scenarios.  The
+% generic implementation assumes that only strings are being transmitted
+% over the network, as evident from the \of{Assign} and \of{Completed}
+% messages in Section~\ref{sec:protocol}. Depending on the
+% implementation, these strings could be marshaled closures, marshaled
+% values or simply user strings.
+
 \subsubsection{Fault Tolerance}\label{sec:fault}
 
 The main issue in any distributed computing environment is the ability
@@ -970,20 +1079,6 @@ task $t$ is rescheduled, which means it is put back in the set of
 pending tasks. Whenever a task is completed, any rescheduled copy of
 this task is either removed from the set of pending tasks or killed if
 it was already assigned to another worker.
-
-\subsubsection{Three Network Implementations} % TODO: change title
-
-As mentioned in Section~\ref{sec:API}, the \of{Network} module
-actually provides three different implementations, according to three
-different execution scenarios (namely, \of{Same}, \of{Poly} and
-\of{Mono}). There is
-actually a single, generic implementation, which is then instantiated
-in three different ways, corresponding to the three scenarios.  The
-generic implementation assumes that only strings are being transmitted
-over the network, as evident from the \of{Assign} and \of{Completed}
-messages in Section~\ref{sec:protocol}. Depending on the
-implementation, these strings could be marshaled closures, marshaled
-values or simply user strings.
 
 % The signature for the generic
 % implementation is therefore as follows:
