@@ -271,8 +271,6 @@ val Master.compute :
   (string * 'c -> string -> (string * 'c) list) -> 
   (string * 'c) list -> unit
 \end{ocaml}
-  Note that the second component of each task is still polymorphic (of
-  type \ocaml{'c} here), since it is local to the master.
 \end{enumerate}
 
 Our library is organized into three modules: \of{Sequential} for the
@@ -964,7 +962,7 @@ result of the computation of type \of{'b}, which is the argument
 Though the ability to run the same executable helps a lot in deploying
 the program in different machines, it comes at a small price. Since
 the worker is not getting into the user code, closures which are
-transmitted from the master can not refer to global variables in the
+transmitted from the master cannot refer to global variables in the
 user code. Indeed, the initialization code for these global variables
 is never reached on the worker side. For instance, the Mandelbrot set
 example could be written as follows:
@@ -1025,13 +1023,34 @@ module of choice in our library, since it can still pass polymorphic
 values over the network. The issues of marshaling are automatically
 taken care of by \Ocaml\ run-time.
 
-% TODO : explain the new derived API
+The derived API presented in Section~\ref{sec:derived} is adapted to
+deal with the absence of closures. Exactly as the \of{compute}
+function, each API now takes two forms, one for the master and another
+for the workers. For example, \of{map_fold_ac} takes the following
+forms.
+\begin{ocaml}
+  Worker.map_fold_ac : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> unit -> unit
+  Master.map_fold_ac : 'b -> 'a list -> 'b
+\end{ocaml}
+It is the responsibility of the user to ensure type consistency between
+master and workers.
 
-\paragraph{\of{Mono}.} 
+\paragraph{\of{Mono}.} When master and workers are compiled using
+different versions of \Ocaml, we can no longer use marshaling. 
+As in the previous case, we split \of{compute} into two functions, one
+for master and one for workers. In addition, values transmitted over
+the network can only be strings. The signature thus takes the
+following form.
+\begin{ocaml}
+  Worker.compute : (string -> string) -> unit -> unit
+  Master.compute : master:(string * 'c -> string -> (string * 'c) list) -> 
+                  (string * 'c) list -> unit
+\end{ocaml}
+Any other datatype for tasks should be encoded to/from strings. This
+conversion is left to the user.
+Note that the second component of each task is still polymorphic (of
+type \of{'c} here), since it is local to the master.
 
-% TODO
-
-% \bigskip
 
 % There is
 % actually a single, generic implementation, which is then instantiated
