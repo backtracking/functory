@@ -1341,10 +1341,18 @@ We presented a distributed programming environment for functional
 programming. The main features are the genericity of the interface,
 which makes use of polymorphic higher-order functions, and the ability
 to easily switch between sequential, multi-core, and network
-implementations. A distinguishing feature of our library is a
+implementations. In particular, \functory\ allows to use the same
+executable for master and workers, which makes the deployment of small programs
+immediate --- master and workers being only distinguished by an
+environment variable. \functory\ also allows master and workers to be
+completely different programs, which is ideal for large scale deployment.
+Another distinguishing feature of our library is a
 robust fault-tolerance mechanism which relieves
 the user of cumbersome implementation details.
+Finally, \functory\ also allows to cascade several distributed
+computations inside the same program.
 
+\paragraph{Related Work.}
 Closest to the approach in this paper is Yohann Padioleau's MapReduce
 implementation in \Ocaml~\cite{poor-man-mapreduce}.  It is built on
 top of OCamlMPI~\cite{ocamlMPI}, while our approach uses a homemade
@@ -1369,6 +1377,7 @@ is data parallelism, which is also relevant in the functional
 programming setting~\cite{parallel-haskell}. Our work
 does not target data parallelism at all.
 
+\paragraph{Future Work.}
 There are still some interesting features that could be added to our
 library. 
 \begin{itemize}
@@ -1379,13 +1388,16 @@ library.
   task scheduling.  
 \item 
   Another interesting feature could be the ability
-  to add or remove workers dynamically. Currently, our library assumes
-  that the list of workers to be used is given \emph{a priori}.
+  to add or remove machines dynamically. Currently, our library assumes
+  that the list of machines to be used is given \emph{a priori}, as
+  part of the code. An alternative would be to read machine names from
+  a file, watched periodically by the master.
 \item
   Our library provides limited support for displaying real-time
-  information about the computations. Processing and storing
-  information about tasks locally in the master is straightforward; 
-  monitoring it in real-time is less obvious.
+  information about computations and communications. Processing and storing
+  information about workers and tasks locally in the master is straightforward; 
+  monitoring it in real-time could be done using
+  \textsf{Ocamlviz}~\cite{ocamlviz}. 
 \item 
   One very nice feature of Google's MapReduce is the possibility to
   use redundantly several idle workers on the same tasks
