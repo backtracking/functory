@@ -1,4 +1,17 @@
 
+- more fault tolerance:
+
+  master should not be blocked when sending a huge data to a worker
+  which is not reading (e.g. the worker is suspended or unreachable)
+
+  solution: instead of using Unix.write which behaves as an atomic
+  operation (possibly blocking), write our own loop using select with
+  a timeout; when it timeouts, close the connection to that worker
+
+- try Mandelbrot with Same
+
+- make an experiment with different OS
+
 - check consistency of executables (md5 checksum)
 
 - acknowledgment for killed message: use Aborted for that purpose
