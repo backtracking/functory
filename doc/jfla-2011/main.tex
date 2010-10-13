@@ -8,6 +8,7 @@
 \newcommand{\functory}{\textsf{Functory}}
 \newcommand{\JoCaml}{Jo{\&\!}Caml}
 \newcommand{\unix}{\textsc{Unix}}
+\newcommand{\oeuvre}{\oe uvre}
 \newcommand{\coeur}{c\oe ur}
 \newcommand{\coeurs}{c\oe urs}
 
@@ -172,236 +173,142 @@ montre le potentiel de cette bibliothèque sur des tests expérimentaux.
 \url{http://functory.lri.fr/}. Un rapport plus détaillé que le présent
 article, en anglais, est également disponible sur ce site.
 
-\section{API}\label{sec:API}
-In this section, we describe the
-generic API which we shall extend with several specialized
-functions in the next section. The main function in our API follows the idea
-sketched in the introduction. It has the following signature:
+\section{Interface}\label{sec:API}
+Cette section décrit l'interface de la bibliothèque \functory.
+La fonctionnalité primitive est une fonction \of{compute} réalisant
+l'idée principale évoquée dans l'introduction.
 \begin{ocaml}
   val compute : 
     worker:('a -> 'b) -> 
     master:('a * 'c -> 'b -> ('a * 'c) list) -> 
     ('a * 'c) list -> unit
 \end{ocaml}
-Tasks are pairs, of type \of{'a * 'c}, where the first component is
-passed to the worker and the second component is local to the master.
-The \ocaml{worker} function should be pure and is executed in parallel
-in all worker processes. The function \ocaml{master}, on the
-contrary, can be impure and is only executed in the master process.
-The \ocaml{master} function typically stores results 
-in some internal data structure.
-Additionally, it may produce new tasks, as a list of type 
-\of{('a * 'c) list}, which are then appended to the current set of
-pending tasks.
-The next section will describe the usage of this generic interface to
-perform the traditional map and fold operations.
+Les tâches sont des paires, de type \of{'a * 'c}, où la première
+composante sera transmise à l'ouvrier et la seconde conservée
+par le patron. La fonction \of{worker} doit être observationnellement
+pure et sera exécutée en parallèle par tous les ouvriers. La fonction
+\of{master}, au contraire, peut être impure et sera exécutée
+uniquement au sein d'un unique processus séquentiel.
+Cette fonction \of{master} accumule typiquement les résultats renvoyés
+par les ouvriers dans une structure locale. Elle peut en outre
+produire de nouvelles tâches, 
+sous la forme d'une liste de type \of{('a * 'c) list}, 
+qui sont alors ajoutées aux tâches restant à effectuer.
+Le troisième argument de \of{compute} est la liste des tâches
+initiales, qui déclenchent le calcul.
+La fonction \of{compute} rend la main lorsque toutes les tâches ont
+été effectuées. Il n'y a pas de résultat renvoyé, mais uniquement des
+effets de bord de la fonction \of{master}.
+Nous montrerons à la fin de cette section comment en déduire des
+fonctions d'ordre supérieur usuelles telles que \of{map} ou \of{fold}.
 
-Actually, our library provides not just a single \ocaml{compute}
-function as above, but instead five different versions
-depending on the execution context. 
-The first two contexts are the following: 
+En réalité, la bibliothèque \functory\ fournit \emph{cinq}
+mises en {\oe}uvre différentes de la fonction \of{compute}, correspondant à
+cinq contextes d'utilisation différents.
+Les deux premiers sont les plus simples.
 \begin{enumerate}
-\item \textbf{Purely sequential execution:}
-  this is mostly intended to be a reference implementation
-  for performance comparisons, as well as for debugging;
+\item \textbf{Exécution purement séquentielle :}
+  Elle permet d'obtenir un code de référence, pour mesurer des
+  performances ou mettre au point son programme.
 
-\item \textbf{Several cores on the same machine:} 
-  this implementation is intended to distribute the computation over a
-  single machine and it makes use of \unix\ processes;
+\item \textbf{Plusieurs \coeurs\ sur une même machine :} 
+  Il s'agit là de distribuer le calcul sur une unique machine,
+  uniquement en créant des processus fils.
 \end{enumerate}
-The next three implementations are intended for distributing the
-computation over a network of machines.
+Les trois contextes suivants correspondent à une distribution du
+calcul sur un réseau de machines.
 \begin{enumerate}
 \setcounter{enumi}{2}
-\item \textbf{Same executable run on master and worker machines:}
-  this implementation makes use of the ability to marshal \Ocaml\
-  closures and polymorphic values.
-  Depending on whether the program is run as a master or as a worker,
-  the relevant arguments of \ocaml{compute} are used.
+\item \textbf{Patron et ouvriers sont matérialisés par un même exécutable :}
+  Cette mise en {\oe}uvre exploite la capacité d'\Ocaml\ à sérialiser
+  fonctions et valeurs polymorphes de manière portable.
+  Selon que le programme est exécuté comme le patron ou comme un
+  ouvrier, les arguments pertinents de la fonction \of{compute} sont utilisés.
 
-\item \textbf{Master and workers are different programs, compiled with
-    the same version of \Ocaml:} 
-  we can no longer marshal closures but we can still
-  marshal polymorphic values. As a consequence, 
-  the \ocaml{compute} function is split into two
-  polymorphic functions, to implement the master and workers 
-  respectively:%
-\vspace{-1em}
+\item \textbf{Patron et ouvriers sont matérialisés par différents
+    programmes, compilés avec la même version d'\Ocaml\ :} 
+  Il n'est plus possible de sérialiser des fonctions mais on peut
+  encore sérialiser des valeurs polymorphes.
+  En conséquence, la fonction \of{compute} est présentée sous la forme
+  de deux fonctions, servant respectivement à réaliser le patron et
+  les ouvriers :
+\vspace{-0.5em}
 \begin{ocaml}
-val Worker.compute : ('a -> 'b) -> unit -> unit
-val Master.compute : 
-  ('a * 'c -> 'b -> ('a * 'c) list) -> 
-  ('a * 'c) list -> unit
+val Worker.compute : ('a -> 'b) -> unit
+val Master.compute : ('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
 \end{ocaml}
 
-\item \textbf{Master and workers are different programs, not even
-    compiled with the same version of \Ocaml:} we can no
-  longer use marshaling, so the
-  \ocaml{compute} function is split into two monomorphic functions
-  over strings:%
-\vspace{-1em}
+\item \textbf{Patron et ouvriers sont matérialisés par différents
+    programmes, qui ne sont même pas compilés avec la même version
+    d'\Ocaml\ :} Il n'est plus possible d'utiliser la sérialisation
+  d'\Ocaml\ et la fonction \of{compute} est présentée sous la forme
+  de deux fonctions ne manipulant plus que des chaînes de caractères :%
+\vspace{-0.5em}
 \begin{ocaml}
-val Worker.compute : (string -> string) -> unit -> unit
-val Master.compute : 
-  (string * 'c -> string -> (string * 'c) list) -> 
-  (string * 'c) list -> unit
+val Worker.compute : (string -> string) -> unit
+val Master.compute : (string * 'c -> string -> (string * 'c) list) ->
+                    (string * 'c) list -> unit
 \end{ocaml}
 \end{enumerate}
+La bibliothèque \functory\ est donc organisée en trois modules :
+\of{Sequential} pour le calcul purement séquentiel ; \of{Cores} pour
+le calcul distribué sur plusieurs \coeurs\ d'une même machine ; et
+enfin \of{Network} pour le calcul en réseau. Ce dernier module
+comporte trois sous-modules, appelés respectivement \of{Same},
+\of{Poly} and \of{Mono}, correspondant aux situations 3, 4 et 5 ci-dessus.
 
-Our library is organized into three modules: \of{Sequential} for the
-pure sequential implementation, \of{Cores} for multiple cores on the
-same machine and \of{Network} for a network of machines, respectively.
-The \of{Network} module itself is organized into three sub-modules,
-called \of{Same}, \of{Poly} and \of{Mono},
-corresponding to contexts 3, 4 and 5 above. 
-The next section presents more functions provided by \functory, which
-are all derived from the generic API just presented.
+%%% derived API %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\paragraph{Fonctions dérivées.}\label{sec:derived}
+Dans de nombreuses situations, la mise en \oeuvre\ la plus simple du
+parallélisme consiste à appliquer une opération sur une liste, le
+traitement de chaque élément pouvant être réaliser en parallèle.
+\functory\ fournit plusieurs fonctions d'ordre supérieur
+offrant du calcul parallèle sur des listes, toutes dérivées de la fonction
+\of{compute}. En particulier, elles sont disponibles dans les cinq
+modules décrits ci-dessus.
 
-
-% \section{Derived API}\label{sec:derived}
-
-In most cases, the easiest way to parallelize an execution it to make
-use of operations over lists, where processing of the
-list elements are done in parallel. 
-The previous section illustrated one such case.
-To facilitate such a processing,
-we now derive the most commonly used list operations from our generic
-API.
-
-The most obvious operation is the traditional map operation over
-lists, that is:
+L'opération la plus naturelle est celle consistant à appliquer une
+fonction à tous les éléments d'une liste, c'est-à-dire
 \begin{ocaml}
   val map : ('a -> 'b) -> 'a list -> 'b list
 \end{ocaml}
-The next natural operation is a combination of map and fold
-operations, that is a function like
-\begin{ocaml}
- val map_fold : map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
-\end{ocaml}
-which, given two functions, an accumulator \of{a} and a list \of{l}, computes
+Plus subtilement, on peut combiner une fonction \of{map:'a -> 'b}
+avec une fonction \of{fold:'c -> 'b -> 'c} pour calculer, à partir d'une liste
+$l$  et d'un accumulateur initial $a$, la valeur finale
 \begin{equation}\label{eq:map-fold}
-  \of{fold} ... (\of{fold} (\of{fold} ~ a ~ (\of{map} ~ x_1)) (\of{map} ~ x_2))
-  ... (\of{map} ~ x_n)
+  \of{fold} ~ ... ~ (\of{fold} ~ (\of{fold} ~ a ~ (\of{map} ~ x_1)) ~
+  (\of{map} ~ x_2)) ~ ... ~ (\of{map} ~ x_n)
 \end{equation}
-for some permutation $[x_1,x_2,...,x_n]$ of the list \of{l}.
-We assume that the \of{map} operations are always performed in parallel.
-Regarding \of{fold} operations, we distinguish two cases:
-\begin{itemize}
-\item either \of{fold} operations are computationally less expensive
-  than \of{map} and we perform them locally;
-\item or \of{fold} operations are computationally expensive and we
-  perform them in parallel.
-\end{itemize}
-We thus provide two functions \of{map_local_fold} and \of{map_remote_fold}.
-
-In the case of \of{map_remote_fold}, only one \of{fold} operation can
-be performed at a time (possibly in parallel with \of{map}
-operations), as obvious from~(\ref{eq:map-fold}). However, there are
-cases where several \of{fold} operations can be performed in parallel,
-as early as intermediate results of \of{fold} operations are available.
-This is the case when \of{fold} is an associative operation (which
-implies that types \of{'b} and \of{'c} are the same).
-Whenever
-\of{fold} is also commutative, we can perform even more \of{fold}
-operations in parallel. Thus our API provides two functions
-\of{map_fold_a} and \of{map_fold_ac} for these two particular cases.
-The five operations of the derived API are summarized
-in Figure~\ref{fig:derived}.
-\begin{figure}[t]
-  \begin{ocaml}
-    val map : 
-      f:('a -> 'b) -> 'a list -> 'b list 
-    val map_local_fold : 
-      map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
-      'c -> 'a list -> 'c 
-    val map_remote_fold : 
-      map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
-      'c -> 'a list -> 'c 
-    val map_fold_ac : 
-      map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
-      'b -> 'a list -> 'b 
-    val map_fold_a : 
-      map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
-      'b -> 'a list -> 'b
-  \end{ocaml}
-  \caption{Derived API.}
-\label{fig:derived}
-\end{figure}
-
-These five functions are actually derived from the generic API.  The
-generality is achieved by implementing these derivations as a functor.
-This functor, \of{Derive}, is parameterized by the \of{compute}
-function, as follows:
+pour une certaine permutation non spécifiée $[x_1,x_2,...,x_n]$ 
+de la liste \of{l}.
+On peut alors distinguer deux cas, selon que l'opération \of{fold} est
+beaucoup moins coûteuse que l'opération \of{map}, et peut être
+effectuée localement par le patron, ou qu'au contraire elle peut être
+coûteuse et a donc intérêt à être effectuée en parallèle des
+opérations \of{map}. La bibliothèque fournit donc deux fonctions,
+correspondant à ces deux cas de figure :
 \begin{ocaml}
-module Derive
-  (X : sig
-     val compute : 
-       worker:('a -> 'b) -> master:('a * 'c -> 'b -> ('a * 'c) list) ->
-       ('a * 'c) list -> unit
-   end) = struct ... end
+  val map_{local,remote}_fold : map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c   
 \end{ocaml}
-We now explain how each function from Figure~\ref{fig:derived} is
-implemented using \of{compute} inside the functor body.
 
-\paragraph{\of{map}.} 
-Function \of{map} is easily implemented by associating an integer
-index with each element (of type \of{'a}) of the input list. Thus the
-list of tasks passed to \of{compute} is a list of pairs of type \of{'a * int}.
-As soon as an intermediate result is available, it is passed to
-\of{master}, which stores it in a local table using the index as a key
-and generates no new task. Whenever \of{compute} returns, we easily
-recover the output list from the values stored in the table.
+Dans le cas de \of{map_remote_fold}, une seule opération \of{fold}
+peut être effectuée à la fois (possiblement en parallèle d'opérations
+\of{map}), comme le montre l'équation~(\ref{eq:map-fold}).
+Il existe cependant des situations dans lesquelles plusieurs
+opérations \of{fold} peuvent être effectuées en parallèle, dès que des
+résultats intermédiaires de \of{map} sont disponibles. C'est le cas
+notamment lorsque l'opération \of{fold} est associative (ce qui
+implique que les types \of{'b} et \of{'c} sont égaux).
+Lorsque l'opération \of{fold} est de plus commutative, on peut
+effectuer encore plus d'opérations \of{fold} en parallèle.
+Notre interface fournit donc deux autres fonctions pour ces cas
+particuliers :
+\begin{ocaml}
+  val map_fold_ac : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b 
+  val map_fold_a  : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+\end{ocaml}
 
-\paragraph{\of{map_local_fold}.} 
-Function \of{map_local_fold} is implemented using a local reference
-storing the current accumulator (of type \of{'c}).  As soon as an
-intermediate result is available, the \of{master} combines it with the
-accumulator using the function \of{fold}. Whenever \of{compute}
-returns, we simply return the current accumulator.
-
-\paragraph{\of{map_remote_fold}.}
-In this case, combining the accumulator with an intermediate result is
-itself a task to be performed in parallel with \of{map} operations.
-Thus tasks are of two different kinds and we use a sum type to make
-the distinction.
-When an intermediate \of{map} result is available, the
-accumulator may be already in use in a \of{fold} operation. Hence we
-need to store the intermediate \of{map} result in a table local to the
-master, to be
-used as soon as the accumulator becomes available.
-The \of{master} function distinguishes between \of{map} and \of{fold}
-results and, accordingly, updates the table and the accumulator. For a
-\of{map} result, either we combine it with the accumulator in a new
-task or we simply store it in the local table. For a \of{fold} result,
-either we simply store it into the accumulator or we immediately
-combine it with a pending \of{map} result from the table.
-Whenever \of{compute} returns, the accumulator must be available and
-we simply return it.
-
-\paragraph{\of{map_fold_ac}.}
-The function \of{map_fold_ac} is easier than the previous one, since
-we do not need to store more than one intermediate result. Indeed, as
-soon as two intermediate results are available, we immediately combine
-them using a \of{fold} operation. Thus, whenever the \of{master}
-receives some result, it either stores it or combines it with the
-accumulator, depending on the availability/non availability of the
-accumulator.  Whenever \of{compute} returns, the accumulator must be
-available and we simply return it.
-
-\paragraph{\of{map_fold_a}.}
-Function \of{map_fold_a} is definitely the trickiest. Indeed, the
-operation being only associative, we can only combine \emph{adjacent}
-intermediate results. In order to perform this, we store intermediate
-results in a local table according to indices of the input list. More
-precisely, if we have already computed
-\begin{displaymath}
-  x_i \oplus x_{i+1} \oplus \dots \oplus x_j
-\end{displaymath}
-where $\oplus$ denotes the \of{fold} operation, then we associate this
-value with indices $i,j$. As soon as a result of indices $k,i-1$ or
-$j+1,k$ is available, it can be combined with the result of $i,j$.
-Whenever \of{compute} returns, the table should only contain a result
-corresponding to the full input list and we simply return it.
+\hrulefill ICI\hrulefill
 
 \medskip
 These five functions are the most natural derivations of the
@@ -409,6 +316,9 @@ These five functions are the most natural derivations of the
 (e.g. a variant of \of{map_fold} where only \of{fold} is meaningful);
 in most cases, they could be derived in a straightforward way from our
 generic API.
+
+% TODO : insister sur la simplicité de Same, pour les petits programmes
+% notamment 
 
 % TODO cannot be instantiated in the monomorphic case
 
@@ -1241,4 +1151,5 @@ on early versions of the library and of this paper.
 %%% TeX-master: t
 %%% End: 
 
-% LocalWords:  sérialisation boutisme inatteignables
+% LocalWords:  sérialisation boutisme inatteignables observationnellement
+% LocalWords:  sous-modules
