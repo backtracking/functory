@@ -1,22 +1,3 @@
-%-----------------------------------------------------------------------------
-%
-%               Template for sigplanconf LaTeX Class
-%
-% Name:         sigplanconf-template.tex
-%
-% Purpose:      A template for sigplanconf.cls, which is a LaTeX 2e class
-%               file for SIGPLAN conference proceedings.
-%
-% Author:       Paul C. Anagnostopoulos
-%               Windfall Software
-%               978 371-2316
-%               paul@windfall.com
-%
-% Created:      15 February 2005
-%
-%-----------------------------------------------------------------------------
-
-
 \documentclass[twoside]{article}
 
 \usepackage{actes,comment,amsmath,graphicx,color,url}
@@ -27,9 +8,12 @@
 \newcommand{\functory}{\textsf{Functory}}
 \newcommand{\JoCaml}{Jo{\&\!}Caml}
 \newcommand{\unix}{\textsc{Unix}}
+\newcommand{\coeur}{c\oe ur}
+\newcommand{\coeurs}{c\oe urs}
 
 
-\title{Functory: Distributed Computing \\ for the Common Man\footnotetext{Ce
+\title{Functory: Une bibliothèque de calcul distribué \\ pour
+  Objective Caml\footnotetext{Ce
     travail a été réalisé en partie dans le cadre du projet U3CAT
     (\emph{Unification of Critical C Code Analysis Techniques},
     ANR-08-SEGI-021).}} 
@@ -53,54 +37,56 @@
 \maketitle
 
 \begin{abstract}
-  We present Functory, a distributed computing library for
-  functional programming languages. The main features of this library
-  include (1) a polymorphic API, (2) several implementations to
-  adapt to different computing environments such as sequential,
-  multi-core or network, and (3) a reliable fault-tolerance mechanism.
-  This paper describes the motivation behind this work, as well as
-  the design and implementation of the library. It also demonstrates
-  the potential of the library using realistic experiments.
+  Cet article présente \functory, une bibliothèque de calcul distribué
+  pour Objective Caml. Les principales caractéristiques de cette
+  bibliothèque sont (1) une interface polymorphe, (2) plusieurs
+  réalisations correspondant à des contextes d'utilisation différents
+  et (3) un mécanisme de tolérance aux pannes.
+  Cet article détaille la conception et la réalisation de Functory et
+  montre son potentiel sur de nombreux exemples.
 \end{abstract}
 
 \section{Introduction}
 
-This paper introduces a generic library for distributed computing,
-targeted at functional programming. 
-This work was initially motivated by the computing needs that exist in our
-own research team. Our applications include large-scale deductive
-program verification, which amounts to checking the validity of a
-large number of logical formulas using a variety of automated theorem
-provers~\cite{filliatre07cav}. Our computing infrastructure consists
-of a few powerful multi-core machines (typically 8 to 16 cores) and
-several desktop PCs (typically dual-core). However, for our
-application needs, there is no library that helps in exploiting such a
-computing infrastructure in our favorite functional programming
-language.  Hence we designed and implemented such a
-library, which is the subject of this paper.
-This library is implemented in \Ocaml, but the
-implementation should be straightforward in any functional
-programming language.
+Cet article présente \functory, une bibliothèque de calcul distribué
+pour Objective Caml. Initialement, ce travail a été motivé par des
+besoins de calcul au sein de notre équipe de recherche, ProVal.
+Nos applications en vérification déductive de programmes incluent
+notamment la validation de très nombreuses formules logiques par des
+démonstrateurs automatiques variés~\cite{filliatre07cav}.
+Nos moyens de calcul consistent en quelques machines très puissantes
+(typiquement 8 ou 16 \coeurs) et plusieurs ordinateurs de bureau
+(typiquement 2 \coeurs). Aucune bibliothèque ne nous permettait de
+tirer facilement partie de cette infrastructure de calcul dans notre
+langage préféré. C'est pourquoi nous avons conçu et réalisé la
+bibliothèque \functory\ qui est le sujet de cet article.
+Cette bibliothèque est réalisée pour \Ocaml\ mais pourrait facilement
+être adaptée pour tout autre langage fonctionnel.
 
-The distributed computing library presented in this paper is not a
-library that helps in parallelizing computations. Rather, it provides
-facilities for reliable, distributed execution of parallelizable
-computations. In particular, it provides a set of APIs that allows the
-execution of large-scale parallelizable computations, very relevant to
-our application needs (and presumably relevant to a variety of
-real-world applications), over multiple cores in the same machine or
-over a network of machines. 
-The most important features of our library are the following:
+\functory\ n'est pas une bibliothèque qui aide l'utilisateur à
+paralléliser ses calculs. Son rôle consiste plutôt à offrir des
+facilités pour distribuer, de manière sûre, des calculs déjà
+identifiés comme indépendants. En particulier, \functory\ offre
+plusieurs interfaces génériques pour distribuer des calculs sur différents
+\coeurs\ d'une même machine ou sur un réseau de machines. Ceci
+correspond exactement au contexte qui a motivé la construction de
+cette bibliothèque mais aussi, très probablement, à celui de
+nombreuses autres applications.
+Les principales caractéristiques de \functory\ sont les suivantes :
 \begin{itemize}
-\item \emph{Genericity}: 
-  it allows various patterns of polymorphic computations;
-\item \emph{Simplicity}: switching between multiple cores on the same
-  machine and a network of machines is as simple as changing a couple
-  of lines of code;
-\item \emph{Task distribution and fault-tolerance}: 
-  it relieves the user from implementing task distribution routines
-  and reliable fault-tolerance mechanisms.
+\item \emph{généricité} : les
+  traits fonctionnels que sont l'ordre
+  supérieur et le polymorphisme sont exploités pour fournir un maximum
+  de généricité ;
+\item \emph{simplicité} : on passe d'un calcul séquentiel à un
+  calcul multi-\coeurs puis à un calcul en réseau en ne modifiant
+  que quelques lignes dans le code ;
+\item \emph{distribution et tolérance aux pannes} : l'intégralité de
+  la gestion de la distribution et de la tolérance aux pannes est
+  prise en charge par la bibliothèque.
 \end{itemize}
+
+
 The application domain of such a distributed computing library is manyfold. 
 It is worth noting that the library is not targeted at applications
 running on server farms, crunching enormous amounts of data. 
@@ -113,28 +99,6 @@ of any large-scale expensive computation that is parallelizable.
 This is the case in our
 research endeavours, that is validating thousands of verification
 conditions using automated theorem provers. 
-
-% what it is and what it is not
-% \begin{itemize}
-% \item it is not a library which does parallelization
-% \item it is a library for reliable distributed execution of
-%   parallelizable computation 
-% \end{itemize}
-% inspired by Google's MapReduce~\cite{mapreduce} (itself inspired by functional
-% programming, ironically) ;  however, there are differences:
-% \begin{itemize}
-% \item polymorphic, higher-order API
-% \item more generic (cores/network)
-% \item does not focus on association lists
-% \item we don't have data locality (future work)
-% \end{itemize}
-% what is the target audience/applications: 
-% for instance, use if automatic provers on thousands of verification
-% conditions, on computing infrastructures which can be
-% \begin{itemize}
-% \item a single machine with multiple cores, possibly remote
-% \item several machines, small or large in number, over a network
-% \end{itemize}
 
 \medskip
 
@@ -1426,4 +1390,11 @@ on early versions of the library and of this paper.
 \end{document}
 
 % LocalWords:  parallelize functor parameterized indices endianness monomorphic
-% LocalWords:  genericity executables OCamlMPI MapReduce
+% LocalWords:  genericity executables OCamlMPI MapReduce généricité
+
+%%% Local Variables: 
+%%% mode: latex
+%%% ispell-local-dictionary: "francais"
+%%% TeX-master: t
+%%% End: 
+
