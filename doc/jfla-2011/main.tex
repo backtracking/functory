@@ -85,102 +85,92 @@ Les principales caractéristiques de \functory\ sont les suivantes :
   la gestion de la distribution et de la tolérance aux pannes est
   prise en charge par la bibliothèque.
 \end{itemize}
+Bien que \functory\ a été écrite avec un soucis de généralité, elle ne
+vise pas les grandes grappes de serveurs ou les fermes de calcul. 
+Elle s'adresse plutôt aux équipes de recherche qui souhaitent
+exploiter rapidement des capacités de calcul existantes allant d'un
+simple ordinateur de bureau à un réseau de machines.
+Le reste de cette introduction décrit notre approche du calcul
+distribué dans le contexte d'un langage fonctionnel.
 
+\paragraph{Calcul distribué.}
+Initialement inspirée par la bibliothèque MapReduce de
+Google~\cite{mapreduce}, notre approche lui emprunte beaucoup de
+vocabulaire.
+La bibliothèque \functory\ est centrée autour de la notion de
+\emph{tâche}. Les tâches représentent les calculs atomiques pouvant
+être réalisés de manière indépendante.
+Elles sont traitées par un \emph{patron} et des \emph{ouvriers}
+(respectivement \emph{master} and \emph{workers} en anglais).
+Les ouvriers représentent les capacités de calcul qui effectuent les
+tâches. Ils sont
+matérialisés par un ou plusieurs programmes, s'exécutant en parallèle
+sur une ou plusieurs machines.
+Le rôle du patron consiste à distribuer les tâches auprès des ouvriers
+et à récolter les résultats. Il est matérialisé par un unique
+programme s'exécutant de manière séquentielle.
 
-The application domain of such a distributed computing library is manyfold. 
-It is worth noting that the library is not targeted at applications
-running on server farms, crunching enormous amounts of data. 
-It is rather more relevant for research labs, to make use of available
-computing resources efficiently. It serves a variety of users and a wide
-spectrum of needs, from desktop PCs to networks of machines, and hence
-the title.
-The most striking application would involve efficient execution
-of any large-scale expensive computation that is parallelizable.
-This is the case in our
-research endeavours, that is validating thousands of verification
-conditions using automated theorem provers. 
+Une partie importante du travail de \functory\ consiste en la
+transmission des tâches et de leurs résultats. 
+Ceci implique leur sérialisation (en anglais
+\emph{marshalling}) à travers le
+réseau, sur un parc potentiellement hétérogène en termes
+d'architectures et de systèmes d'exploitation.
+La taille du mot et l'\emph{endianness} peuvent notamment
+varier\footnote{Les auteurs se refusent à utiliser le mot \og boutisme
+  \fg\ pour désigner l'\emph{endianness}.}.
+Un autre aspect essentiel du calcul distribué, et de \functory\ en
+particulier, est la \emph{tolérance aux pannes}. Les ouvriers peuvent
+ainsi être arrêtés, relancés, temporairement stoppés ou inatteignables
+à cause de problèmes liés au réseau, sans jamais compromettre le
+résultat final du calcul.
 
-\medskip
-
-The remainder of this section introduces our approach to distributed
-computing in a functional programming setting.
-
-\paragraph{Distributed Computing.}
-A typical distributed computing library, as \functory,
-provides the following (we
-borrow some terminology from Google's MapReduce~\cite{mapreduce}):
-\begin{itemize}
-\item A notion of \emph{tasks} which denote atomic computations
-  to be performed in a distributed manner; 
-\item A set of processes (possibly executing on remote machines)
-  called \emph{workers} that perform
-  the tasks, producing results;
-\item A single process called a \emph{master} which is in charge
-  of distributing the tasks among the workers and managing results
-  produced by the workers.
-\end{itemize}
-In addition to the above, distributed computing environments also
-implement mechanisms for fault tolerance, efficient storage, and
-distribution of tasks. This is required to handle network failures
-that may occur, as well as to optimize the usage of machines in the
-network. Another concern of importance is the transmission of messages
-over the network. This requires efficient 
-\emph{marshaling} of data, that is encoding and decoding of data 
-for transmission over different computing environments.  It is desirable to
-maintain architecture independence while transmitting marshalled data,
-as machines in a distributed computing environment often run on
-different hardware architectures and make use of varying software
-platforms. For example, machine word size or endianness may be different
-across machines on the network.
-
-\paragraph{A Functional Programming Approach.}
-Our work was initially inspired by Google's
-MapReduce\footnote{Ironically, Google's approach itself was inspired
-  by functional programming primitives.}. However, our functional
-programming environment allows us to be more generic. 
-The main idea behind our approach is that
-workers may implement any polymorphic function:
+\paragraph{Une approche fonctionnelle.}
+Nous avons essayé de tirer partie des spécificités de la programmation
+fonctionnelle pour proposer une interface la plus générique possible.
+L'une des idées principales de \functory\ est que chaque ouvrier est
+une fonction potentiellement polymorphe
 \begin{ocaml}
   worker: 'a -> 'b
 \end{ocaml}
-where \of{'a} denotes the type of tasks and \of{'b} the type of results.
-Then the master is given a list of initial tasks, together with a
-function to handle the results:
+où \of{'a} dénote le type des tâches et \of{'b} le type des résultats.
+Le patron est pour sa part une fonction à laquelle on passe la liste
+des tâches initiales, ainsi qu'une fonction pour traiter les résultats :
 \begin{ocaml}
   master: ('a -> 'b -> 'a list) -> 'a list -> unit
 \end{ocaml}
-The function passed to the master is applied whenever a result is
-available and may in turn generate new tasks (hence the return type
-\of{'a list}).  The master is executed as long as there are pending
-tasks.
+Cette fonction passée en argument à \of{master} est appliquée dès
+qu'un nouveau résultat est disponible. Elle peut produire de nouvelles
+tâches (d'où son type de retour \of{'a list}), qui s'ajoutent alors à
+la liste des tâches à effectuer.
+Le processus complet s'achève lorsque toutes les tâches ont été
+effectuées. 
 
-Our library makes use of \Ocaml's marshaling capabilities as much as
-possible. Whenever master and worker executables are exactly the same,
-we can marshal polymorphic values and closures. However, it is not
-always possible to have master and workers running the same
-executable. In this case, we cannot marshal closures anymore but we
-can still marshal polymorphic values as long as the same version of
-\Ocaml\ is used to compile master and workers. When different versions
-of \Ocaml\ are used, we can no longer marshal values but we can still
-transmit strings between master and workers. Our library adapts to all
-these situations, by providing several APIs.
-
+Notre bibliothèque tire partie des capacités de sérialisation
+d'\Ocaml\ autant que possible. Ainsi lorsque le patron et les ouvriers
+sont matérialisés par le même exécutable, fonctions et valeurs
+polymorphes peuvent être sérialisées, ce qui permet de réaliser
+facilement le schéma ci-dessus. Il n'est cependant pas toujours
+possible d'utiliser le même programme pour le patron et les
+ouvriers. Dans ce cas, on peut tout de même continuer à sérialiser des
+valeurs polymorphes lorsque la version d'\Ocaml\ utilisée est la même
+pour tous. Sinon, on ne peut plus que transmettre des chaînes de
+caractères entre les différents acteurs. La bibliothèque \functory\
+s'adapte à toutes ces situations en proposant plusieurs interfaces.
+ 
 \medskip
-The paper is organized as follows. 
-In Section~\ref{sec:API}, we
-describe the main idea behind the generic API, and introduce
-\of{master} and \of{worker} programs. 
-In Section~\ref{sec:derived}, we
-present some additional functions provided by \functory,
-which are derived from the generic
-API. 
-Section~\ref{sec:studies} illustrates the API usage with several
-case studies.
-Section~\ref{sec:implem} delves into the implementation details
-of our library, while Section~\ref{sec:experiments} illustrates the
-potential of the presented library through experimental evaluation. We
-compare our approach with relevant related work in
-Section~\ref{sec:future} and outline our future work.
+
+Cet article s'organise ainsi.
+La section~\ref{sec:API} présente l'interface de la bibliothèque.
+Son utilisation est alors illustrée sur des exemples dans la
+section~\ref{sec:studies}.
+La section~\ref{sec:implem} donne des détails techniques concernant la
+réalisation de \functory. Enfin la section~\ref{sec:experiments}
+montre le potentiel de cette bibliothèque sur des tests expérimentaux.
+%
+\functory\ est librement distribuée à l'adresse
+\url{http://functory.lri.fr/}. Un rapport plus détaillé que le présent
+article, en anglais, est également disponible sur ce site.
 
 \section{API}\label{sec:API}
 In this section, we describe the
@@ -267,155 +257,8 @@ corresponding to contexts 3, 4 and 5 above.
 The next section presents more functions provided by \functory, which
 are all derived from the generic API just presented.
 
-% The different
-% API functions are summarized in the following table (their signatures
-% being given above):
-% \begin{center}
-%   \begin{tabular}{|c|c|c|c|c|}
-%     \hline
-%     \ocaml{Sequential} & \ocaml{Cores} &
-%     \multicolumn{3}{|c|}{\ocaml{Network}} 
-%     \\\cline{3-5}
-%     &       & \ocaml{Same} & \ocaml{Poly} & \ocaml{Mono} \\\hline
-%     \ocaml{compute}  & \ocaml{compute}   & \ocaml{compute}  &
-%     \ocaml{master}  & \ocaml{master}  \\
-%     & & & \ocaml{worker}  & \ocaml{worker} \\\hline
-%   \end{tabular}
-% \end{center}
-% The following section introduces other interesting APIs that we
-% derive from this generic API.
 
-\begin{comment}
-\section{Illustrative Example}\label{sec:example}
-
-Let us assume we need to compute a sum such as
-\begin{displaymath}
-  s(n) = \sum_{i=0}^{n}f(i)
-\end{displaymath}
-where $f$ is a pure and computationally expensive function.
-We start with the sequential implementation provided by the library:
-\begin{ocaml}
-  open Sequential
-\end{ocaml}
-The idea is to test our code on small values of $n$ before
-parallelizing the computation for larger values.
-Let us assume that $f$ is implemented as a top-level \of{worker} function:
-\begin{ocaml}
-  let worker i = ...
-\end{ocaml}
-and that $n$ is obtained from the command line:
-\begin{ocaml}
-  let n = int_of_string Sys.argv.(1)
-\end{ocaml}
-The list of tasks is simply the list of integers $0,1,\dots,n$,
-computed as follows:
-\begin{ocaml}
-  let tasks = 
-    let l = ref [] in 
-    for i = 0 to n do l := (i, ()) :: !l done; 
-    !l
-\end{ocaml}
-Each task is actually a pair, where the second component contains
-some information which is kept local to the master process.
-It is irrelevant here and thus the value \of{()} of type \of{unit} is used.
-The current sum is kept into a global reference \of{s}:
-\begin{ocaml}
-  let s = ref 0
-\end{ocaml}
-The master function receives a task \of{(i,())} together with its
-result \of{fi} and simply adds \of{fi} to \of{s}. There is no new task
-generated, hence the returned empty list.
-\begin{ocaml}
-  let master (i,()) fi = s := !s + fi; []
-\end{ocaml}
-Finally, the whole computation takes place when we call the
-\of{compute} function:
-\begin{ocaml}
-  let () = compute ~worker ~master tasks
-\end{ocaml}
-
-Now, let us assume we want to make use of a 4-core machine to compute
-$s(n)$. It is as easy as just replacing the very first line with
-\begin{ocaml}
-  open Cores
-  let () = set_number_of_cores 4
-\end{ocaml}
-while the rest of the code remains unchanged.
-
-Later, we may want to use a network of machines instead, for example
-two machines called \texttt{orcus} and \texttt{belzebuth} with 4 and 8
-cores respectively. Similar to the above, we just replace the first
-lines with
-\begin{ocaml}
-  open Network
-  let () = declare_workers ~n:4 "orcus"
-  let () = declare_workers ~n:8 "belzebuth"
-  open Same
-\end{ocaml}
-Here, \of{Same} is a module which is to be used when master and worker
-are running the same executable. It provides a \of{compute} function
-which has the same signature as in modules \of{Sequential} and
-\of{Cores}, so that the rest of the code remains unchanged. Master and
-worker processes are distinguished at run-time using an environment
-variable \texttt{WORKER} which is set/unset.
-
-If we need to write two different programs for master and worker, for
-reason of binary incompatibility or any other reason, the library API
-is providing functions to do that. If master and worker are still
-compiled with the same version of \Ocaml, we use the \of{Poly} module
-which provides a polymorphic API. Let us start with the worker program.
-It is as simple as
-\begin{ocaml}
-  open Poly
-  let worker i = ...
-  let () = Worker.compute worker ()
-\end{ocaml}
-The \of{Worker.compute} function enters a loop which waits for
-tasks sent by the master and returns results computed using \of{worker}.
-The master program is almost the same as before. First, we replace
-module \of{Same} with module \of{Poly}:
-\begin{ocaml}
-  open Network
-  let () = declare_workers ~n:4 "orcus"
-  let () = declare_workers ~n:8 "belzebuth"
-  open Poly
-\end{ocaml}
-Tasks and \of{master} function are unchanged:
-\begin{ocaml}
-  let tasks = ...
-  let s = ref 0
-  let master (i,()) fi = ...
-\end{ocaml}
-Finally, we start the computation with \of{Master.compute}, which does
-not have a \of{worker} parameter anymore:
-\begin{ocaml}
-  let () = Master.compute ~master tasks
-\end{ocaml}
-
-When master and worker programs are compiled with different
-versions of the \Ocaml\ compiler, our library still provides
-a monomorphic API over strings. As a consequence, we need to convert
-integers to and from strings in both master and worker.
-The modified worker program is as follows:
-\begin{ocaml}
-  open Mono
-  let worker i = ...
-  let worker_string i = string_of_int (worker (int_of_string i))
-  let () = Worker.compute worker_string ()
-\end{ocaml}
-The master program is modified in a similar way.
-We simply replace \of{Poly} with \of{Mono} and encode/decode integers
-as strings, as follows:
-\begin{ocaml}
-  let tasks = 
-    let l = ref [] in 
-    for i = 0 to n do l := (string_of_int i, ()) :: !l done; 
-    !l
-  let master (i,()) fi = s := !s + int_of_string fi; []
-\end{ocaml}
-\end{comment}
-
-\section{Derived API}\label{sec:derived}
+% \section{Derived API}\label{sec:derived}
 
 In most cases, the easiest way to parallelize an execution it to make
 use of operations over lists, where processing of the
@@ -1390,7 +1233,7 @@ on early versions of the library and of this paper.
 \end{document}
 
 % LocalWords:  parallelize functor parameterized indices endianness monomorphic
-% LocalWords:  genericity executables OCamlMPI MapReduce généricité
+% LocalWords:  genericity executables OCamlMPI MapReduce généricité marshalling
 
 %%% Local Variables: 
 %%% mode: latex
@@ -1398,3 +1241,4 @@ on early versions of the library and of this paper.
 %%% TeX-master: t
 %%% End: 
 
+% LocalWords:  sérialisation boutisme inatteignables

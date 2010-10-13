@@ -42,6 +42,6 @@ let () = Metapost.emit "state" state
 
 (*
 Local Variables:
-compile-command: "mlpost -latex main.tex  -xpdf figures.ml"
+compile-command: "mlpost -latex main2.tex  -xpdf figures.ml"
 End:
 *)
