@@ -82,7 +82,7 @@ library that helps in parallelizing computations. Rather, it provides
 facilities for reliable, distributed execution of parallelizable
 computations. In particular, it provides a set of APIs that allows the
 execution of large-scale parallelizable computations, very relevant to
-our application needs (and presumably relevant to a variety of
+our application needs (and actually relevant to a variety of
 real-world applications), over multiple cores in the same machine or
 over a network of machines. 
 The most important features of our library are the following:
@@ -93,8 +93,9 @@ The most important features of our library are the following:
   machine and a network of machines is as simple as changing a couple
   of lines of code;
 \item \emph{Task distribution and fault-tolerance}: 
-  it relieves the user from implementing task distribution routines
-  and reliable fault-tolerance mechanisms.
+  it provides automatic task distribution and
+  a robust fault-tolerance mechanism, thereby
+  relieving the user from implementing such routines.
 \end{itemize}
 The application domain of such a distributed computing library is manyfold. 
 It is worth noting that the library is not targeted at applications
@@ -103,8 +104,8 @@ It is rather more relevant for research labs, to make use of available
 computing resources efficiently. It serves a variety of users and a wide
 spectrum of needs, from desktop PCs to networks of machines, and hence
 the title.
-The most striking application would involve efficient execution
-of any large-scale expensive computation that is parallelizable.
+Typical applications would involve a large number
+of computation expensive tasks.
 This is the case in our
 research endeavours, that is validating thousands of verification
 conditions using automated theorem provers. 
@@ -160,7 +161,7 @@ over the network. This requires efficient
 for transmission over different computing environments.  It is desirable to
 maintain architecture independence while transmitting marshalled data,
 as machines in a distributed computing environment often run on
-different hardware architectures and make use of varying software
+different hardware architectures and make use of different software
 platforms. For example, machine word size or endianness may be different
 across machines on the network.
 
@@ -466,12 +467,12 @@ operations, that is a function like
 \begin{ocaml}
  val map_fold : map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 \end{ocaml}
-which, given two functions, an accumulator \of{a} and a list \of{l}, computes
+which, given two functions, an accumulator $a$ and a list $l$, computes
 \begin{equation}\label{eq:map-fold}
   \of{fold} ... (\of{fold} (\of{fold} ~ a ~ (\of{map} ~ x_1)) (\of{map} ~ x_2))
   ... (\of{map} ~ x_n)
 \end{equation}
-for some permutation $[x_1,x_2,...,x_n]$ of the list \of{l}.
+for some permutation $[x_1,x_2,...,x_n]$ of the list $l$.
 We assume that the \of{map} operations are always performed in parallel.
 Regarding \of{fold} operations, we distinguish two cases:
 \begin{itemize}
