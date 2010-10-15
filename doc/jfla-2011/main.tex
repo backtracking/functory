@@ -95,7 +95,9 @@ Le reste de cette introduction décrit notre approche du calcul
 distribué dans le contexte d'un langage fonctionnel.
 
 \paragraph{Calcul distribué.}
-Initialement inspirée par la bibliothèque MapReduce de
+Initialement inspirée par la bibliothèque
+MapReduce\footnote{Ironiquement, l'approche de Google a été elle-même
+  inspirée par la programmation fonctionnelle.} de
 Google~\cite{mapreduce}, notre approche lui emprunte beaucoup de
 vocabulaire.
 La bibliothèque \functory\ est centrée autour de la notion de
@@ -280,7 +282,7 @@ $l$  et d'un accumulateur initial $a$, la valeur finale
   (\of{map} ~ x_2)) ~ ... ~ (\of{map} ~ x_n)
 \end{equation}
 pour une certaine permutation non spécifiée $[x_1,x_2,...,x_n]$ 
-de la liste \of{l}.
+de la liste $l$.
 On peut alors distinguer deux cas, selon que l'opération \of{fold} est
 beaucoup moins coûteuse que l'opération \of{map}, et peut être
 effectuée localement par le patron, ou qu'au contraire elle peut être
@@ -304,8 +306,7 @@ effectuer encore plus d'opérations \of{fold} en parallèle.
 Notre interface fournit donc deux autres fonctions pour ces cas
 particuliers :
 \begin{ocaml}
-  val map_fold_ac : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b 
-  val map_fold_a  : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+  val map_fold_{a,ac} : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b 
 \end{ocaml}
 
 \hrulefill ICI\hrulefill
