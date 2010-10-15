@@ -156,7 +156,7 @@ distribution of tasks. This is required to handle network failures
 that may occur, as well as to optimize the usage of machines in the
 network. Another concern of importance is the transmission of messages
 over the network. This requires efficient 
-\emph{marshaling} of data, that is encoding and decoding of data 
+\emph{marshalling} of data, that is encoding and decoding of data 
 for transmission over different computing environments.  It is desirable to
 maintain architecture independence while transmitting marshalled data,
 as machines in a distributed computing environment often run on
@@ -185,7 +185,7 @@ available and may in turn generate new tasks (hence the return type
 \of{'a list}).  The master is executed as long as there are pending
 tasks.
 
-Our library makes use of \Ocaml's marshaling capabilities as much as
+Our library makes use of \Ocaml's marshalling capabilities as much as
 possible. Whenever master and worker executables are exactly the same,
 we can marshal polymorphic values and closures. However, it is not
 always possible to have master and workers running the same
@@ -277,7 +277,7 @@ val Master.compute :
 
 \item \textbf{Master and workers are different programs, not even
     compiled with the same version of \Ocaml:} we can no
-  longer use marshaling, so the
+  longer use marshalling, so the
   \ocaml{compute} function is split into two monomorphic functions
   over strings:%
 \vspace{-1em}
@@ -451,7 +451,7 @@ as strings, as follows:
 In most cases, the easiest way to parallelize an execution it to make
 use of operations over lists, where processing of the
 list elements are done in parallel. 
-The previous section illustrated one such case.
+% The previous section illustrated one such case.
 To facilitate such a processing,
 we now derive the most commonly used list operations from our generic
 API.
@@ -960,10 +960,10 @@ the master function has the following signature.
       worker:('a -> 'b) -> 
       master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit  
 \end{ocaml}
-The master uses marshaling to send both a closure of type 
+The master uses marshalling to send both a closure of type 
 \of{'a -> 'b} and a task of type \of{'a} to the worker. The resulting strings
 are passed as argument \of{f} and \of{x} in message
-\of{Assign}. Similarly, the worker uses marshaling to send back the
+\of{Assign}. Similarly, the worker uses marshalling to send back the
 result of the computation of type \of{'b}, which is the argument
 \of{s} in message \of{Completed}.
 
@@ -1006,7 +1006,7 @@ implementations.
 \paragraph{\of{Poly}.} When master and workers are compiled with the
 same version of \Ocaml, we can no longer marshal closures but we can
 still marshal polymorphic values. Indeed, an interesting property of
-marshaling in \Ocaml\ is to be fully architecture-independent, as long
+marshalling in \Ocaml\ is to be fully architecture-independent, as long
 as a single version of \Ocaml\ is used. It is worth pointing out that
 absence of marshaled closures
 now enables the use of two different programs for master and workers. This
@@ -1028,7 +1028,7 @@ signature.
 For realistic applications, where master and workers are completely
 different programs, possibly written by different teams, this is the
 module of choice in our library, since it can still pass polymorphic
-values over the network. The issues of marshaling are automatically
+values over the network. The issues of marshalling are automatically
 taken care of by \Ocaml\ run-time.
 
 The derived API presented in Section~\ref{sec:derived} is adapted to
@@ -1044,7 +1044,7 @@ It is the responsibility of the user to ensure type consistency between
 master and workers.
 
 \paragraph{\of{Mono}.} When master and workers are compiled using
-different versions of \Ocaml, we can no longer use marshaling. 
+different versions of \Ocaml, we can no longer use marshalling. 
 As in the previous case, we split \of{compute} into two functions, one
 for master and one for workers. In addition, values transmitted over
 the network can only be strings. The signature thus takes the
@@ -1421,4 +1421,4 @@ on early versions of the library and of this paper.
 \end{document}
 
 % LocalWords:  parallelize functor parameterized indices endianness monomorphic
-% LocalWords:  genericity executables OCamlMPI MapReduce
+% LocalWords:  genericity executables OCamlMPI MapReduce marshalling
