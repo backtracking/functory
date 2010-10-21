@@ -104,7 +104,7 @@ La bibliothèque \functory\ est centrée autour de la notion de
 \emph{tâche}. Les tâches représentent les calculs atomiques pouvant
 être réalisés de manière indépendante.
 Elles sont traitées par un \emph{patron} et des \emph{ouvriers}
-(respectivement \emph{master} and \emph{workers} en anglais).
+(respectivement \emph{master} et \emph{workers} en anglais).
 Les ouvriers représentent les capacités de calcul qui effectuent les
 tâches. Ils sont
 matérialisés par un ou plusieurs programmes, s'exécutant en parallèle
@@ -309,169 +309,180 @@ particuliers :
   val map_fold_{a,ac} : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b 
 \end{ocaml}
 
-\hrulefill ICI\hrulefill
+% \hrulefill ICI\hrulefill
 
-\medskip
-These five functions are the most natural derivations of the
-\of{compute} functions. There are obviously other possible derivations
-(e.g. a variant of \of{map_fold} where only \of{fold} is meaningful);
-in most cases, they could be derived in a straightforward way from our
-generic API.
+%\medskip
+Ces cinq fonctions se dérivent facilement de la fonction \of{compute}.
+On peut évidemment en imaginer d'autres, comme par exemple une variante
+où seule la fonction \of{fold} est significative.
+L'utilisateur de \functory\ ne devrait pas avoir de mal à les dériver
+lui-même de la fonction \of{compute} ou des fonctions du type
+\of{map_fold} ci-dessus.
 
 % TODO : insister sur la simplicité de Same, pour les petits programmes
 % notamment 
 
-% TODO cannot be instantiated in the monomorphic case
+\section{Études de cas}\label{sec:studies}
 
-\section{Illustrative Case Studies}\label{sec:studies}
+Cette section présente plusieurs études de cas que nous avons
+réalisées avec \functory. On se concentre ici sur l'utilisation de la
+bibliothèque ; les résultats expérimentaux sont présentés plus loin
+(section~\ref{sec:experiments}). Le code source de tous les exemples
+ci-dessus est contenu dans la distribution de \functory, dans le
+sous-répertoire \texttt{tests}.
 
-In this section, we show how to use \functory\ on several case studies.
-We focus here on the use of the API. Experimental results of these
-case studies are given in Section~\ref{sec:experiments}.
-The source code for all these case studies is contained in the
-distribution, in sub-directory \texttt{tests}.
+\subsection{Multiplication de matrices}\label{sec:matrix}
 
-\subsection{Matrix Multiplication}\label{sec:matrix}
-
-As a first example, let us consider matrix multiplication.
-We assume two matrices \of{a} and \of{b}, respectively of size
-$\of{n}\times\of{p}$ and $\of{p}\times\of{m}$, given as input, as well as
-a matrix \of{c} of size $\of{n}\times\of{m}$ to store the result.
-Assuming \of{a} being a row-matrix and \of{b} a column-matrix,
-the standard matrix multiplication would be as follows:
+Comme premier exemple, on considère la multiplication de deux matrices
+\of{a} et \of{b}, de tailles respectives
+$\of{n}\times\of{p}$ et $\of{p}\times\of{m}$. 
+Le résultat sera stocké dans une matrice
+\of{c} de taille $\of{n}\times\of{m}$.
+On suppose que \of{a}, \of{b} et \of{c} sont contenues dans des
+variables globales.
+En supposant en outre \of{a} organisée en lignes et \of{b} en colonnes, une
+multiplication séquentielle s'écrirait ainsi 
 \begin{ocaml}
   for i = 0 to n-1 do
-    for j = 0 to p-1 do
-      for k = 0 to m-1 do
+    for j = 0 to m-1 do
+      for k = 0 to p-1 do
 	c.(i).(j) <- c.(i).(j) + a.(i).(k) * b.(j).(k)
       done
     done
   done  
 \end{ocaml}
-and runs in $O(\of{n}\times\of{p}\times\of{m})$, 
-assuming addition and multiplication over coefficients to be 
-denoted $+$ and $\times$ respectively.
-An easy way to distribute this computation is obviously to turn each
-computation of the inner loop over \of{k} into a task.
-To do so, we first prepare the list of tasks:
+l'addition et la multiplication des coefficients étant notées
+respectivement $+$ et $\times$.
+La complexité de ce code est clairement $O(\of{n}\times\of{m}\times\of{p})$, 
+
+Une manière évidente de distribuer ce calcul consiste à faire de la
+boucle interne sur \of{k} une tâche élémentaire.
+On construit alors une liste de $\of{n} \times \of{m}$ tâches, de la
+manière suivante :
 \begin{ocaml}
   let tasks = 
     let l = ref [] in
-    for i = 0 to n-1 do for j = 0 to p-1 do
+    for i = 0 to n-1 do for j = 0 to m-1 do
       tasks := ((a.(i), b.(j)), (i,j)) :: !tasks
     done done;
     !l
 \end{ocaml}
-Each task consists of row \of{a.(i)} and column \of{b.(j)} as first
-tuple, together with position \of{(i,j)} as a second tuple.
-The worker is receiving the first tuple as argument and computes
-the dot product:
+Chaque tâche est une paire formée d'une part d'une ligne \of{a.(i)} et
+d'une colonne \of{b.(j)}, et d'autre part d'une position \of{(i,j)}.
+L'ouvrier reçoit la première composante et calcule le produit scalaire.
 \begin{ocaml}
   let worker (ai, bj) =
     let c = ref 0 in
-    for k = 0 to m-1 do c := !c + ai.(k) * bj.(k) done;
+    for k = 0 to p-1 do c := !c + ai.(k) * bj.(k) done;
     !c
 \end{ocaml}
-The master is a one line function which receives the result \of{r}
-from the worker and simply stores it into \of{c}, according to the
-position contained in the input task. It produces no new task.
+La patron est une fonction d'une ligne, qui reçoit le résultat \of{r}
+renvoyé par l'ouvrier et remplit la matrice \of{c}, en fonction de la
+position contenue dans la seconde composante de la tâche. Aucune 
+nouvelle tâche n'est produite.
 \begin{ocaml}
   let master (_, (i,j)) r = c.(i).(j) <- r; []
 \end{ocaml}
-Finally, the overall computation is started by invoking \of{compute}
-as follows:
+Au final, l'ensemble du calcul est lancé par un appel à la fonction
+\of{compute}.
 \begin{ocaml}
   let () = compute ~worker ~master !tasks
 \end{ocaml}
-The total number of tasks is $\of{n}\times\of{m}$.
 
-Using the sequential implementation provided by \of{Functory} is as
-simple as including the following line in the code:
-\begin{ocaml}
-  open Sequential
-\end{ocaml}
-Then the computation is roughly similar to the standard multiplication
-described above. 
+Utiliser la version séquentielle de \functory\ est aussi simple que
+d'ajouter \of{open Sequential} au début du code. Le calcul est alors
+similaire à la multiplication usuelle donnée plus haut. Cela peut être
+néanmoins utile pour vérifier la correction du code avant de chercher
+à distribuer le calcul.
 
-Now, let us assume we want to make use of a 4-core machine to perform
-the same computation. 
-This is achieved by just replacing the line above by
+Supposons maintenant que l'on veuille utiliser une machine 4 \coeurs\
+pour effectuer le calcul. Il suffit alors de remplacer la ligne
+\of{open Sequential} par les deux lignes suivantes.
 \begin{ocaml}
   open Cores
   let () = set_number_of_cores 4
 \end{ocaml}
-while the rest of the code remains unchanged.
+Le reste du code est inchangé.
 
-Later, we may want to use a network of machines instead, for example
-two machines called \texttt{orcus} and \texttt{belzebuth} with 4 and 8
-cores respectively. Similar to the above, we turn the above lines into
+Supposons enfin que l'on souhaite utiliser plutôt des machines
+présentes sur le réseau, par exemple deux machines appelées
+\texttt{orcus} et \texttt{belzebuth} offrant respectivement 4 et 8 \coeurs.
+Il suffit de remplacer les deux lignes de code ci-dessus par les suivantes.
 \begin{ocaml}
   open Network
   let () = declare_workers ~n:4 "orcus"
   let () = declare_workers ~n:8 "belzebuth"
   open Same
 \end{ocaml}
-Here, \of{Same} is a module which is to be used when master and worker
-are running the same executable. It provides a \of{compute} function
-which has the same signature as in modules \of{Sequential} and
-\of{Cores}, so that the rest of the code remains unchanged. Master and
-worker processes are distinguished at run-time using an environment
-variable \texttt{WORKER} which is set/unset.
+On utilise ici le sous-module \of{Same} de \of{Network}, qui permet
+d'utiliser le même exécutable pour le patron et les ouvriers. Ce
+module fournit toujours une fonction \of{compute} de même signature
+que dans les modules \of{Sequential} et \of{Cores}, et le reste du
+code est toujours inchangé. Le patron et les ouvriers sont distingués
+à l'exécution par la présence de la variable d'environnement
+\texttt{WORKER}. 
 
-If we need to write two different programs for master and worker, for
-reason of binary incompatibility or any other reason, the library API
-is providing functions to do that. If master and worker are still
-compiled with the same version of \Ocaml, we use the \of{Poly} module
-which provides a polymorphic API. Let us start with the worker program.
-It now looks like:
+Si on a besoin d'écrire deux programmes différents pour le patron et
+les ouvriers, pour des raisons d'incompatibilité de binaires ou tout
+autre raison, l'interface de \functory\ permet de le faire.
+Si les deux programmes sont compilés avec la même version d'\Ocaml, on
+utilise le module \of{Poly}.
+Commençons par l'ouvrier. Son code prend la forme suivante.
 \begin{ocaml}
-  open Poly
+  open Network.Poly
   let worker (ai, bj) = ...
   let () = Worker.compute worker ()
 \end{ocaml}
-The \of{Worker.compute} function enters a loop which waits for
-tasks sent by the master and returns results computed using \of{worker}.
-The master program is almost the same as before. First, we replace
-module \of{Same} with module \of{Poly}:
+La fonction \of{Worker.compute} entre dans une boucle qui attend les
+tâches envoyées par le patron et renvoie les résultats calculés par
+la fonction \of{worker}. Le code du patron, quant à lui, est quasiment
+le même qu'auparavant. On commence par remplacer \of{Same} par
+\of{Poly}.
 \begin{ocaml}
   open Network
   let () = declare_workers ~n:4 "orcus"
   let () = declare_workers ~n:8 "belzebuth"
   open Poly
 \end{ocaml}
-Tasks and \of{master} function are unchanged:
+La construction des tâches et la fonction \of{master} sont inchangées.
 \begin{ocaml}
   let tasks = ...
   let master (_, (i,j)) r = ...
 \end{ocaml}
-Finally, we start the computation with \of{Master.compute}, which does
-not have a \of{worker} parameter anymore:
+Enfin on lance le calcul avec la fonction \of{Master.compute}, qui ne
+prend plus de fonction \of{worker} en argument.
 \begin{ocaml}
   let () = Master.compute ~master tasks
 \end{ocaml}
 
-When master and worker programs are compiled with different
-versions of the \Ocaml\ compiler, our library still provides
-a monomorphic API over strings. As a consequence, we need to convert
-tasks and results to and from strings in both master and worker.
-The modified worker program then looks as follows:
+Quand le patron et les ouvriers sont compilés avec des versions
+différentes d'\Ocaml, la bibliothèque fournit une interface
+ne permettant plus que l'échange de chaînes de caractères.
+En conséquence, il faut convertir les tâches et les résultats depuis
+et vers des chaînes, dans les deux programmes.
+L'ouvrier modifié prend alors la forme suivante.
 \begin{ocaml}
   open Mono
   let worker (ai, bj) = ...
-  let worker_string t = string_of_int (worker (task_of_string i))
+  let worker_string s = string_of_coeff (worker (task_of_string s))
   let () = Worker.compute worker_string ()
 \end{ocaml}
+Le patron est modifié de la même façon.
 The master program is modified in a similar way.
-We simply replace \of{Poly} with \of{Mono} and encode/decode coefficients
-as strings, as follows:
+On remplace \of{Poly} par \of{Mono} et on encode/décode les tâches et
+résultats.
 \begin{ocaml}
   let tasks = ... string_of_task ...
   let master (_, (i,j)) r = c.(i).(j) <- coeff_of_string r; []
 \end{ocaml}
-where \of{string_of_task} and \of{task_of_string} are user-defined
-functions to convert tasks to and from strings.
+Les quatre fonctions de conversion \of{string_of_}\{\of{task,coeff}\} et
+\{\of{task,coeff}\}\of{_of_string} sont à la charge de l'utilisateur.
 
-\subsection{N-queens}\label{sec:n-queens}
+\subsection{Autres études de cas}
+
+Nous présentons ici trois autres études de cas, plus rapidement.
+
+\paragraph{N-reines.}\label{sec:n-queens}
 
 The next example is the classical $N$-queens problem, where we
 compute the total number of ways to place $N$ queens on a $N\times N$

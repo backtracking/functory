@@ -619,8 +619,8 @@ Assuming \of{a} being a row-matrix and \of{b} a column-matrix,
 the standard matrix multiplication would be as follows:
 \begin{ocaml}
   for i = 0 to n-1 do
-    for j = 0 to p-1 do
-      for k = 0 to m-1 do
+    for j = 0 to m-1 do
+      for k = 0 to p-1 do
 	c.(i).(j) <- c.(i).(j) + a.(i).(k) * b.(j).(k)
       done
     done
@@ -635,7 +635,7 @@ To do so, we first prepare the list of tasks:
 \begin{ocaml}
   let tasks = 
     let l = ref [] in
-    for i = 0 to n-1 do for j = 0 to p-1 do
+    for i = 0 to n-1 do for j = 0 to m-1 do
       tasks := ((a.(i), b.(j)), (i,j)) :: !tasks
     done done;
     !l
@@ -647,7 +647,7 @@ the dot product:
 \begin{ocaml}
   let worker (ai, bj) =
     let c = ref 0 in
-    for k = 0 to m-1 do c := !c + ai.(k) * bj.(k) done;
+    for k = 0 to p-1 do c := !c + ai.(k) * bj.(k) done;
     !c
 \end{ocaml}
 The master is a one line function which receives the result \of{r}
@@ -736,7 +736,7 @@ The modified worker program then looks as follows:
 \begin{ocaml}
   open Mono
   let worker (ai, bj) = ...
-  let worker_string t = string_of_int (worker (task_of_string i))
+  let worker_string s = string_of_coeff (worker (task_of_string s))
   let () = Worker.compute worker_string ()
 \end{ocaml}
 The master program is modified in a similar way.
