@@ -1,4 +1,7 @@
 
+- Cores: use pipes instead of local files (and thus select instead of wait)
+  and compare performances
+
 - more fault tolerance:
 
   master should not be blocked when sending a huge data to a worker
