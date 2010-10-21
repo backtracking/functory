@@ -309,8 +309,6 @@ particuliers :
   val map_fold_{a,ac} : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b 
 \end{ocaml}
 
-% \hrulefill ICI\hrulefill
-
 %\medskip
 Ces cinq fonctions se dérivent facilement de la fonction \of{compute}.
 On peut évidemment en imaginer d'autres, comme par exemple une variante
@@ -483,81 +481,54 @@ Les quatre fonctions de conversion \of{string_of_}\{\of{task,coeff}\} et
 Nous présentons ici trois autres études de cas, plus rapidement.
 
 \paragraph{N-reines.}\label{sec:n-queens}
+Il s'agit du problème classique consistant à calculer le nombre de
+façons de disposer $N$ reines sur un échiquier $N\times N$ sans que
+deux d'entre elles soient en prise.
+On utilise un algorithme standard, consistant à positionner une reine
+sur chaque ligne de l'échiquier, en partant de la première ligne. Il
+est facile de distribuer le calcul: on considère toutes les façons de
+placer les reines des $D$ premières lignes et on effectue le reste du
+calcul en parallèle. Pour $D=1$ on obtient ainsi $N$ tâches ; pour
+$D=2$ on obtient $N^2-3N+2$ tâches ; et ainsi de suite.
+Chaque tâche est composée de quelques entiers et son résultat est un
+entier donnant le nombre de solutions pour cette tâche.
+On utilise la fonction \of{map_local_fold} où \of{map} effectue la
+recherche et \of{fold} somme les résultats intermédiaires.
 
-The next example is the classical $N$-queens problem, where we
-compute the total number of ways to place $N$ queens on a $N\times N$
-chessboard in such a way no two queens attack each other.
-We use a standard backtracking algorithm for this problem, which
-places the queens one by one starting from the first row.
-Distributing the computation is thus quite easy: we consider all
-possible ways to place queens on the first $D$ rows and then perform
-the subsequent search in parallel. Choosing $D=1$ will result in
-exactly $N$ tasks; choosing $D=2$ will result in $N^2-3N+2$ tasks; and
-so on.
-% TODO: make a picture to illustrate positioning of 2 queens on the
-% first 2 rows
+\paragraph{L'ensemble de Mandelbrot.}
+Dessiner l'ensemble de Mandelbrot est un autre exemple de calcul
+aisément distribuable, puisque la couleur de chaque point peut être
+calculée indépendamment. Supposons donnée une région à dessiner, ainsi
+que la taille $\of{w} \times \of{h}$ en pixels de l'image finale.
+On se donne un nombre de tâches $\of{t} \ge 1$ comme paramètre. Il est
+immédiat de découper l'image en \of{t} sous-images, par exemple en
+bandes horizontales (si $\of{h} \ge \of{t}$) ou plus généralement en
+blocs rectangulaires.
+Chaque tâche est constituée de quatre nombre flottants définissant la
+région à dessiner, ainsi que deux entiers donnant la taille de l'image
+correspondante. Le résultat est une matrice de pixels, de taille
+$(\of{w}\times\of{h}) / \of{t}$.
+Ainsi, dessiner une image $800\times 600$ en utilisant 20 tâches
+donnera 20 sous-images de $176\,000$ octets chacune, en supposant
+chaque pixel représenté par quatre octets.
 
-Each task only consists of three integers and its result is one integer,
-which is the total number of solutions for this task.
-We make use of function \of{map_local_fold} from the derived API,
-where \of{map} is performing the search and \of{fold} simply adds the
-intermediate results.
-In the network configuration, we make use of the \of{Network.Same}
-module, workers and master being the same executable.
+\paragraph{Démonstrateurs automatiques.}\label{sec:SMT}
+Le dernier exemple correspond à celui mentionné dans l'introduction.
+Il s'agit ici de vérifier la validité de 80 obligations de preuve
+(OP), issues de la plate-forme Why~\cite{filliatre07cav}, à l'aide de
+quatre démonstrateurs automatique de la famille SMT (à savoir
+Alt-Ergo, Simplify, Z3 et CVC3).  Chaque OP est vérifiée avec chaque
+démonstrateur, ce qui fait un total de 320 tâches.
+Les OP sont contenues dans des fichiers accessibles par NFS et une
+tâche est donc un nom de fichier et un nom de démonstrateur. 
+Le démonstrateur est appelé comme un programme externe, avec un temps
+d'exécution maximal. Le
+résultat d'une tâche est la réponse du démonstrateur (valide, abandon,
+temps limite atteint, erreur pendant l'exécution) et son temps de calcul.
+Le patron collecte les résultats et les présente au final sous forme
+d'une table synthétique.
 
-\subsection{Mandelbrot Set}
-
-Drawing the Mandelbrot set is another classical example that could be
-distributed easily, since the color of each point can be computed
-independently of the others. 
-Let us assume we are given the coordinates of the region to be drawn,
-along with the width \of{w} and height \of{h} of the resulting image
-(in pixels). 
-Let us assume the total number of tasks $\of{t} \ge 1$ is given as a
-parameter. It is immediate to split the image into \of{t} sub-images,
-each of which is computed in parallel with and independently of the
-others. For instance, the image could be split into horizontal slices
-or, more generally, into rectangular blocks.
-
-Each task is thus four floating-point numbers denoting the region
-coordinates, together with two integers denoting the dimensions of the
-sub-image to be drawn. The result of the task is a matrix of pixels,
-of size $(\of{w}\times\of{h}) / \of{t}$. 
-For instance, drawing a $800\times 600$ image using 20 tasks will
-result in 20 sub-images of size $176,000$ bytes each,
-assuming each pixel is encoded in four bytes.
-
-In the network configuration, we deliberately choose to have two
-different programs for master and workers, using the \of{Network.Poly}
-module (actually, a single source code with a command line option).
-
-% \subsection{Polynomial Multiplication}
-% TODO?
-
-\subsection{SMT Solvers}\label{sec:SMT}
-
-Here we demonstrate the potential of our library for our application
-needs as mentioned in the introduction. In this case study,
-we consider 80 challenging verification conditions
-(VC) obtained from the Why platform~\cite{filliatre07cav}.  Each
-VC is stored in a file, which is accessible over
-NFS. The purpose of the experiment is to check the validity of each VC
-using several automated provers (namely Alt-Ergo, Simplify, Z3 and CVC3),
-which are all installed on each of the machines in use.
-
-The master program proceeds by reading the file names, turning them
-into tasks by multiplying them by the number of provers (more than
-300 tasks in total).
-Each worker in turn invokes the given prover on the given file, within
-a timeout limit.
-Each task completes with one of the four possible outcomes: \emph{valid},
-\emph{unknown} (depending on
-whether the VC is valid or undecided by the prover), 
-\emph{timeout} and \emph{failure}.
-
-The result of each computation is a pair denoting the status and the
-time spent in the prover call. The master collects these results and
-sums up the timings for each prover and each possible status.
+% \hrulefill ICI\hrulefill
 
 \section{Implementation Details}\label{sec:implem}
 
