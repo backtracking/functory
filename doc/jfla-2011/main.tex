@@ -758,186 +758,169 @@ entier. En conséquence, les coûts de communication sont bien plus
 grands. Dans cette expérience particulière, la taille totale des
 résultats dépasse les 200 Mo.
 
-\hrulefill LA TRADUCTION S'ARRÊTE ICI\hrulefill
+\paragraph{Multiplication de matrices}
+Cette expérience a été inspirée par le concours de programmation
+associé à la conférence PASCO 2010~\cite{PASCO}.
+L'un des problèmes consistait à multiplier deux matrices de taille
+$100\times 100$, c'est-à-dire $\of{n} = \of{p} =
+\of{m} = 100$ avec les notations de la section~\ref{sec:matrix}.
+Les coefficients sont entiers mais peuvent avoir des milliers de
+chiffres et GMP~\cite{GMP} est utilisé ici pour les calculs relatifs
+aux coefficients.
 
-\subsection{Matrix Multiplication}
-
-This benchmark was inspired by the PASCO'10 programming contest~\cite{PASCO}.
-It consists of multiplication of
-two square matrices of dimension 100, that is $\of{n} = \of{p} =
-\of{m} = 100$, with integer coefficients.
-Coefficients have several thousands of digits, hence we use
-GMP~\cite{GMP} to handle operations over coefficients.
-
-We compare the performances of two different implementations. In the
-first one, called \of{mm1}, each task consists of the computation of a single
-coefficient of the resultant matrix, as described in Section~\ref{sec:matrix}.
-In the second one, called \of{mm2}, each task consists of the
-computation of a whole row of the resultant matrix.
-As a consequence, the total number of tasks in
-$\of{n}\times\of{m}=10,000$ for \of{mm1} and only $\of{n}=100$ for \of{mm2}.
-The experimental results (in seconds) are tabulated below.
+On compare les performances de deux programmes distribués utilisant
+\functory. Dans le premier, appelé \of{mm1}, chaque tâche consiste en
+le calcul d'un unique coefficient de la matrice résultat, exactement 
+comme décrit section~\ref{sec:matrix}. 
+Dans le second, appelé \of{mm2}, chaque tâche consiste en le calcul de
+toute une ligne de la matrice résultat.
+En conséquence, le nombre total de tâches est $\of{n}\times\of{m}=10,000$ 
+pour \of{mm1} et seulement $\of{n}=100$ pour \of{mm2}.
+Les résultats expérimentaux, toujours en secondes et toujours sur la
+même machine, sont les suivants.
 \begin{center}
   \begin{tabular}{|r|r|r|}
     \hline
     & \of{mm1}       & \of{mm2}  \\
-    & (10,000 tasks) & (100 tasks) \\
+    & (10,000 tâches) & (100 tâches) \\
     \hline\hline
 \of{Sequential} & 20.3 \phantom{(0.00)} &  20.2 \phantom{(0.00)} \\
 \hline
  \of{Cores} 
- (2 cores)     &   22.7 (0.89) &  11.3 (1.79) \\
- (4 cores)     &   12.3 (1.65) &   6.1 (3.31) \\
- (6 cores)     &    8.6 (2.36) &   4.3 (4.70) \\
- (8 cores)     &    8.0 (2.54) &   3.5 (\underline{5.77}) \\
+ (2 \coeurs)     &   22.7 (0.89) &  11.3 (1.79) \\
+ (4 \coeurs)     &   12.3 (1.65) &   6.1 (3.31) \\
+ (6 \coeurs)     &    8.6 (2.36) &   4.3 (4.70) \\
+ (8 \coeurs)     &    8.0 (2.54) &   3.5 (\underline{5.77}) \\
  \hline
   \end{tabular}
 \end{center}
-We do not include results for the network configuration, as they do
-not achieve any benefit with respect to the sequential
-implementation. The reason is that the communication cost dominates the
-computation cost in such a way that the total execution time is
-always greater than 30 seconds. Indeed, irrespective of the
-implementation (\of{mm1} or \of{mm2}), the total size of the
-transmitted data is 
-$O(\of{n}\times\of{m}\times\of{p})$, which in our case amounts to
-billions of bytes.
+On exclut les résultats pour la configuration en réseau, car ils
+n'apportent aucune amélioration par rapport à l'exécution séquentielle.
+La raison en est que les coûts de communication dominent largement les
+coûts de calcul, donnant un temps d'exécution total supérieur à 30
+secondes. Que ce soit pour \of{mm1} ou \of{mm2}, le nombre total de
+coefficients transmis est en effet en
+$O(\of{n}\times\of{m}\times\of{p})$, ce qui représente ici des
+milliards d'octets.
+Une réalisation moins naïve pourrait voir les ouvriers lire les deux
+matrices une seule fois, par exemple depuis un fichier, et le patron
+envoyer uniquement des indices de lignes et de colonnes. Cela
+réduirait le volume des communications à seulement $O(\of{n}\times\of{m})$.
 
-A less naive implementation would have the worker read the input matrices
-only once, \emph{e.g.} from a file, and then have the master send only
-row and column indices. This would reduce the communication cost to
-$O(\of{n}\times\of{m})$ only.
-
-%             mm1     mm2
-
-% # tasks    10,000   100
-
-% sequential  20.3   20.2
-
-% cores 2     22.7   11.3
-% cores 4     12.3    6.1
-% cores 6      8.6    4.3
-% cores 8      8.0    3.5
-
-% network = workers on moloch + master on belzebuth
-
-% cores 2     93     32.3
-% cores 4     87     33.7
-% cores 6     92     33.5
-% cores 8     88     32.5
-
-
-
-
-\subsection{SMT Solvers}
-
-As explained in Section~\ref{sec:SMT}, this benchmark consists of 80
-verification conditions, each being checked by 4 different SMT
-solvers. Each task is executed with a timeout limit of 1 minute.
-Our computing
-infrastructure for this experiment consists of 3 machines with 4, 8 and 8 cores
-respectively. 
-The figure below shows the total time in minutes spent by each prover
-for each possible outcome.
+\paragraph{Démonstrateur automatiques.}
+Comme expliqué plus haut, cette expérience consiste à vérifier la
+validité de 80 formules logiques à l'aide de quatre démonstrateurs
+automatiques de la famille SMT. Chacune de ces 320 tâches est exécutée
+dans une limite de temps fixée à une minute.
+La plate-forme de test est ici constituée de trois machines en réseau,
+de 4, 8 et 8 \coeurs\ respectivement.
+Le tableau ci-dessus indique le temps total passé dans chaque
+démonstrateur automatique, cumulé pour chacune des réponses possibles.
 \begin{center}
   \begin{tabular}{|r||r|r|r|r|}
     \hline
-    prover   & valid & unknown & timeout & failure
+    démonstrateur   & valide & abandon & temps limite & erreur
     \\\hline\hline
-    Alt-ergo & 406.0 & 3.0   &  11400.0 & 0.0       
+    Alt-ergo & 406.0 & 3.0   &  11\,400.0 & 0.0       
     \\\hline
-    Simplify &  0.5   & 0.4   &  1200.0 & 222.0   
+    Simplify &  0.5   & 0.4   &  1\,200.0 & 222.0   
     \\\hline
-    Z3       & 80.7   & 0.0   &  1800.0 & 1695.0   
+    Z3       & 80.7   & 0.0   &  1\,800.0 & 1\,695.0   
     \\\hline
-    CVC3     & 303.0  & 82.7  &  4200.0 & 659.0   
+    CVC3     & 303.0  & 82.7  &  4\,200.0 & 659.0   
     \\\hline
   \end{tabular}
 \end{center}
-These figures sum up to more than 6 hours if provers were executed
-sequentially. However, using our library and our 3-machine
-infrastructure, it completes in 22 minutes and 37 seconds, giving us a
-speedup of more than 16$\times$. We are still far away from the ideal
-ratio of 20$\times$ (we are using 20 cores), since some provers are
-allocating a lot of memory and time spent in system calls is not
-accounted for in the total observed time. However, a ratio of
-16$\times$ is already a significant improvement for our day-to-day
-experiments. 
+Ce qui nous intéresse ici est en particulier le temps total
+d'exécution séquentielle cumulée, qui dépasse les 6 heures de calcul.
+Cependant, en utilisant \functory\ et notre petit réseau de trois
+machines, le temps total de calcul n'a pas dépassé 22 minutes et 30
+secondes, ce qui représente une accélération d'un facteur 16.
+On est encore loin du facteur optimal 20 (on utilise ici 20 \coeurs\
+de puissance équivalente), en particulier parce que certains
+démonstrateurs allouent beaucoup de mémoire et que le temps passé dans
+les appels systèmes n'est pas pris en compte ici.
+Un facteur 16 est cependant une accélération significative pour une
+utilisation au jour le jour.
 
 \section{Conclusion et perspectives}\label{sec:future}
 
-We presented a distributed programming environment for functional
-programming. The main features are the genericity of the interface,
-which makes use of polymorphic higher-order functions, and the ability
-to easily switch between sequential, multi-core, and network
-implementations. In particular, \functory\ allows to use the same
-executable for master and workers, which makes the deployment of small programs
-immediate --- master and workers being only distinguished by an
-environment variable. \functory\ also allows master and workers to be
-completely different programs, which is ideal for large scale deployment.
-Another distinguishing feature of our library is a
-robust fault-tolerance mechanism which relieves
-the user of cumbersome implementation details.
-Finally, \functory\ also allows to cascade several distributed
-computations inside the same program.
+Nous avons présenté \functory, une bibliothèque de calcul distribué
+pour \Ocaml. Les caractéristiques principales de cette
+bibliothèque sont son interface générique, sous forme de fonctions
+polymorphes d'ordre supérieur, et la possibilité de basculer aisément
+entre exécutions séquentielle, multi-\coeurs\ et réseau.
+En particulier, \functory\ permet d'utiliser le même exécutable pour
+le patron et les ouvriers, ce qui rend le déploiement de petits
+programmes immédiat --- les deux ne sont distingués que par une
+variable d'environnement. Bien entendu, \functory\ permet également
+l'utilisation de deux programmes complètement différents, ce qui est
+toujours le cas dans une application à grande échelle.
+Une autre caractéristique essentielle de \functory\ est son mécanisme
+robuste de tolérance aux pannes, qui simplifie grandement le code de
+l'utilisateur. 
+% Enfin, une dernière caractéristique non évoquée dans
+% cet article, est la possibilité d'enchaîner plusieurs calculs
+% distribués dans un même programme.
 
-\paragraph{Related Work.}
-Closest to the approach in this paper is Yohann Padioleau's MapReduce
-implementation in \Ocaml~\cite{poor-man-mapreduce}.  It is built on
-top of OCamlMPI~\cite{ocamlMPI}, while our approach uses a homemade
-protocol for message passing.  Currently, we have less flexibility
-w.r.t. deployment of the user program than OCamlMPI; on the other
-hand, we provide a 
-more generic API together with fault tolerance.  There are other
-distributed computing libraries on top of which one could implement
-the library discussed in this paper. \JoCaml~\cite{jocaml} is one of
-them. However, \JoCaml\ does not provide fault tolerance, which is
-indispensable in a distributed setting. The user has to include code
-for fault tolerance, as already demonstrated in some \JoCaml\
-experiments~\cite{mandel2008}. 
+\paragraph{Travaux connexes.}
+Une bibliothèque relativement proche de la nôtre est l'implémentation
+de MapReduce pour \Ocaml\ par Yohann Padioleau~\cite{poor-man-mapreduce}.
+Elle est construite au dessus d'OCamlMPI~\cite{ocamlMPI}, alors que
+notre bibliothèque utilise son propre protocole.
+OCamlMPI permet notamment un déploiement plus flexible des ouvriers.
+D'un autre côté, notre bibliothèque offre une interface plus générique
+et surtout la tolérance aux pannes.
+Mis à part OcamlMPI, 
+il existe d'autres environnements sur lesquels une bibliothèque comme
+\functory\ pourrait être construite. Un exemple est
+\JoCaml~\cite{jocaml}. Il est cependant important de noter que
+\JoCaml\ n'offre pas de tolérance aux pannes \emph{de
+  facto}. L'utilisateur doit l'inclure dans son code, comme cela a
+déjà été démontré dans certaines expériences impliquant
+\JoCaml~\cite{mandel2008}.  Vu que l'essentiel de la complexité de
+\functory\ se situe dans le code de tolérance aux pannes, l'apport de
+\JoCaml\ serait relativement anecdotique.
 
-There are other implementations of distributed computing in the
-context of functional programming. One is the Disco
-project~\cite{disco}, which implements exactly Google's MapReduce in
-Erlang~\cite{erlang}. Our library, on the contrary, is not an \Ocaml\
-implementation of Google's MapReduce.
-There are other ways to exploit multi-core architectures. One of these
-is data parallelism, which is also relevant in the functional
-programming setting~\cite{parallel-haskell}. Our work
-does not target data parallelism at all.
+% TODO Mathias Kende
 
-\paragraph{Future Work.}
-There are still some interesting features that could be added to our
-library. 
-\begin{itemize}
-\item 
-  One is the ability to efficiently assign tasks to workers depending
-  on resource parameters, such as data locality, CPU power, memory,
-  etc. This could be achieved by providing the user with the means to control
-  task scheduling.  
-\item 
-  Another interesting feature could be the ability
-  to add or remove machines dynamically. Currently, our library assumes
-  that the list of machines to be used is given \emph{a priori}, as
-  part of the code. An alternative would be to read machine names from
-  a file, watched periodically by the master.
-\item
-  Our library provides limited support for displaying real-time
-  information about computations and communications. Processing and storing
-  information about workers and tasks locally in the master is straightforward; 
-  monitoring it in real-time could be done using
-  \textsf{Ocamlviz}~\cite{ocamlviz}. 
-\item 
-  One very nice feature of Google's MapReduce is the possibility to
-  use redundantly several idle workers on the same tasks
-  for speedup when reaching the end of computation.
-  Since we already have the fault tolerance implemented, this
-  optimization should be straightforward to add to our library.
-\end{itemize}
-We intend to enrich our library with all above features.
+Il existe également des bibliothèques de calcul distribué pour
+d'autres langages fonctionnels. L'une d'elles est le projet
+Disco~\cite{disco}, une implémentation de MapReduce dans le
+langage Erlang~\cite{erlang}. Notre bibliothèque, au contraire, n'est
+pas une implémentation de MapReduce. Une autre manière d'exploiter les
+architectures multi-\coeurs\ consiste à faire du parallélisme de
+données, et cela reste pertinent dans le contexte de la programmation
+fonctionnelle~\cite{parallel-haskell}. Le parallélisme de données
+n'est pas du tout l'objectif de \functory.
 
-%\appendix
+\paragraph{Perspectives.}
+La bibliothèque \functory\ pourrait être enrichie de nombreuses façons.
+L'une d'elles est la prise en compte, dans l'affectation des tâches
+aux ouvriers, de paramètres de ressources telles que la localité des données,
+la puissance de calcul, l'espace mémoire disponible, etc. On peut
+imaginer pour cela offrir à l'utilisateur des moyens de contrôle de
+l'affectation des tâches ou un processus plus automatique.
+% TODO tel que dans la biblio de MK
 
+Une autre amélioration consiste à faciliter le déploiement en réseau,
+en permettant l'ajout et le retrait dynamique de machines
+ouvrières. Pour l'instant notre bibliothèque utilise une liste de
+machines spécifiées \emph{a priori} mais elle pourrait par exemple lire des noms
+de machines depuis un fichier, périodiquement. 
+
+\functory\ offre peu d'outils pour visualiser en temps réel l'état des
+calculs et des communications (mis à part quelques informations de
+déverminage). Calculer et stocker une telle information est immédiat,
+et en partie déjà fait, mais son observation en temps réel demande
+plus de travail. Une possibilité serait de réutiliser une partie de
+l'outil \textsf{Ocamlviz}~\cite{ocamlviz}. 
+
+Enfin, une fonctionnalité appréciable du MapReduce de Google est
+l'accélération des fins de calcul en utilisant des ouvriers
+disponibles pour dupliquer les toutes dernières tâches. Vu que
+\functory\ comporte déjà tout le mécanisme de tolérance aux pannes,
+ajouter une telle fonctionnalité devrait être relativement simple.
 
 \paragraph{Remerciements.}
 Les auteurs remercient Alain Mebsout et Johannes Kanig pour avoir testé
@@ -959,4 +942,6 @@ la bibliothèque \functory\ et pour leurs commentaires.
 %%% End: 
 
 % LocalWords:  sérialisation boutisme inatteignables observationnellement
-% LocalWords:  sous-modules sérialisations
+% LocalWords:  sous-modules sérialisations n'apportent d'octets d'enchaîner
+% LocalWords:  n'offre l'inclure implémente implémentation d'exploiter
+% LocalWords:  l'affectation
