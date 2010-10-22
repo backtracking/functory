@@ -533,7 +533,7 @@ d'une table synthétique.
 Cette section décrit la réalisation des différents modules de la
 bibliothèque \functory\ introduits section~\ref{sec:API}, exception
 faire du module \of{Sequential}, dont la réalisation est immédiate.
-
+%
 Les deux modules \of{Cores} et \of{Network} contiennent une boucle
 principale analogue, de la forme suivante :
 \begin{flushleft}
@@ -621,91 +621,70 @@ simples chaînes de caractères.
 
 \subsubsection{Tolérance aux pannes}\label{sec:fault}
 
-The main issue in any distributed computing environment is the ability
-to handle faults, which is also a distinguishing feature of our
-library.  Faults are mainly of two kinds: either a worker is stopped,
-and possibly later restarted; or a worker is temporarily or
-permanently unreachable on the network. To provide fault tolerance,
-our master implementation is keeping track of the status of each
-worker.  This status is controlled by two timeout parameters $T_1$ and
-$T_2$ and \of{Ping} and \of{Pong} messages sent by master and workers,
-respectively. There are four possible statuses for a worker:
-\begin{description}
-\item[\of{not connected}:] there is no ongoing TCP connection between
-  the master and the worker;
-\item[\of{alive}:] the worker has sent some message
-  within $T_1$ seconds;
-\item[\of{pinged}:] the worker has not sent any message within $T_1$
-  seconds and the master has sent the worker a
-  \of{Ping} message within $T_2$ seconds;
-\item[\of{unreachable}:] the worker has not yet responded to the \of{Ping}
-  message (for more than $T_2$ seconds).
-\end{description}
-% TODO picture
-Whenever we receive a message from a worker, its status changes to
-\of{alive} and its timeout value is reset.
+L'une des principales difficultés dans un environnement de calcul
+distribué est la tolérance aux pannes. C'est l'un des principaux
+atouts de la bibliothèque \functory.
+Les pannes concernent ici uniquement le module \of{Network} et sont de
+deux sortes : un ouvrier peut être stoppé et éventuellement plus tard
+redémarré ; ou un ouvrier peut être temporairement ou définitivement
+inaccessible sur le réseau. Dans tous les cas, on souhaite que le
+calcul parvienne à son terme, dès lors que cela reste possible, et
+idéalement en utilisant au mieux les ressources disponibles.
+
+Pour assurer cette tolérance aux pannes, le patron maintient en
+permanence l'état de chaque ouvrier. Cet état est contrôlé par deux
+délais $T_1$ et $T_2$, paramétrés par l'utilisateur,
+et par l'ensemble des messages échangés.
+Il y a quatre états possibles pour un ouvrier :
+\of{déconnecté} signifie qu'il n'y a pas de connection TCP en cours
+entre le patron et l'ouvrier ; 
+\of{vivant} signifie qu'un message de l'ouvrier a été reçu par le patron
+il y a moins de $T_1$ secondes ;
+\of{contacté} signifie que l'ouvrier n'a pas envoyé de message depuis
+plus de $T_1$ secondes et que le patron lui a envoyé un message
+\of{Ping} depuis moins de $T_2$ secondes ;
+enfin \of{inatteignable} signifie que l'ouvrier n'a toujours pas répondu au
+message \of{Ping} (depuis plus de $T_2$ secondes).
+Dès qu'un message est reçu en provenance d'un ouvrier, son état est
+mis à jour. On a donc l'automate suivant pour les états d'un ouvrier donné.
 \begin{center}
   \includegraphics{state.mps}
 \end{center}
 
-Fault tolerance is achieved by exploiting the status of workers as
-follows. First, tasks are only assigned to workers with either
-\of{alive} or \of{pinged} status. Second, whenever a worker executing
-a task $t$ moves to status \of{not connected} or \of{unreachable}, the
-task $t$ is rescheduled, which means it is put back in the set of
-pending tasks. Whenever a task is completed, any rescheduled copy of
-this task is either removed from the set of pending tasks or killed if
-it was already assigned to another worker.
-
-% The signature for the generic
-% implementation is therefore as follows:
-% \begin{ocaml}
-%   generic_master:
-%     assign_job:('a -> string * string) ->
-%     master:('a * 'c -> string -> ('a * 'c) list)  ->
-%     ('a * 'c) list -> unit
-% \end{ocaml}
-% The first argument \of{assign_job} is a function indicating the two
-% strings that are passed in the \of{Assign} message of the protocol.
-% We can now distinguish the three cases, based on \of{assign_job}:
-% \begin{description}
-% \item[\of{Same}:] in this case, \of{assign_job} simply returns
-%   the marshaled closure together with the marshaled value.
-% \item[\of{Poly}:] in this case, \of{assign_job} is simply
-%   returning the marshaled value (the first string being meaningless in
-%   this context).
-% \item[\of{Mono}:] in this case, \of{assign_job} is immediately
-%   returning its argument (the first string being meaningless in
-%   this context).
-% \end{description}
+La tolérance aux pannes est réalisée en exploitant l'état des ouvriers
+de la manière suivante. Les tâches ne sont envoyées qu'à des ouvriers
+se trouvant dans l'état \of{vivant} ou \of{contacté}.
+D'autre part, dès qu'un ouvrier en train d'effectuer une tâche $t$
+passe dans l'état \of{déconnecté} ou \of{inatteignable}, la tâche $t$
+et reprogrammée, ce qui signifie qu'elle est ajoutée de nouveau à
+l'ensemble des tâches restant à effectuer. Lorsque le patron reçoit un
+résultat pour une tâche $t$, il déprogramme la tâche $t$ si elle avait
+été reprogrammée et indique à tout ouvrier ayant déjà entrepris de
+recalculer $t$ de cesser son travail (avec le message \of{Kill}).
 
 \section{Résultats expérimentaux}\label{sec:experiments}
 
-Our library, \functory, is implemented in \Ocaml\ and is available
-from \url{http://www.lri.fr/~filliatr/functory/}.
-In this section, we show the experimental results pertaining to the
-case studies of Section~\ref{sec:studies}.
+Cette section présente quelques résultats expérimentaux obtenus avec
+les quatre programmes décrits section~\ref{sec:studies}.
 
-\subsection{N-queens}
-
-The following table shows execution times for various values of $N$
-and our three different implementations: \of{Sequential}, \of{Cores}, and
-\of{Network}. The purpose of this experiment is to measure the speedup
-w.r.t. the sequential implementation. Therefore, all
-computations are performed on the same machine, a 8 cores Intel Xeon
-3.2 GHz running Debian Linux. The sequential implementation uses a
-single core. The multi-core implementation uses the 8 cores of
-the machine. The network implementation uses 8 workers running locally and
-a master running on a remote machine (which incurs communication cost).
-
-The first column shows the value of $N$.  The number of tasks is shown in
-second column.  Then the last three columns show execution times in
-seconds for the three implementations. The figures within brackets
-show the speedup w.r.t. sequential implementation.
+\paragraph{N-reines.}
+La table suivant montre les temps d'exécution pour différentes valeurs
+de $N$ et pour chacun des trois modules \of{Sequential}, \of{Cores} et
+\of{Network}. L'objectif est ici de mesurer le facteur par rapport à
+l'exécution séquentielle. En conséquence, tous les calculs sont
+effectués sur la même machine, un Intel Xeon 8 \coeurs\ 3.2 GHz sous
+Linux Debian. L'exécution séquentielle utilise un unique \coeur. La
+version multi-\coeurs\ utilisent les 8 \coeurs\ de la machine. La
+version réseau utilise également 8 ouvriers locaux à la machine, le
+patron s'exécutant sur une machine distante pour induire des
+communications réseaux réalistes.
+La première colonne donne la valeur de $N$ et la seconde le nombre de
+tâches. Les trois colonnes suivantes donnent les temps d'exécution, en
+secondes, et le facteur d'accélération entre parenthèses.
 \begin{center}
   \begin{tabular}{|r|r|r|r|r|}
     \hline
-    N & \#tasks  & \of{Sequential}& \of{Cores}                 & \of{Network} 
+    N & \#tâches  & \of{Sequential}& \of{Cores}                 & \of{Network} 
     \\\hline\hline
     16 &   16    &  15.2     &   2.04 (7.45$\times$) &  2.35  (6.47$\times$) 
     \\\hline
