@@ -534,10 +534,8 @@ Cette section décrit la réalisation des différents modules de la
 bibliothèque \functory\ introduits section~\ref{sec:API}, exception
 faire du module \of{Sequential}, dont la réalisation est immédiate.
 
-\hrulefill ICI\hrulefill
-
-Les deux modules \of{Cores} et \of{Network}
-
+Les deux modules \of{Cores} et \of{Network} contiennent une boucle
+principale analogue, de la forme suivante :
 \begin{flushleft}
   \quad  \textbf{tant que} tâches à faire $\lor$ tâches en cours \\
   \quad  \quad \textbf{tant que} tâches à faire $\land$ ouvriers disponibles \\
@@ -545,240 +543,83 @@ Les deux modules \of{Cores} et \of{Network}
   \quad  \quad \textbf{attendre} la fin d'une tâche \\
   \quad  \quad \quad ajouter les nouvelles tâches renvoyées par \of{master} \\
 \end{flushleft}
+La différence se situe dans la technologie utilisée pour affecter une
+tâche à un ouvrier, pour attendre la fin d'une tâche et enfin pour
+ajouter de la tolérance aux pannes.
 
 \subsection{\of{Cores}}
 
-The \of{Cores} module implements the distributed computing library for
-multiple cores on the same machine. 
-% As illustrated in Section~\ref{sec:example}, 
-It provides a function
-\of{set_number_of_cores: int -> unit} to indicate the number of cores
-to be used. The number passed to this function may be different from
-the actual number of cores in the machine; it is rather the number of
-tasks to be performed simultaneously.
-% TODO comment more on the number of cores?
-% Thus a program using the \of{Cores} module typically begins with 
-% \begin{ocaml}
-% open Cores
-% let () = set_number_of_cores 8
-% \end{ocaml}
+Le module \of{Cores} permet de distribuer le calcul sur une unique
+machine, typiquement en exploitant plusieurs \coeurs. 
+Comme illustré section~\ref{sec:studies}, la
+\of{set_number_of_cores} permet de spécifier le nombre de \coeurs\ à
+utiliser. Ce nombre peut être différent du nombre effectif de \coeurs\ 
+de la machine. Il peut même être strictement plus grand.
+En fait, ce nombre indique tout simplement combien de tâches peuvent être
+effectuées simultanément.
 
-The \of{Cores} module is implemented with \unix\ processes, using the
-\of{fork} and \of{wait} system calls provided by the \of{Unix} library
-of \Ocaml. The idea is pretty simple.  The \of{compute} function
-maintains a global table of pending tasks and keeps track of the
-number of idle cores.  Whenever there is a pending task and an idle
-core, a new sub-process is created using \of{Unix.fork}; once
-completed, the sub-process marshals the result into a 
-local file. The
-main process maintains a table mapping each sub-process ID to the
-input task and the local file name. It waits for any completed
-sub-process using \of{Unix.wait} and recovers the result from the
-local file. Then function \of{master} is applied, which may generate
-new tasks.  The main loop can be depicted in the following way:
-
-We also have an alternative implementation using
-\unix\ pipes instead of local files.
-
-The scheduling of tasks to the different cores is left to the
-operating system, through \of{Unix.fork}. Thus it may be the case that
-two tasks are executed on the same core, even if the declared number
-of cores is less or equal than the actual number of cores on the machine.
-% TODO: comment on user-provided scheduling?
+Le module \of{Cores} est réalisé à l'aide de processus \unix, en
+utilisant la fonction \of{Unix.fork} de la bibliothèque standard d'\Ocaml.
+Plus précisément, un compteur indique le nombre d'ouvriers disponibles 
+et l'affectation d'une tâche à un ouvrier se fait en 
+créant un nouveau sous-processus avec \of{fork}.
+À la fin du calcul, le résultat de la tâche est transmis au processus
+père par sérialisation dans un tube.
+La répartition des tâches sur les différents \coeurs\ (physiques) de
+la machine, le cas échéant, est laissée au système. Il se peut donc
+que deux tâches se retrouvent être exécutées sur le même \coeur, y
+compris dans le cas où le nombre de \coeurs\ déclarés est inférieur ou
+égal au nombre de \coeurs\ effectifs.
 
 \subsection{\of{Network}}
 
-The \of{Network} module implements the distributed computing library
-for a network of machines. 
-% As illustrated in Section~\ref{sec:example}, 
-It provides a function
-\of{declare_workers: n:int -> string -> unit} to fill a table of
-worker machines. 
-% The argument \of{n} indicates the number of cores to
-% be used in each worker machine, analogous to the \of{Cores}
-% module. Thus a program using the \of{Network} module typically begins
-% with
-% \begin{ocaml}
-% open Network
-% let () = declare_workers ~n:12 "hostname1"
-% let () = declare_workers ~n:8  "192.168.24.2"
-% ...
-% \end{ocaml}
+Le module \of{Network} permet de distribuer le calcul sur un réseau de
+machines. 
+Comme illustré section~\ref{sec:studies}, la fonction 
+\of{declare_workers: n:int -> string -> unit} permet de déclarer
+l'ensemble des machines du réseau sur lesquels se trouvent des
+ouvriers, en spécifiant un nombre d'ouvriers par machine (qui 
+ne coïncide pas nécessairement avec un nombre effectif de \coeurs).
+Le module \of{Network} est basé sur une architecture client/serveur
+utilisant TCP/IP, où chaque ouvrier est un serveur et où le patron
+est (ironiquement) le client de chaque ouvrier.
 
-The \of{Network} module is based on a traditional TCP-based client/server
-architecture, where each worker is a server and the master is the
-client of each worker. The main execution loop is similar to the one
-in the \of{Cores} module, where distant processes on remote machines
-correspond to sub-processes and idle cores are the idle cores 
-of remote workers. In addition to this, it also involves issues of message
-transfer and fault tolerance, which are subsequently described.
+\paragraph{Protocole.}\label{sec:protocol}
+Le protocole utilisé comporte sept messages différents.
+Les quatre messages possibles envoyés par le patron à un ouvrier sont : 
+\of{Assign(id:int, f:string, x:string)} pour affecter une nouvelle
+tâche \of{id} à l'ouvrier, sous la forme de deux chaînes \of{f} et \of{x} dont
+le sens dépend du contexte ; 
+\of{Kill(id:int)} pour demander l'interruption de la tâche \of{id} ;
+\of{Stop} pour demander l'arrêt définitif de l'ouvrier ;
+et enfin \of{Ping} pour vérifier que l'ouvrier est toujours réactif.
+Inversement, les trois messages possibles envoyés par un ouvrier au
+patron sont :
+\of{Pong} en réponse à un message \of{Ping} ;
+\of{Completed(id:int, s:string)} pour renvoyer le résultat \of{s} de
+la tâche \of{id} ;
+et enfin \of{Aborted(id:int)} pour signifier l'échec de la tâche
+\of{id}, soit en réponse à \of{Kill}, soit à cause d'une erreur lors
+de l'exécution de la fonction \of{worker}.
 
-\subsubsection{Protocol}\label{sec:protocol}
-
-Messages sent from master to workers could be any of the following kinds:
-\begin{description}
-\item[\of{Assign(id:int, f:string, x:string)}] This message assigns a
-  new task to the worker, the task being identified by the unique
-  integer \of{id}. The task to be performed is given by strings \of{f}
-  and \of{x}, which are interpreted depending on the context.
-
-\item[\of{Kill(id:int)}] This message tells the worker to kill the task
-  identified by \of{id}.
-
-\item[\of{Stop}] This message informs the worker about completion of
-  the computation, so that it may choose to exit.
-
-\item[\of{Ping}] This message is used to check if the worker is still
-  alive, expecting a \of{Pong} message from the worker in return.
-\end{description}
-Messages sent by workers could be any of the following kinds:
-\begin{description}
-\item[\of{Pong}] This message is an acknowledgment for a \of{Ping}
-  message from the master.
-
-\item[\of{Completed(id:int, s:string)}] This message indicates the
-  completion of a task identified by \of{id}, with result \of{s}.
-
-\item[\of{Aborted(id:int)}] This message informs the master that the
-  task identified by \of{id} is aborted, either as a response to a
-  \of{Kill} message or because of a worker malfunction.
-\end{description}
-Our implementation of the protocol works across different
-architectures, so that master and workers could be run on completely
-different platforms w.r.t. endianness, version of \Ocaml\ and
-operating system.
-
-\subsubsection{Network Sub-modules} % TODO: change title
-
-As mentioned in Section~\ref{sec:API}, the \of{Network} module
-actually provides three different implementations, according to three
-different execution scenarios. There are provided in three
-sub-modules, as described below.
-
-\paragraph{\of{Same}.} This module is used when master and workers are
-running the same executable. The master and workers have to be
-differentiated in some manner. We use an environment variable
-\texttt{WORKER} for this purpose. When set, it indicates that the
-executable acts as a worker. At run-time, a worker immediately 
-enters a loop waiting for tasks from the master, without even getting
-into the user code. 
-As explained in Section~\ref{sec:API}, 
-the master function has the following signature.
-\begin{ocaml}
- val compute : 
-      worker:('a -> 'b) -> 
-      master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit  
-\end{ocaml}
-The master uses marshaling to send both a closure of type 
-\of{'a -> 'b} and a task of type \of{'a} to the worker. The resulting strings
-are passed as argument \of{f} and \of{x} in message
-\of{Assign}. Similarly, the worker uses marshaling to send back the
-result of the computation of type \of{'b}, which is the argument
-\of{s} in message \of{Completed}.
-
-Though the ability to run the same executable helps a lot in deploying
-the program in different machines, it comes at a small price. Since
-the worker is not getting into the user code, closures which are
-transmitted from the master cannot refer to global variables in the
-user code. Indeed, the initialization code for these global variables
-is never reached on the worker side. For instance, the Mandelbrot set
-example could be written as follows:
-\begin{ocaml}
-  let max_iterations = 200
-  let worker (xmi, xma, ymi, yma, w, h) =
-    ... draw sub-image using max_iterations ...
-\end{ocaml}
-That is, the global function \of{worker} makes use of the global
-variable \of{max_iterations}. The worker gets the function to compute
-from the master, namely the closure corresponding to function
-\of{worker} in that case, but on the worker side the initialization of
-\of{max_iterations} is never executed.
-
-One obvious solution is  not to use global variables in the
-worker code. This is not always possible, though. 
-To overcome this, the \of{Same} sub-module also provides a
-\of{Worker.compute} function to start the worker loop manually from
-the user code. This way, it can be started at any point, in particular
-after the initialization of the required global variables.
-Master and worker are still running the same executable, but are 
-distinguished using a user-defined way (command-line argument,
-environment variable, etc.).
-
-\bigskip
-There are situations where it is not possible
-to run the same executable for master and workers.
-For instance, architectures or operating systems could be different
-across the network.
-For that reason, the \of{Network} module provides two other
-implementations. 
-
-\paragraph{\of{Poly}.} When master and workers are compiled with the
-same version of \Ocaml, we can no longer marshal closures but we can
-still marshal polymorphic values. Indeed, an interesting property of
-marshaling in \Ocaml\ is to be fully architecture-independent, as long
-as a single version of \Ocaml\ is used. It is worth pointing out that
-absence of marshaled closures
-now enables the use of two different programs for master and workers. This
-is not mandatory, though, since master and workers could still be
-distinguished at run-time as in the previous case. 
-
-On the worker side, the main loop is started manually using
-\of{Worker.compute}. The computation to be performed on each task is
-given as an argument to this function. It thus looks as follows:
-\begin{ocaml}
-  Worker.compute : ('a -> 'b) -> unit -> unit
-\end{ocaml}
-On the master side, the \of{compute} function is simpler than in the
-previous case, as it has one argument less, and thus has the following
-signature. 
-\begin{ocaml}
-  Master.compute : master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit 
-\end{ocaml}
-For realistic applications, where master and workers are completely
-different programs, possibly written by different teams, this is the
-module of choice in our library, since it can still pass polymorphic
-values over the network. The issues of marshaling are automatically
-taken care of by \Ocaml\ run-time.
-
-The derived API presented in Section~\ref{sec:derived} is adapted to
-deal with the absence of closures. Exactly as the \of{compute}
-function, each API now takes two forms, one for the master and another
-for the workers. For example, \of{map_fold_ac} takes the following
-forms.
-\begin{ocaml}
-  Worker.map_fold_ac : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> unit -> unit
-  Master.map_fold_ac : 'b -> 'a list -> 'b
-\end{ocaml}
-It is the responsibility of the user to ensure type consistency between
-master and workers.
-
-\paragraph{\of{Mono}.} When master and workers are compiled using
-different versions of \Ocaml, we can no longer use marshaling. 
-As in the previous case, we split \of{compute} into two functions, one
-for master and one for workers. In addition, values transmitted over
-the network can only be strings. The signature thus takes the
-following form.
-\begin{ocaml}
-  Worker.compute : (string -> string) -> unit -> unit
-  Master.compute : master:(string * 'c -> string -> (string * 'c) list) -> 
-                  (string * 'c) list -> unit
-\end{ocaml}
-Any other datatype for tasks should be encoded to/from strings. This
-conversion is left to the user.
-Note that the second component of each task is still polymorphic (of
-type \of{'c} here), since it is local to the master.
+Ce protocole est de telle
+sorte que patron et ouvriers peuvent être exécutés sur des
+plate-formes complètement différentes, vis-à-vis de
+l'\emph{endianness}, de la version d'\Ocaml\ et du système d'exploitation.
+Dans le sous-module \of{Same}, les arguments \of{f} et \of{x} du
+message \of{Assign} désignent respectivement
+la sérialisation d'une fonction et de
+son argument, et l'argument \of{s} du message \of{Completed} la
+sérialisation du résultat. Dans les sous-module \of{Poly} et
+\of{Mono}, en revanche, la
+partie \of{f} du message \of{Assign} n'est plus pertinente
+car la fonction \of{worker} est maintenant locale à l'ouvrier.
+Les chaînes \of{x} et \of{s} restent pertinentes ; pour \of{Poly},
+ce sont des sérialisations de valeurs \Ocaml\ et pour \of{Mono}  de
+simples chaînes de caractères.
 
 
-% There is
-% actually a single, generic implementation, which is then instantiated
-% in three different ways, corresponding to the three scenarios.  The
-% generic implementation assumes that only strings are being transmitted
-% over the network, as evident from the \of{Assign} and \of{Completed}
-% messages in Section~\ref{sec:protocol}. Depending on the
-% implementation, these strings could be marshaled closures, marshaled
-% values or simply user strings.
-
-\subsubsection{Fault Tolerance}\label{sec:fault}
+\subsubsection{Tolérance aux pannes}\label{sec:fault}
 
 The main issue in any distributed computing environment is the ability
 to handle faults, which is also a distinguishing feature of our
@@ -1139,4 +980,4 @@ on early versions of the library and of this paper.
 %%% End: 
 
 % LocalWords:  sérialisation boutisme inatteignables observationnellement
-% LocalWords:  sous-modules
+% LocalWords:  sous-modules sérialisations
