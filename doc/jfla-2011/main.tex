@@ -704,33 +704,31 @@ secondes, et le facteur d'accélération entre parenthèses.
     \\\hline
   \end{tabular}
 \end{center}
-From the table above, it is clear that the \of{Cores} and \of{Network}
-implementations provide a significant speedup. As evident from the
-last row, the speedup is almost 8, which is also the number of
-cores we use.  It is also evident from the last column that the
-\of{Network} implementation performs significantly better when the
-computation time dominates in the total execution time.  The two extreme
-cases correspond to the second and the last row: in the second row, the
-communication time dominates and is in fact more than 91\%\ of the
-total execution time; on the other hand, for the last row
-communication time amounts to just 4.6\%\ of the total execution time.
-As expected, the network implementation is only beneficial when the
-computation time for each individual task is significant, which is the
-case in realistic examples.
+Il apparaît clairement que les modules \of{Cores} et \of{Network}
+permettent d'obtenir un facteur d'accélération significatif, qui
+atteint presque 8, c'est-à-dire le nombre de \coeurs\ utilisés.
+Il apparaît également que le module \of{Network} donne de meilleurs
+résultats lorsque le temps de calcul domine largement le temps de
+communication. Les deux cas extrêmes correspondent aux 
+deuxième et dernière lignes : dans la deuxième ligne, le temps de
+communication domine et représente en fait plus de 91\%\ du temps
+total ; dans la dernière, au contraire, il ne représente plus que
+4.6\%\ du temps total.
+D'une manière générale, le module \of{Network} n'est intéressant que
+si le temps de calcul de chaque tâche est significatif.
 
-\subsection{Mandelbrot Set}
-
-This benchmark consists in drawing the fragment of the Mandelbrot set
-with lower left corner $(-1.1, 0.2)$ and upper right corner $(-0.8,
-0.4)$, as a $9,000\times6,000$ image. The sequential computation of
-this image consumes 29.4 seconds. For \of{Cores} and \of{Network}
-implementations, the computation times in seconds are tabulated below.
-
-% TODO compute ratios for Network
+\paragraph{L'ensemble de Mandelbrot.}
+Dans cette expérience, on dessine le fragment rectangulaire de l'ensemble de
+Mandelbrot compris entre les points $(-1.1, 0.2)$ et $(-0.8, 
+0.4)$, sous la forme d'une image de résolution $9\,000\times6\,000$.
+On utilise la même machine que dans l'expérience précédente.
+Un calcul purement séquentiel prend 29,4 secondes.
+Les résultats pour les modules \of{Cores} et \of{Network} sont
+présentés dans la table ci-dessous.
 \begin{center}
   \begin{tabular}{|r|r|r|r|r|}
     \hline
-    \#cores  &\#tasks & \of{Cores} & \of{Network} \\
+    \#\coeurs  &\#tâches & \of{Cores} & \of{Network} \\
     \hline\hline
     2       & 10 & 15.8       (1.86) &  20.3       \\
             & 30 & 15.7       (\underline{1.87}) &  18.7       \\
@@ -749,16 +747,18 @@ implementations, the computation times in seconds are tabulated below.
     \hline
   \end{tabular}
 \end{center}
-The best timings are achieved for the \of{Cores} configuration, where
-communications happen within the same machine and are thus cheaper.
-There are two significant differences with respect to the n-queens
-benchmark.  On one hand, the number of tasks can be controlled more
-easily than in the case of n-queens. We experimentally figured out the
-optimal number of tasks to be 30. One the other hand, each computation
-result is an image, rather than just an integer as in the case of
-n-queens. Consequently, communication costs are much greater. 
-In this particular experiment, the total size of the results
-transmitted is more than 200 Mb.
+Les meilleurs résultats sont obtenus avec le module \of{Cores}, où la
+communication n'intervient que localement, entre processus.
+Il y a deux différences significatives avec l'expérience précédente
+des $N$-reines. D'un côté, le nombre de tâches peut être contrôlé
+beaucoup plus facilement. Expérimentalement, on constate que le nombre
+optimal de tâches est de l'ordre de 30. D'un autre côté, en revanche,
+le résultat de chaque calcul est une image, et non plus un simple
+entier. En conséquence, les coûts de communication sont bien plus
+grands. Dans cette expérience particulière, la taille totale des
+résultats dépasse les 200 Mo.
+
+\hrulefill LA TRADUCTION S'ARRÊTE ICI\hrulefill
 
 \subsection{Matrix Multiplication}
 
