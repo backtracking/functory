@@ -80,13 +80,13 @@ Les principales caractéristiques de \functory\ sont les suivantes :
   supérieur et le polymorphisme sont exploités pour fournir un maximum
   de généricité ;
 \item \emph{simplicité} : on passe d'un calcul séquentiel à un
-  calcul multi-\coeurs puis à un calcul en réseau en ne modifiant
+  calcul multi-\coeurs\ puis à un calcul en réseau en ne modifiant
   que quelques lignes dans le code ;
 \item \emph{distribution et tolérance aux pannes} : l'intégralité de
   la gestion de la distribution et de la tolérance aux pannes est
   prise en charge par la bibliothèque.
 \end{itemize}
-Bien que \functory\ a été écrite avec un soucis de généralité, elle ne
+Bien que \functory\ ait été écrite avec un soucis de généralité, elle ne
 vise pas les grandes grappes de serveurs ou les fermes de calcul. 
 Elle s'adresse plutôt aux équipes de recherche qui souhaitent
 exploiter rapidement des capacités de calcul existantes allant d'un
@@ -259,11 +259,10 @@ enfin \of{Network} pour le calcul en réseau. Ce dernier module
 comporte trois sous-modules, appelés respectivement \of{Same},
 \of{Poly} and \of{Mono}, correspondant aux situations 3, 4 et 5 ci-dessus.
 
-%%% derived API %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \paragraph{Fonctions dérivées.}\label{sec:derived}
 Dans de nombreuses situations, la mise en \oeuvre\ la plus simple du
 parallélisme consiste à appliquer une opération sur une liste, le
-traitement de chaque élément pouvant être réaliser en parallèle.
+traitement de chaque élément pouvant être réalisé en parallèle.
 \functory\ fournit plusieurs fonctions d'ordre supérieur
 offrant du calcul parallèle sur des listes, toutes dérivées de la fonction
 \of{compute}. En particulier, elles sont disponibles dans les cinq
@@ -309,7 +308,6 @@ particuliers :
   val map_fold_{a,ac} : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b 
 \end{ocaml}
 
-%\medskip
 Ces cinq fonctions se dérivent facilement de la fonction \of{compute}.
 On peut évidemment en imaginer d'autres, comme par exemple une variante
 où seule la fonction \of{fold} est significative.
@@ -386,6 +384,9 @@ Au final, l'ensemble du calcul est lancé par un appel à la fonction
 \begin{ocaml}
   let () = compute ~worker ~master !tasks
 \end{ocaml}
+où les variables \of{'a}, \of{'b} et \of{'c} du type de
+\of{compute} sont respectivement instanciées par 
+\of{coeff array * coeff array}, \of{coeff} et \of{int * int}.
 
 Utiliser la version séquentielle de \functory\ est aussi simple que
 d'ajouter \of{open Sequential} au début du code. Le calcul est alors
@@ -466,7 +467,6 @@ L'ouvrier modifié prend alors la forme suivante.
   let () = Worker.compute worker_string ()
 \end{ocaml}
 Le patron est modifié de la même façon.
-The master program is modified in a similar way.
 On remplace \of{Poly} par \of{Mono} et on encode/décode les tâches et
 résultats.
 \begin{ocaml}
@@ -497,14 +497,21 @@ recherche et \of{fold} somme les résultats intermédiaires.
 
 \paragraph{L'ensemble de Mandelbrot.}
 Dessiner l'ensemble de Mandelbrot est un autre exemple de calcul
-aisément distribuable, puisque la couleur de chaque point peut être
-calculée indépendamment. Supposons donnée une région à dessiner, ainsi
+aisément distribuable.
+Il s'agit de l'ensemble des points $c$ du plan complexe telle que la
+suite définie par $z_0=0$ et $z_{n+1}=z_n^2+c$ reste de module borné.
+Pour le dessiner, on cherche le plus petit $n$ tel que $|z_n|>2$, ce
+qui assure alors la divergence, en s'arrêtant après un nombre maximal
+d'itérations fixé (par exemple 200).
+Il est clair que la couleur de chaque point peut être
+calculée indépendamment. Supposons donnée une région du plan complexe 
+à dessiner, ainsi
 que la taille $\of{w} \times \of{h}$ en pixels de l'image finale.
 On se donne un nombre de tâches $\of{t} \ge 1$ comme paramètre. Il est
 immédiat de découper l'image en \of{t} sous-images, par exemple en
 bandes horizontales (si $\of{h} \ge \of{t}$) ou plus généralement en
 blocs rectangulaires.
-Chaque tâche est constituée de quatre nombre flottants définissant la
+Chaque tâche est constituée de quatre flottants définissant la
 région à dessiner, ainsi que deux entiers donnant la taille de l'image
 correspondante. Le résultat est une matrice de pixels, de taille
 $(\of{w}\times\of{h}) / \of{t}$.
@@ -551,7 +558,7 @@ ajouter de la tolérance aux pannes.
 
 Le module \of{Cores} permet de distribuer le calcul sur une unique
 machine, typiquement en exploitant plusieurs \coeurs. 
-Comme illustré section~\ref{sec:studies}, la
+Comme illustré section~\ref{sec:studies}, la fonction
 \of{set_number_of_cores} permet de spécifier le nombre de \coeurs\ à
 utiliser. Ce nombre peut être différent du nombre effectif de \coeurs\ 
 de la machine. Il peut même être strictement plus grand.
@@ -656,7 +663,7 @@ de la manière suivante. Les tâches ne sont envoyées qu'à des ouvriers
 se trouvant dans l'état \of{vivant} ou \of{contacté}.
 D'autre part, dès qu'un ouvrier en train d'effectuer une tâche $t$
 passe dans l'état \of{déconnecté} ou \of{inatteignable}, la tâche $t$
-et reprogrammée, ce qui signifie qu'elle est ajoutée de nouveau à
+est reprogrammée, ce qui signifie qu'elle est ajoutée de nouveau à
 l'ensemble des tâches restant à effectuer. Lorsque le patron reçoit un
 résultat pour une tâche $t$, il déprogramme la tâche $t$ si elle avait
 été reprogrammée et indique à tout ouvrier ayant déjà entrepris de
@@ -674,7 +681,7 @@ de $N$ et pour chacun des trois modules \of{Sequential}, \of{Cores} et
 l'exécution séquentielle. En conséquence, tous les calculs sont
 effectués sur la même machine, un Intel Xeon 8 \coeurs\ 3.2 GHz sous
 Linux Debian. L'exécution séquentielle utilise un unique \coeur. La
-version multi-\coeurs\ utilisent les 8 \coeurs\ de la machine. La
+version multi-\coeurs\ utilise les 8 \coeurs\ de la machine. La
 version réseau utilise également 8 ouvriers locaux à la machine, le
 patron s'exécutant sur une machine distante pour induire des
 communications réseaux réalistes.
@@ -924,7 +931,8 @@ ajouter une telle fonctionnalité devrait être relativement simple.
 
 \paragraph{Remerciements.}
 Les auteurs remercient Alain Mebsout et Johannes Kanig pour avoir testé
-la bibliothèque \functory\ et pour leurs commentaires.
+la bibliothèque \functory\ et pour leurs commentaires, ainsi que Claude
+Marché pour sa relecture attentive de cet article.
 
 %\vfill\pagebreak
 \bibliographystyle{plain}
@@ -944,4 +952,4 @@ la bibliothèque \functory\ et pour leurs commentaires.
 % LocalWords:  sérialisation boutisme inatteignables observationnellement
 % LocalWords:  sous-modules sérialisations n'apportent d'octets d'enchaîner
 % LocalWords:  n'offre l'inclure implémente implémentation d'exploiter
-% LocalWords:  l'affectation
+% LocalWords:  l'affectation d'itérations
