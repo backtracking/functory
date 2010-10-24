@@ -201,8 +201,26 @@ initiales, qui déclenchent le calcul.
 La fonction \of{compute} rend la main lorsque toutes les tâches ont
 été effectuées. Il n'y a pas de résultat renvoyé, mais uniquement des
 effets de bord de la fonction \of{master}.
-Nous montrerons à la fin de cette section comment en déduire des
-fonctions d'ordre supérieur usuelles telles que \of{map} ou \of{fold}.
+
+À titre d'illustration, voici comme écrire un équivalent distribué de
+la fonction \of{Array.map}, qui applique une fonction \of{f} à tous
+les éléments d'un tableau \of{a}. 
+\begin{ocaml}
+  let array_map f a =
+    let n = Array.length a in
+    let b = if n = 0 then [||] else Array.create n (f a.(0)) in
+    let tasks = ref [] in for i = 1 to n - 1 do tasks := (a.(i), i) :: !tasks done;
+    compute ~worker:f ~master:(fun (_,i) bi -> b.(i) <- bi; []) !tasks;
+    b
+\end{ocaml}
+La liste des tâches, \of{tasks}, contient 
+les couples \of{(a.(i), i)} pour tous les indices \of{i} du tableau. La
+fonction \of{worker} se réduit à la fonction \of{f}. La fonction
+\of{master} reçoit un résultat \of{bi} correspondant à un indice
+\of{i} et le stocke dans le tableau résultat \of{b}.
+La fin de cette section décrit plusieurs telles
+fonctions d'ordre supérieur fournies par \functory, toutes dérivées de
+la fonction \of{compute}.
 
 En réalité, la bibliothèque \functory\ fournit \emph{cinq}
 mises en {\oe}uvre différentes de la fonction \of{compute}, correspondant à
@@ -307,9 +325,56 @@ particuliers :
 \begin{ocaml}
   val map_fold_{a,ac} : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b 
 \end{ocaml}
-
 Ces cinq fonctions se dérivent facilement de la fonction \of{compute}.
-On peut évidemment en imaginer d'autres, comme par exemple une variante
+Voici par exemple comment réaliser la fonction \of{map_fold_a}.
+On commence par introduire un type somme pour distinguer les tâches
+\of{map} des tâches \of{fold}, c'est-à-dire
+\of{type ('a, 'b) map_or_fold = Map of 'a | Fold of 'b}.
+Le code de l'ouvrier se résumé à distinguer les deux types de tâches.
+\begin{ocaml}
+  let worker = function Map x -> map x | Fold (x, y) -> fold x y
+\end{ocaml}
+Le code du patron est plus compliqué. En effet, l'opération \of{fold}
+étant seulement associative, on ne peut calculer d'expression analogue
+à (\ref{eq:map-fold}) que pour des éléments \emph{consécutifs} de la liste
+initiale $l$. 
+Le patron conserve donc, dans une table de hachage locale, tous les intervales
+$[x_i,\dots,x_j]$ de $l$ pour lesquels la valeur
+$$\of{map}~x_i \oplus \dots \oplus \of{map}~x_j$$ a déjà été calculée
+(en notant ici $\of{fold}$ par $\oplus$), ainsi que cette valeur.
+Cete table est doublement indexée, par $i$ et par $j$. Initialement
+cette table est vide et la liste des tâches ne contient que des tâches
+de type \of{Map}, une par élément de $l$.
+De manière générale, chaque tâche est associée au couple $(i,j)$
+dénotant le segment qu'elle représente.
+Lorsque le patron reçoit un résultat $r$ pour un segment
+$[x_i,\dots,x_j]$, trois cas se présentent. Soit il existe dans la
+table un résultat pour un segment de la forme $[x_k,\dots,x_{i-1}]$,
+que l'on extrait grâce à la clé $i-1$, et on produit alors une
+nouvelle tâche \of{Fold} pour calculer la valeur correspondant à
+$[x_k,\dots, x_j]$, après avoir supprimé de la table les entrées pour
+$k$ et $i-1$. Soit il existe dans la table un résultat pour un segment
+de la forme $[x_{j+1},\dots,x_k]$, que l'on traite de la même
+manière. Soit enfin il n'y a ni entrée pour $i-1$ ni entrée pour
+$j+1$ dans la table, auquel cas on se contente d'ajouter la valeur $r$
+pour les deux clés $i$ et $j$. Lorsque toutes les tâches ont été
+effectuées, la table doit contenir exactement une valeur, associée aux
+clés $1$ et $n$, sauf dans le cas $n=0$ où aucun calcul n'est nécessaire.
+Au final, la fonction \of{map_fold_a} prend la forme suivante, où
+on a seulement omis le code de fusion des résultats expliqué ci-dessus.
+\begin{ocaml}
+  let map_fold_a ~map ~fold acc l =
+    let tasks = let i = ref 0 in List.map (fun x -> incr i; Map x, (!i, !i)) l in
+    let results = Hashtbl.create 17 in 
+    let merge i j r = ...traiter le résultat r du segment [i,j]... in
+    let worker = function Map x -> map x | Fold (x, y) -> fold x y in
+    let master x r = match x with Map _,(i,_) -> merge i i r | Fold _,(i,j) -> merge i j r in
+    compute ~worker ~master tasks;
+    try let _,_,r = Hashtbl.find results 1 in r with Not_found -> acc
+\end{ocaml}
+
+On peut évidemment dériver d'autres fonctions du même genre,
+comme par exemple une variante
 où seule la fonction \of{fold} est significative.
 L'utilisateur de \functory\ ne devrait pas avoir de mal à les dériver
 lui-même de la fonction \of{compute} ou des fonctions du type
