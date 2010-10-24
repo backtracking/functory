@@ -287,7 +287,8 @@ offrant du calcul parallèle sur des listes, toutes dérivées de la fonction
 modules décrits ci-dessus.
 
 L'opération la plus naturelle est celle consistant à appliquer une
-fonction à tous les éléments d'une liste, c'est-à-dire
+fonction à tous les éléments d'une liste, analogue à la fonction
+\of{array_map} décrite plus haut, c'est-à-dire
 \begin{ocaml}
   val map : ('a -> 'b) -> 'a list -> 'b list
 \end{ocaml}
@@ -608,13 +609,19 @@ faire du module \of{Sequential}, dont la réalisation est immédiate.
 %
 Les deux modules \of{Cores} et \of{Network} contiennent une boucle
 principale analogue, de la forme suivante :
-\begin{flushleft}
-  \quad  \textbf{tant que} tâches à faire $\lor$ tâches en cours \\
-  \quad  \quad \textbf{tant que} tâches à faire $\land$ ouvriers disponibles \\
-  \quad  \quad \quad affecter une tâche à un ouvrier \\
-  \quad  \quad \textbf{attendre} la fin d'une tâche \\
-  \quad  \quad \quad ajouter les nouvelles tâches renvoyées par \of{master} \\
-\end{flushleft}
+
+\medskip
+\begin{minipage}{1.0\linewidth}
+  \begin{flushleft}
+    \quad  \textbf{tant que} tâches à faire $\lor$ tâches en cours \\
+    \quad  \quad \textbf{tant que} tâches à faire $\land$ ouvriers disponibles \\
+    \quad  \quad \quad affecter une tâche à un ouvrier \\
+    \quad  \quad \textbf{attendre} la fin d'une tâche \\
+    \quad  \quad \quad ajouter les nouvelles tâches renvoyées par \of{master} \\
+  \end{flushleft}
+\end{minipage}
+
+\medskip\noindent
 La différence se situe dans la technologie utilisée pour affecter une
 tâche à un ouvrier, pour attendre la fin d'une tâche et enfin pour
 ajouter de la tolérance aux pannes.
