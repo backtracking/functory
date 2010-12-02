@@ -18,8 +18,8 @@
 
 let map ~f l = List.map f l
 
-let map_local_fold ~map ~fold acc l =
-  List.fold_left (fun acc x -> fold acc (map x)) acc l
+let map_local_fold ~f ~fold acc l =
+  List.fold_left (fun acc x -> fold acc (f x)) acc l
 
 let map_remote_fold = map_local_fold
 

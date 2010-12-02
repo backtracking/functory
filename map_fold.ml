@@ -39,16 +39,16 @@ sig
   val map : f:('a -> 'b) -> 'a list -> 'b list
     
   val map_local_fold :
-    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+    f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
   val map_remote_fold :
-    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+    f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
   val map_fold_ac :
-    map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+    f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 
   val map_fold_a :
-    map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+    f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 
 end = struct
 
@@ -61,19 +61,19 @@ end = struct
       tasks;
     List.map (fun (_,i) -> Hashtbl.find results i) tasks
 
-  let map_local_fold ~(map : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
+  let map_local_fold ~(f : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
     let acc = ref acc in
     X.compute
-      ~worker:map
+      ~worker:f
       ~master:(fun _ r -> acc := fold !acc r; [])
       (List.map (fun x -> x, ()) l);
     !acc 
 
-  let map_remote_fold  ~(map : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
+  let map_remote_fold  ~(f : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
     let acc = ref (Some acc) in
     let pending = Stack.create () in
     X.compute
-      ~worker:(map_fold_wrapper map fold)
+      ~worker:(map_fold_wrapper f fold)
       ~master:(fun _ r -> match r with
 		 | Map r -> begin match !acc with
 		     | None -> Stack.push r pending; []
@@ -93,10 +93,10 @@ end = struct
       | Some r -> r
       | None -> assert false
 
-  let map_fold_ac ~(map : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l =
+  let map_fold_ac ~(f : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l =
     let acc = ref (Some acc) in
     X.compute
-      ~worker:(map_fold_wrapper2 map fold)
+      ~worker:(map_fold_wrapper2 f fold)
       ~master:(fun _ r -> 
 		 match !acc with
 		 | None -> 
@@ -110,7 +110,7 @@ end = struct
       | Some r -> r
       | None -> assert false
 
-  let map_fold_a ~(map : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l =
+  let map_fold_a ~(f : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l =
     let tasks = 
       let i = ref 0 in 
       List.map (fun x -> incr i; Map x, (!i, !i)) l 
@@ -138,7 +138,7 @@ end = struct
       end
     in
     X.compute 
-      ~worker:(map_fold_wrapper2 map fold)
+      ~worker:(map_fold_wrapper2 f fold)
       ~master:(fun x r -> match x with
 		 | Map _, (i, _) -> merge i i r
 		 | Fold _, (i, j) -> merge i j r)

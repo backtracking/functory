@@ -208,20 +208,20 @@ struct
 
   let dplus p1 p2 =
     let tl = List.combine (split_in t p1) (split_in t p2) in
-    let map (x, y) = plus x y in
+    let f (x, y) = plus x y in
     let fold = plus in
-    map_local_fold ~map ~fold p2 tl
+    map_local_fold ~f ~fold p2 tl
 
   (* solution 1: split p1 into t pieces, and multiply each by p2 *)
   let mult1 p1 p2 =
-    let map s1 = 
+    let f s1 = 
       let p = mult s1 p2 in
       Format.printf "mult1: %d x %d -> %d@." (List.length s1) (List.length p2)
       	(List.length p);
       p
     in
     let fold = plus in
-    map_fold_ac ~map ~fold zero (split_in t p1)
+    map_fold_ac ~f ~fold zero (split_in t p1)
 
   (* solution 2: split both p1 and p2 in sqrt(t) pieces, and multiply *)
   let mult2 p1 p2 =
@@ -232,19 +232,19 @@ struct
       List.flatten (List.map (fun p1 -> List.map (fun p2 -> p1,p2) l2) l1) 
     in
     Format.printf "mult2: %d tasks@." (List.length tl);
-    let map (s1, s2) = 
+    let f (s1, s2) = 
       let p = mult s1 s2 in
       Format.printf "mult2: %d x %d -> %d@." (List.length s1) (List.length s2)
       	(List.length p);
       p
     in
     let fold = plus in
-    map_fold_ac ~map ~fold zero tl
+    map_fold_ac ~f ~fold zero tl
 
   let dmult = mult2
 
   let dtimes m p = 
-    map_local_fold ~map:(times m) ~fold:plus zero (split_in t p)
+    map_local_fold ~f:(times m) ~fold:plus zero (split_in t p)
 
   let dpseudo_rem u v =
     let vn, n = match v with

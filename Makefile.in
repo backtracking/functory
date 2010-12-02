@@ -117,7 +117,7 @@ test.byte: $(CMA) $(TCMO)
 test.opt: $(CMXA) $(TCMX)
 	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $^
 
-VERSION=0.2
+VERSION=0.3
 
 version.ml: Makefile
 	echo "let version = \""$(VERSION)"\"" > version.ml
@@ -199,7 +199,7 @@ TAR=$(EXPORTDIR).tar
 
 WWW = $$HOME/WWW/$(NAME)
 
-FILES = *.ml* \
+FILES = *.mli *.ml tests/*/*.ml \
 	Makefile.in configure configure.in   \
 	.depend README.txt LICENSE CHANGES
 
@@ -208,7 +208,7 @@ export: source export-www export-doc
 
 source: 
 	mkdir -p export/$(EXPORTDIR)
-	cp $(FILES) export/$(EXPORTDIR)
+	cp --parents $(FILES) export/$(EXPORTDIR)
 	cd export ; tar cf $(TAR) $(EXPORTDIR) ; gzip -f --best $(TAR)
 	cp export/$(TAR).gz $(WWW)/download/
 

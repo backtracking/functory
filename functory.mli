@@ -40,25 +40,25 @@ module Sequential : sig
       (** same result as [List.map] *)
 
   val map_local_fold :
-    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
-      (** [map_local_fold map fold acc l] computes
-	  [fold ... (fold (fold acc (map x1)) (map x2)) ... (map xn)]
+    f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+      (** [map_local_fold f fold acc l] computes
+	  [fold ... (fold (fold acc (f x1)) (f x2)) ... (f xn)]
 	  for some permutation [x1,x2,...,xn] of [l] *)
 
   val map_remote_fold :
-    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+    f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
       (** same specification as above *)
 
   val map_fold_ac :
-    map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+    f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
     (** same specification, assuming [fold] is an associative and
 	commutative operation; the third argument should be a
 	neutral element for [fold] *)
     
   val map_fold_a :
-    map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
-    (** [map_fold_a map fold acc [x1;...xn]] computes
-	[fold ... (fold (fold acc (map x1)) (map x2)) ... (map xn)]
+    f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+    (** [map_fold_a f fold acc [x1;...xn]] computes
+	[fold ... (fold (fold acc (f x1)) (f x2)) ... (f xn)]
 	assuming [fold] is an associative
 	operation with neutral element [acc] *)
 
@@ -89,16 +89,16 @@ module Cores : sig
   val map : f:('a -> 'b) -> 'a list -> 'b list
     
   val map_local_fold :
-    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+    f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
   val map_remote_fold :
-    map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+    f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
   val map_fold_ac :
-    map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+    f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 
   val map_fold_a :
-    map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+    f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 
 end
 
@@ -172,16 +172,16 @@ module Network : sig
     val map : f:('a -> 'b) -> 'a list -> 'b list
 
     val map_local_fold :
-      map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+      f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
     val map_remote_fold :
-      map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+      f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
     val map_fold_ac :
-      map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+      f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
       
     val map_fold_a :
-      map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+      f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
       
   end
 
@@ -213,13 +213,13 @@ module Network : sig
       val map : 
 	f:('a -> 'b) -> worker_type
       val map_local_fold : 
-	map:('a -> 'b) -> worker_type
+	f:('a -> 'b) -> worker_type
       val map_remote_fold :
-	map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> worker_type
+	f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> worker_type
       val map_fold_ac :
-	map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> worker_type
+	f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> worker_type
       val map_fold_a :
-	map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> worker_type
+	f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> worker_type
     end
       
   end

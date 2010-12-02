@@ -25,7 +25,7 @@ let map x =
   Unix.sleep (if x = 1 then 100 else 30);
   x
 
-let () = assert (Same.map_local_fold ~map ~fold:(+) 0 [1; 2] = 3)
+let () = assert (Same.map_local_fold ~f:map ~fold:(+) 0 [1; 2] = 3)
 
 (*
 Local Variables: 

@@ -27,13 +27,13 @@ module type MF = sig
   type t
   val map : f:(t -> t) -> t list -> t list
   val map_local_fold : 
-    map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
+    f:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
   val map_remote_fold :
-    map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
+    f:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
   val map_fold_ac :
-    map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
+    f:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
   val map_fold_a :
-    map:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
+    f:(t -> t) -> fold:(t -> t -> t) -> t -> t list -> t
   val compute :
     worker:('a -> 'b) -> 
     master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
@@ -51,13 +51,13 @@ module TestInt(X : MF with type t = int) = struct
     printf "  map@.";
     assert (map f l = [2;3;4;5;6]);
     printf "  map_local_fold@.";
-    assert (map_local_fold ~map:f ~fold 0 l = r);
+    assert (map_local_fold ~f ~fold 0 l = r);
     printf "  map_remote_fold@.";
-    assert (map_remote_fold ~map:f ~fold 0 l = r);
+    assert (map_remote_fold ~f ~fold 0 l = r);
     printf "  map_fold_ac@.";
-    assert (map_fold_ac ~map:f ~fold 0 l = r);
+    assert (map_fold_ac ~f ~fold 0 l = r);
     printf "  map_fold_a@.";
-    assert (map_fold_a ~map:f ~fold 0 l = r);
+    assert (map_fold_a ~f ~fold 0 l = r);
     printf "  master@.";
     assert (
       let res = ref 0 in
@@ -93,13 +93,13 @@ module TestString(X : MF with type t = string) = struct
       l
     in
     printf "  map_local_fold@.";
-    assert (check (map_local_fold ~map:f ~fold "" l));
+    assert (check (map_local_fold ~f ~fold "" l));
     printf "  map_remote_fold@.";
-    assert (check (map_remote_fold ~map:f ~fold "" l));
+    assert (check (map_remote_fold ~f ~fold "" l));
     printf "  map_fold_ac@.";
-    assert (check (map_fold_ac ~map:f ~fold "" l));
+    assert (check (map_fold_ac ~f ~fold "" l));
     printf "  map_fold_a@.";
-    assert (map_fold_a ~map:f ~fold "" l = "a.bb.ccc.dddd.");
+    assert (map_fold_a ~f ~fold "" l = "a.bb.ccc.dddd.");
     ()
 end
 

@@ -695,16 +695,16 @@ module Poly = struct
       map ~f:(fun _ -> assert false) l
     let map_local_fold ~fold acc l = 
       map_local_fold
-	~map:(fun _ -> assert false) ~fold acc l
+	~f:(fun _ -> assert false) ~fold acc l
     let map_remote_fold acc l = 
       map_remote_fold
-	~map:(fun _ -> assert false) ~fold:(fun _ _ -> assert false) acc l
+	~f:(fun _ -> assert false) ~fold:(fun _ _ -> assert false) acc l
     let map_fold_ac acc l = 
       map_fold_ac
-	~map:(fun _ -> assert false) ~fold:(fun _ _ -> assert false) acc l
+	~f:(fun _ -> assert false) ~fold:(fun _ _ -> assert false) acc l
     let map_fold_a acc l = 
       map_fold_a
-	~map:(fun _ -> assert false) ~fold:(fun _ _ -> assert false) acc l
+	~f:(fun _ -> assert false) ~fold:(fun _ _ -> assert false) acc l
 
   end
 
@@ -719,14 +719,14 @@ module Poly = struct
 
     let map ~f = 
       compute f
-    let map_local_fold ~map = 
-      compute map
-    let map_remote_fold ~map ~fold = 
-      compute (Map_fold.map_fold_wrapper map fold)
-    let map_fold_ac ~map ~fold = 
-      compute (Map_fold.map_fold_wrapper2 map fold)
-    let map_fold_a ~map ~fold = 
-      compute (Map_fold.map_fold_wrapper2 map fold)
+    let map_local_fold ~f = 
+      compute f
+    let map_remote_fold ~f ~fold = 
+      compute (Map_fold.map_fold_wrapper f fold)
+    let map_fold_ac ~f ~fold = 
+      compute (Map_fold.map_fold_wrapper2 f fold)
+    let map_fold_a ~f ~fold = 
+      compute (Map_fold.map_fold_wrapper2 f fold)
   end
 
 end

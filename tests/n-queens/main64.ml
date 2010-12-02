@@ -66,7 +66,7 @@ let n_queens q d =
   let all = lnot ((lnot 0) lsl q) in
   split d all 0 0;
   printf "%d sub-problems@." (List.length !problems);
-  map_local_fold ~map:compute ~fold:Int64.add 0L !problems
+  map_local_fold ~f:compute ~fold:Int64.add 0L !problems
 
 let test_n_queens q d = 
   printf "computing n-queens(%d) with depth %d...@." q d;

@@ -125,7 +125,7 @@ let sort f =
 (* sorting the lists of lists using map/reduce *)
 
 let chunk_files = List.map write_in_tmp_file chunks
-let f = map_fold_ac ~map:sort ~fold:merge empty_file chunk_files
+let f = map_fold_ac ~f:sort ~fold:merge empty_file chunk_files
 let () = List.iter remove_file chunk_files
 let () = printf "final file is '%s'@." f
 

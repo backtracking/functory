@@ -40,7 +40,7 @@ let () = Arg.parse
   "usage: "
 
 let stop = !stop
-let () = Functory.Control.set_default_port_number !port
+let () = Functory.Network.set_default_port_number !port
 
 let () = 
   if not !worker then begin
@@ -79,13 +79,13 @@ let () = match !kind with
 	  | "map" ->
 	      Poly.Worker.map ~f:double ~stop ()
 	  | "map_local_fold" ->
-	      Poly.Worker.map_local_fold ~map:double ~stop ()
+	      Poly.Worker.map_local_fold ~f:double ~stop ()
 	  | "map_remote_fold" ->
-	      Poly.Worker.map_remote_fold ~map:double ~fold:(+) ~stop ()
+	      Poly.Worker.map_remote_fold ~f:double ~fold:(+) ~stop ()
 	  | "map_fold_ac" ->
-	      Poly.Worker.map_fold_ac ~map:double ~fold:(+) ~stop ()
+	      Poly.Worker.map_fold_ac ~f:double ~fold:(+) ~stop ()
 	  | "map_fold_a" ->
-	      Poly.Worker.map_fold_a ~map:double ~fold:(+) ~stop ()
+	      Poly.Worker.map_fold_a ~f:double ~fold:(+) ~stop ()
 	  | _ ->
 	      assert false (*TODO*)
       end else begin
@@ -127,13 +127,13 @@ let () = match !kind with
 	  | "map" ->
 	      assert (Same.map ~f:double [1;2;3] = [2;4;6])
 	  | "map_local_fold" ->
-	      assert (Same.map_local_fold ~map:double ~fold:(+) 0 [1;2;3] = 12)
+	      assert (Same.map_local_fold ~f:double ~fold:(+) 0 [1;2;3] = 12)
 	  | "map_remote_fold" ->
-	      assert (Same.map_remote_fold ~map:double ~fold:(+) 0 [1;2;3] = 12)
+	      assert (Same.map_remote_fold ~f:double ~fold:(+) 0 [1;2;3] = 12)
 	  | "map_fold_ac" ->
-	      assert (Same.map_fold_ac ~map:double ~fold:(+) 0 [1;2;3] = 12)
+	      assert (Same.map_fold_ac ~f:double ~fold:(+) 0 [1;2;3] = 12)
 	  | "map_fold_a" ->
-	      assert (Same.map_fold_a ~map:double ~fold:(+) 0 [1;2;3] = 12)
+	      assert (Same.map_fold_a ~f:double ~fold:(+) 0 [1;2;3] = 12)
 	  | _ ->
 	      assert false (*TODO*)
       end
