@@ -1,0 +1,192 @@
+---------------------------- REVIEW 1 --------------------------
+PAPER: 9
+TITLE: Functory : Une bibliothèque de calcul distribué pour Objective Caml
+ 
+OVERALL RATING: 2 (Bon papier, je penche en faveur d'une acceptation) 
+REVIEWER'S CONFIDENCE: 4 (expert) 
+
+* Résumé
+
+Cet article présente une petite bibliothèque OCaml permettant de
+distribuer facilement des programmes sur un ensemble de machines, afin
+de paralléliser les calculs. La solution proposée est très légère : il
+suffit d'importer un module et de décrire l'ensemble des CPU
+accessibles (nombre de coeurs de la machine locale et des machines
+distantes) pour avoir accès à des itérateurs de haut niveau (fold,map)
+qui distribuent les calculs de manière transparente.
+
+L'interface de la librairie est décrite, des exemples d'utilisation
+sont discutés, quelques détails d'implémentation sont donnés, et des
+mesures empiriques d'efficacité sont effectuées.
+
+
+* Commentaires
+
+L'article est très bien écrit et très agréable à lire ; il contient
+très peu de fautes. La problématique est intéressante et bien
+introduite : ne pas résoudre tous les problèmes de la programmation
+distribuée, mais proposer une solution légère à un problème
+récurrent : comment paralléliser facilement un certain nombre de
+taches indépendantes lorsque l'on dispose de quelques machines, plus
+ou moins homogènes (à titre personnel, je suis content de découvrir
+cette librairie, et je pense l'utiliser très prochainement). Le code
+source de la librairie correspondante est propre et relativement bien
+documenté.
+
+La solution proposée est élégante : fournir une fonction polymorphe
+relativement générique, de laquelle on peut déduire des fonctions
+distribuées de plus haut niveau, telles que "map_fold" (et ses
+variantes plus ou moins parallélisables selon les hypothèses sur les
+fonctions à itérer).
+
+Par contre, les auteurs passent beaucoup de temps sur les mesures
+expérimentales (deux pages) ; j'aurais préféré qu'une partie de cet
+espace serve à détailler certains points techniques:
+- comment sont allouées les tâches aux différents ouvriers ?
+- comment est implémenté le patron, qui doit envoyer des requêtes ping
+  aux ouvriers régulièrement, tout en étant séquentiel ? (et
+  réciproquement, comment répond un ouvrier lorsqu'il est entrain de
+  travailler ?)
+- comment distingue-t'on un ouvrier qui tombe en panne d'un
+  ouvrier qui tourne en rond ?
+
+De même, la bibliographie est un peu légère : si elle semble bien
+faite vis-à-vis de la communauté "langages fonctionnels", il manque
+certainement plusieurs références vis-à-vis de la communauté
+"distributed computing". En particulier les problèmes d'optimisation
+autour du compromis temps CPU / temps de communication sont bien
+connus, il serait étonnant qu'il n'y ait pas des solutions, ne
+serait-ce que partielles.
+
+Pour résumer, cet article présente un joli hack, qui semble fort utile
+en pratique et bien implémenté. Cette contribution n'est pas énorme
+sur le plan théorique, et certains points pourraient être un peu plus
+étayés, mais cet article mérite d'être publié aux JFLAs.
+
+
+* Typos et suggestions :
+
+p2. la description du type de la fonction "master" est un peu confuse
+    en première lecture (on comprend très bien ensuite, mais j'ai
+    tiqué en arrivant ici la première fois).
+
+p3. "observationellement pure" : j'imagine que ça veut dire "sans
+    effet de bord", ça pourrait être précisé un peu plus (que se
+    passe-t-il avec les exceptions ?)
+
+p10. la table suivant*e*
+
+p11. première table : il faudrait indiquer dans le texte à quoi
+    correspondent les lignes paires (à D=2, si j'ai bien compris)
+
+p12. "une réalisation moins naïve pourrait voir les ouvriers
+    lire..." : maladroit 
+
+p13. tout comme je n'utiliserais pas "boutisme", j'éviterais
+    "déverminage"...
+
+archive de la librairie : il y a plein de fichiers poubelle (*~) 
+
+
+
+---------------------------- REVIEW 2 --------------------------
+PAPER: 9
+TITLE: Functory : Une bibliothèque de calcul distribué pour Objective Caml
+ 
+OVERALL RATING: 3 (Très bon papier, je suis nettement en faveur d'une acceptation) 
+REVIEWER'S CONFIDENCE: 3 (high) 
+
+In this paper, the authors present a library for smoothly writing
+master-worker distributed programs in Ocaml.  They exploit Ocaml
+polymorphism to provide generic combinators (such as maps and folds)
+on top of their interface and illustrate them with several examples.
+
+This is an excellent paper in the "functional pearl" tradition: 
+
+- It solves a useful problem in an interesting domain.
+
+- The implementation has a beautifully simple interface and exploits
+  the power of Ocaml's type system in an elegant way.
+
+- The authors have taken care of realistic implementation details,
+  catering to the various possibilities of homogeneous or
+  heterogeneous architectures and builds.
+
+- The implementation deals with worker and network failure.
+
+- The performance looks good.
+
+- The exposition is lucid and the French beautifully clear.
+
+Accept this paper!
+
+Some comments....
+
+* p.1 "elle ne vise pas les grandes grappes de serveurs ou les fermes
+       de calcul."
+
+  It would be useful to have an explanation as to what goes wrong if
+  you try to run Functory on hundreds or even thousands of nodes. I'm
+  not suggesting that it *should* work on those kinds of grids, just
+  that it would be interesting to understand the engineering decisions
+  that make Functory inappropriate for them.  What future work would
+  be required to allow Functory to scale?
+
+
+* p.2 "Le patron est pour sa part une fonction à laquelle on passe la
+       liste des tâches initiales, ainsi qu'une fonction pour traiter
+       les résultats".
+
+  The argements come in exactly the opposite order to the
+  explanation. Please consider reordering one or the other.
+
+  Much more significantly there's no discussion of what priority the
+  newly created tasks have with respect to the already pending
+  ones. It would be good to explain the queueing policy and to point
+  out if there's any related research in how to optimise the strategy
+  to gain better global throughput on the one hand, or latency of
+  partial results on the other.
+
+
+* p.2 footnote 2. I agree about avoiding "boutisme". Please use
+  however real guillemets. They're fully supported by babel with \og
+  \fg and most latin1, utf8, and full unicode versions of TeX can
+  handle the characters directly: « » (not sure if easy chair can
+  when transmitting this review).
+
+
+* p.4 "val map : ('a -> 'b) -> 'a list -> 'b list
+       Plus subtilement, on peut combiner une fonction map:'a -> 'b avec...."
+
+  It appears here that you are using map for both the higher order
+  function and for that higher order function's first argument. Not a
+  nice pun! Ditto for fold. Please disambiguate.
+
+
+* p.5 This greedy implementation of a distributed fold with respect to
+  an associative operator is really pretty. In the explanation it
+  would be good to clarify that there is the possibility that the
+  newly completed result from a worker is for an index adjacent to
+  both a completed segment to the left *and* to the right, thereby
+  allowing the two segments to coalesce.
+
+
+* p.6 line 2: "c.(i).(j) <- c.(i).(j) + a.(i).(k) × b.(j).(k)".
+
+  Normally when multiply matrices, on takes the dot product of a
+  column and a row. I believe you meant to write the follow (swaping
+  the indices j and k in b.(_)(_)):
+
+  c.(i).(j) <- c.(i).(j) + a.(i).(k) × b.(k).(j)
+
+  Please check this and all other matrix code since I think the error
+  is propogated elsewhere.
+
+* p.10. My understanding is the fault tolerance of Functory does not
+  extend to the failure of the master only to the failure of
+  individual workers. Is that correct?  If so, please clarify. Have
+  you considered some kind of transactional logging for the master's
+  data structures to allow it to restart after a transient failure or
+  to allowing a new master to take over the workers after the
+  permanent failure of the previous master? 
+
