@@ -87,7 +87,9 @@ Les principales caractéristiques de \functory\ sont les suivantes :
   prise en charge par la bibliothèque.
 \end{itemize}
 Bien que \functory\ ait été écrite avec un soucis de généralité, elle ne
-vise pas les grandes grappes de serveurs ou les fermes de calcul. 
+vise pas les fermes de calcul où de grandes quantités de données sont
+manipulées, en particulier parce qu'il n'y a pas, pour l'instant, de
+moyen d'assurer la localité des données. 
 Elle s'adresse plutôt aux équipes de recherche qui souhaitent
 exploiter rapidement des capacités de calcul existantes allant d'un
 simple ordinateur de bureau à un réseau de machines.
@@ -137,8 +139,9 @@ une fonction potentiellement polymorphe
   worker: 'a -> 'b
 \end{ocaml}
 où \of{'a} dénote le type des tâches et \of{'b} le type des résultats.
-Le patron est pour sa part une fonction à laquelle on passe la liste
-des tâches initiales, ainsi qu'une fonction pour traiter les résultats :
+Le patron est pour sa part une fonction à laquelle on passe 
+d'une part une fonction  pour traiter les résultats et d'autre part
+la liste des tâches initiales~:
 \begin{ocaml}
   master: ('a -> 'b -> 'a list) -> 'a list -> unit
 \end{ocaml}
@@ -187,8 +190,10 @@ l'idée principale évoquée dans l'introduction.
 \end{ocaml}
 Les tâches sont des paires, de type \of{'a * 'c}, où la première
 composante sera transmise à l'ouvrier et la seconde conservée
-par le patron. La fonction \of{worker} doit être observationnellement
-pure et sera exécutée en parallèle par tous les ouvriers. La fonction
+par le patron. La fonction \of{worker} doit être 
+pure\footnote{On entend ici \emph{observationnellement pure} mais on
+  autorise la levée d'exceptions pour signaler l'échec du calcul.}
+et sera exécutée en parallèle par tous les ouvriers. La fonction
 \of{master}, au contraire, peut être impure et sera exécutée
 uniquement au sein d'un unique processus séquentiel.
 Cette fonction \of{master} accumule typiquement les résultats renvoyés
@@ -292,31 +297,31 @@ fonction à tous les éléments d'une liste, analogue à la fonction
 \begin{ocaml}
   val map : ('a -> 'b) -> 'a list -> 'b list
 \end{ocaml}
-Plus subtilement, on peut combiner une fonction \of{map:'a -> 'b}
+Plus subtilement, on peut combiner une fonction \of{f:'a -> 'b}
 avec une fonction \of{fold:'c -> 'b -> 'c} pour calculer, à partir d'une liste
 $l$  et d'un accumulateur initial $a$, la valeur finale
 \begin{equation}\label{eq:map-fold}
-  \of{fold} ~ ... ~ (\of{fold} ~ (\of{fold} ~ a ~ (\of{map} ~ x_1)) ~
-  (\of{map} ~ x_2)) ~ ... ~ (\of{map} ~ x_n)
+  \of{fold} ~ ... ~ (\of{fold} ~ (\of{fold} ~ a ~ (\of{f} ~ x_1)) ~
+  (\of{f} ~ x_2)) ~ ... ~ (\of{f} ~ x_n)
 \end{equation}
 pour une certaine permutation non spécifiée $[x_1,x_2,...,x_n]$ 
 de la liste $l$.
 On peut alors distinguer deux cas, selon que l'opération \of{fold} est
-beaucoup moins coûteuse que l'opération \of{map}, et peut être
+beaucoup moins coûteuse que l'opération \of{f}, et peut être
 effectuée localement par le patron, ou qu'au contraire elle peut être
 coûteuse et a donc intérêt à être effectuée en parallèle des
-opérations \of{map}. La bibliothèque fournit donc deux fonctions,
+opérations \of{f}. La bibliothèque fournit donc deux fonctions,
 correspondant à ces deux cas de figure :
 \begin{ocaml}
-  val map_{local,remote}_fold : map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c   
+  val map_{local,remote}_fold : f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c   
 \end{ocaml}
 
 Dans le cas de \of{map_remote_fold}, une seule opération \of{fold}
 peut être effectuée à la fois (possiblement en parallèle d'opérations
-\of{map}), comme le montre l'équation~(\ref{eq:map-fold}).
+\of{f}), comme le montre l'équation~(\ref{eq:map-fold}).
 Il existe cependant des situations dans lesquelles plusieurs
 opérations \of{fold} peuvent être effectuées en parallèle, dès que des
-résultats intermédiaires de \of{map} sont disponibles. C'est le cas
+résultats intermédiaires de \of{f} sont disponibles. C'est le cas
 notamment lorsque l'opération \of{fold} est associative (ce qui
 implique que les types \of{'b} et \of{'c} sont égaux).
 Lorsque l'opération \of{fold} est de plus commutative, on peut
@@ -324,16 +329,16 @@ effectuer encore plus d'opérations \of{fold} en parallèle.
 Notre interface fournit donc deux autres fonctions pour ces cas
 particuliers :
 \begin{ocaml}
-  val map_fold_{a,ac} : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b 
+  val map_fold_{a,ac} : f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b 
 \end{ocaml}
 Ces cinq fonctions se dérivent facilement de la fonction \of{compute}.
 Voici par exemple comment réaliser la fonction \of{map_fold_a}.
 On commence par introduire un type somme pour distinguer les tâches
-\of{map} des tâches \of{fold}, c'est-à-dire
+\of{f} des tâches \of{fold}, c'est-à-dire
 \of{type ('a, 'b) map_or_fold = Map of 'a | Fold of 'b}.
 Le code de l'ouvrier se résumé à distinguer les deux types de tâches.
 \begin{ocaml}
-  let worker = function Map x -> map x | Fold (x, y) -> fold x y
+  let worker = function Map x -> f x | Fold (x, y) -> fold x y
 \end{ocaml}
 Le code du patron est plus compliqué. En effet, l'opération \of{fold}
 étant seulement associative, on ne peut calculer d'expression analogue
@@ -341,7 +346,7 @@ Le code du patron est plus compliqué. En effet, l'opération \of{fold}
 initiale $l$. 
 Le patron conserve donc, dans une table de hachage locale, tous les intervales
 $[x_i,\dots,x_j]$ de $l$ pour lesquels la valeur
-$$\of{map}~x_i \oplus \dots \oplus \of{map}~x_j$$ a déjà été calculée
+$$\of{f}~x_i \oplus \dots \oplus \of{f}~x_j$$ a déjà été calculée
 (en notant ici $\of{fold}$ par $\oplus$), ainsi que cette valeur.
 Cete table est doublement indexée, par $i$ et par $j$. Initialement
 cette table est vide et la liste des tâches ne contient que des tâches
@@ -356,7 +361,10 @@ nouvelle tâche \of{Fold} pour calculer la valeur correspondant à
 $[x_k,\dots, x_j]$, après avoir supprimé de la table les entrées pour
 $k$ et $i-1$. Soit il existe dans la table un résultat pour un segment
 de la forme $[x_{j+1},\dots,x_k]$, que l'on traite de la même
-manière. Soit enfin il n'y a ni entrée pour $i-1$ ni entrée pour
+manière. (Si les deux situations se présentent en même temps, on
+choisit arbitrairement, car il y a de toutes façons deux tâches
+\of{Fold} à effectuer.)
+Soit enfin il n'y a ni entrée pour $i-1$ ni entrée pour
 $j+1$ dans la table, auquel cas on se contente d'ajouter la valeur $r$
 pour les deux clés $i$ et $j$. Lorsque toutes les tâches ont été
 effectuées, la table doit contenir exactement une valeur, associée aux
@@ -364,11 +372,11 @@ clés $1$ et $n$, sauf dans le cas $n=0$ où aucun calcul n'est nécessaire.
 Au final, la fonction \of{map_fold_a} prend la forme suivante, où
 on a seulement omis le code de fusion des résultats expliqué ci-dessus.
 \begin{ocaml}
-  let map_fold_a ~map ~fold acc l =
+  let map_fold_a ~f ~fold acc l =
     let tasks = let i = ref 0 in List.map (fun x -> incr i; Map x, (!i, !i)) l in
     let results = Hashtbl.create 17 in 
     let merge i j r = ...traiter le résultat r du segment [i,j]... in
-    let worker = function Map x -> map x | Fold (x, y) -> fold x y in
+    let worker = function Map x -> f x | Fold (x, y) -> fold x y in
     let master x r = match x with Map _,(i,_) -> merge i i r | Fold _,(i,j) -> merge i j r in
     compute ~worker ~master tasks;
     try let _,_,r = Hashtbl.find results 1 in r with Not_found -> acc
@@ -408,7 +416,7 @@ multiplication séquentielle s'écrirait ainsi
   for i = 0 to n-1 do
     for j = 0 to m-1 do
       for k = 0 to p-1 do
-	c.(i).(j) <- c.(i).(j) + a.(i).(k) * b.(j).(k)
+	c.(i).(j) <- c.(i).(j) + a.(i).(k) * b.(j).(k) (* b en colonnes *)
       done
     done
   done  
@@ -558,7 +566,7 @@ calcul en parallèle. Pour $D=1$ on obtient ainsi $N$ tâches ; pour
 $D=2$ on obtient $N^2-3N+2$ tâches ; et ainsi de suite.
 Chaque tâche est composée de quelques entiers et son résultat est un
 entier donnant le nombre de solutions pour cette tâche.
-On utilise la fonction \of{map_local_fold} où \of{map} effectue la
+On utilise la fonction \of{map_local_fold} où \of{f} effectue la
 recherche et \of{fold} somme les résultats intermédiaires.
 
 \paragraph{L'ensemble de Mandelbrot.}
@@ -662,6 +670,13 @@ ne coïncide pas nécessairement avec un nombre effectif de \coeurs).
 Le module \of{Network} est basé sur une architecture client/serveur
 utilisant TCP/IP, où chaque ouvrier est un serveur et où le patron
 est (ironiquement) le client de chaque ouvrier.
+Le patron est un programme purement séquentiel.
+En particulier, il ne peut administrer les tâches pendant l'exécution
+de la fonction \of{master}. Ce n'est pas un problème en pratique, car
+on peut supposer que la fonction \of{master} s'exécute rapidement.
+L'ouvrier, en revanche, crée un nouveau processus avec \of{fork} pour
+exécuter la tâche qui lui est confiée et peut donc continuer à
+communiquer avec le patron pendant son calcul.
 
 \paragraph{Protocole.}\label{sec:protocol}
 Le protocole utilisé comporte sept messages différents.
@@ -703,7 +718,10 @@ simples chaînes de caractères.
 L'une des principales difficultés dans un environnement de calcul
 distribué est la tolérance aux pannes. C'est l'un des principaux
 atouts de la bibliothèque \functory.
-Les pannes concernent ici uniquement le module \of{Network} et sont de
+La tolérance aux pannes de \functory\ est limitée aux ouvriers ; la
+tolérance aux pannes du patron est laissée à l'utilisateur, par
+exemple sous la forme d'une sauvegarde régulière de l'état du patron.
+Les pannes des ouvriers sont de
 deux sortes : un ouvrier peut être stoppé et éventuellement plus tard
 redémarré ; ou un ouvrier peut être temporairement ou définitivement
 inaccessible sur le réseau. Dans tous les cas, on souhaite que le
@@ -741,13 +759,19 @@ résultat pour une tâche $t$, il déprogramme la tâche $t$ si elle avait
 été reprogrammée et indique à tout ouvrier ayant déjà entrepris de
 recalculer $t$ de cesser son travail (avec le message \of{Kill}).
 
+Enfin, il est important de signaler que notre bibliothèque est
+également robuste vis-à-vis des exceptions levées par la fonction
+\of{worker}. Le cas échéant, un message \of{Aborted} est envoyé au
+patron et la tâche est reprogrammée. C'est la responsabilité de
+l'utilisateur de rattraper et de traiter ces exceptions si nécessaire.
+
 \section{Résultats expérimentaux}\label{sec:experiments}
 
 Cette section présente quelques résultats expérimentaux obtenus avec
 les quatre programmes décrits section~\ref{sec:studies}.
 
 \paragraph{N-reines.}
-La table suivant montre les temps d'exécution pour différentes valeurs
+La table suivante montre les temps d'exécution pour différentes valeurs
 de $N$ et pour chacun des trois modules \of{Sequential}, \of{Cores} et
 \of{Network}. L'objectif est ici de mesurer le facteur par rapport à
 l'exécution séquentielle. En conséquence, tous les calculs sont
@@ -761,25 +785,25 @@ La première colonne donne la valeur de $N$ et la seconde le nombre de
 tâches. Les trois colonnes suivantes donnent les temps d'exécution, en
 secondes, et le facteur d'accélération entre parenthèses.
 \begin{center}
-  \begin{tabular}{|r|r|r|r|r|}
+  \begin{tabular}{|r|r|r|r|r|r|}
     \hline
-    N & \#tâches  & \of{Sequential}& \of{Cores}                 & \of{Network} 
+    N & D & \#tâches  & \of{Sequential}& \of{Cores}            & \of{Network} 
     \\\hline\hline
-    16 &   16    &  15.2     &   2.04 (7.45$\times$) &  2.35  (6.47$\times$) 
+    16 & 1 &   16    &  15.2     &   2.04 (7.45$\times$) &  2.35  (6.47$\times$) 
     \\\hline
-       &  210    &  15.2     &   2.01 (7.56$\times$) & 21.80  (0.69$\times$)
+       & 2 & 210    &  15.2     &   2.01 (7.56$\times$) & 21.80  (0.69$\times$)
     \\\hline
-    17 &   17    & 107.0     &  17.20 (6.22$\times$) & 16.20  (6.60$\times$)
+    17 & 1 &   17    & 107.0     &  17.20 (6.22$\times$) & 16.20  (6.60$\times$)
     \\\hline
-       &  240    & 107.0     &  14.00 (7.64$\times$) & 24.90  (4.30$\times$)
+       & 2 & 240    & 107.0     &  14.00 (7.64$\times$) & 24.90  (4.30$\times$)
     \\\hline
-    18 &   18    & 787.0     & 123.00 (6.40$\times$) & 125.00 (6.30$\times$)  
+    18 & 1 &   18    & 787.0     & 123.00 (6.40$\times$) & 125.00 (6.30$\times$)  
     \\\hline
-       &  272    & 787.0     & 103.00 (7.64$\times$) & 124.00 (6.34$\times$)  
+       & 2 & 272    & 787.0     & 103.00 (7.64$\times$) & 124.00 (6.34$\times$)  
     \\\hline
-    19 &   19    &6120.0     & 937.00 (6.53$\times$) & 940.00 (6.51$\times$)  
+    19 & 1 &   19    &6120.0     & 937.00 (6.53$\times$) & 940.00 (6.51$\times$)  
     \\\hline
-       &  306    &6130.0     & 796.00 (7.70$\times$) & 819.00 (7.48$\times$)
+       & 2 & 306    &6130.0     & 796.00 (7.70$\times$) & 819.00 (7.48$\times$)
     \\\hline
   \end{tabular}
 \end{center}
@@ -803,29 +827,35 @@ Mandelbrot compris entre les points $(-1.1, 0.2)$ et $(-0.8,
 On utilise la même machine que dans l'expérience précédente.
 Un calcul purement séquentiel prend 29,4 secondes.
 Les résultats pour les modules \of{Cores} et \of{Network} sont
-présentés dans la table ci-dessous.
-\begin{center}
-  \begin{tabular}{|r|r|r|r|r|}
-    \hline
-    \#\coeurs  &\#tâches & \of{Cores} & \of{Network} \\
-    \hline\hline
-    2       & 10 & 15.8       (1.86$\times$) &  20.3  (1.45$\times$)      \\
-            & 30 & 15.7       (\underline{1.87}$\times$) &  18.7 (1.57$\times$)       \\
-            & 100 & 16.1      (1.83$\times$) &  19.8   (1.48$\times$)    \\
-            & 1000 & 19.6     (1.50$\times$) &  38.6    (0.76$\times$)  \\
-    \hline
-    4       & 10 & 9.50       (3.09$\times$)  &  14.4     (2.04$\times$)  \\
-            & 30 & 8.26       (\underline{3.56}$\times$)  &  11.4  (2.58$\times$) \\
-            & 100 & 8.37      (3.51$\times$)  &  11.4  (2.58$\times$) \\
-            & 1000 & 10.6     (2.77$\times$)  &  20.5   (1.43$\times$) \\
-    \hline
-    8       & 10 & 9.40       (3.13$\times$)  &  12.6    (2.33$\times$)  \\
-            & 30 & 4.24       (\underline{6.93}$\times$)  &   7.6  (3.87$\times$)    \\
-            & 100 & 4.38      (6.71$\times$)  &   7.5    (3.92$\times$)  \\
-            & 1000 & 6.86     (4.29$\times$)  &  11.3    (2.60$\times$)  \\
-    \hline
-  \end{tabular}
-\end{center}
+présentés figure~\ref{fig:bench:mandelbrot}.
+\begin{figure}
+  \centering
+  \begin{center}
+    \begin{tabular}{|r|r|r|r|r|}
+      \hline
+      \#\coeurs  &\#tâches & \of{Cores} & \of{Network} \\
+      \hline\hline
+      2       & 10 & 15.8       (1.86$\times$) &  20.3  (1.45$\times$)      \\
+      & 30 & 15.7       (\underline{1.87}$\times$) &  18.7 (1.57$\times$)       \\
+      & 100 & 16.1      (1.83$\times$) &  19.8   (1.48$\times$)    \\
+      & 1000 & 19.6     (1.50$\times$) &  38.6    (0.76$\times$)  \\
+      \hline
+      4       & 10 & 9.50       (3.09$\times$)  &  14.4     (2.04$\times$)  \\
+      & 30 & 8.26       (\underline{3.56}$\times$)  &  11.4  (2.58$\times$) \\
+      & 100 & 8.37      (3.51$\times$)  &  11.4  (2.58$\times$) \\
+      & 1000 & 10.6     (2.77$\times$)  &  20.5   (1.43$\times$) \\
+      \hline
+      8       & 10 & 9.40       (3.13$\times$)  &  12.6    (2.33$\times$)  \\
+      & 30 & 4.24       (\underline{6.93}$\times$)  &   7.6  (3.87$\times$)    \\
+      & 100 & 4.38      (6.71$\times$)  &   7.5    (3.92$\times$)  \\
+      & 1000 & 6.86     (4.29$\times$)  &  11.3    (2.60$\times$)  \\
+      \hline
+    \end{tabular}
+  \end{center}
+  
+  \caption{Résultats pour l'ensemble de Mandelbrot.}
+\label{fig:bench:mandelbrot}
+\end{figure}
 Les meilleurs résultats sont obtenus avec le module \of{Cores}, où la
 communication n'intervient que localement, entre processus.
 Il y a deux différences significatives avec l'expérience précédente
@@ -881,9 +911,9 @@ secondes. Que ce soit pour \of{mm1} ou \of{mm2}, le nombre total de
 coefficients transmis est en effet en
 $O(\of{n}\times\of{m}\times\of{p})$, ce qui représente ici des
 milliards d'octets.
-Une réalisation moins naïve pourrait voir les ouvriers lire les deux
+Dans une réalisation moins naïve, les ouvriers pourrait lire les deux
 matrices une seule fois, par exemple depuis un fichier, et le patron
-envoyer uniquement des indices de lignes et de colonnes. Cela
+n'enverrait uniquement que des indices de lignes et de colonnes. Cela
 réduirait le volume des communications à seulement $O(\of{n}\times\of{m})$.
 
 \paragraph{Démonstrateur automatiques.}
@@ -980,6 +1010,12 @@ aux ouvriers, de paramètres de ressources telles que la localité des données,
 la puissance de calcul, l'espace mémoire disponible, etc. On peut
 imaginer pour cela offrir à l'utilisateur des moyens de contrôle de
 l'affectation des tâches ou un processus plus automatique.
+Cela permettrait d'utiliser \functory\ dans les mêmes contextes que MapReduce.
+Il est important de noter qu'à l'heure actuelle, en l'absence de toute
+information concernant les tâches, leur ordonnancement est complètement
+arbitraire. Les modules \of{Cores} et \of{Network} utilisent de
+une simple file pour les tâches restant à effectuer et les nouvelles
+tâches, produites par le patron, sont ajoutées à la fin de cette file.
 % TODO tel que dans la biblio de MK
 
 Une autre amélioration consiste à faciliter le déploiement en réseau,
@@ -990,7 +1026,7 @@ de machines depuis un fichier, périodiquement.
 
 \functory\ offre peu d'outils pour visualiser en temps réel l'état des
 calculs et des communications (mis à part quelques informations de
-déverminage). Calculer et stocker une telle information est immédiat,
+\emph{debugging}). Calculer et stocker une telle information est immédiat,
 et en partie déjà fait, mais son observation en temps réel demande
 plus de travail. Une possibilité serait de réutiliser une partie de
 l'outil \textsf{Ocamlviz}~\cite{ocamlviz}. 

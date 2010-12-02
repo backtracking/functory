@@ -99,7 +99,8 @@ The most important features of our library are the following:
 \end{itemize}
 The application domain of such a distributed computing library is manyfold. 
 It is worth noting that the library is not targeted at applications
-running on server farms, crunching enormous amounts of data. 
+running on server farms, crunching enormous amounts of data, mostly
+due to the lack of data locality. 
 It is rather more relevant for research labs, to make use of available
 computing resources efficiently. It serves a variety of users and a wide
 spectrum of needs, from desktop PCs to networks of machines, and hence
@@ -176,8 +177,9 @@ workers may implement any polymorphic function:
   worker: 'a -> 'b
 \end{ocaml}
 where \of{'a} denotes the type of tasks and \of{'b} the type of results.
-Then the master is given a list of initial tasks, together with a
-function to handle the results:
+Then the master is a
+function to handle the results together with
+a list of initial tasks:
 \begin{ocaml}
   master: ('a -> 'b -> 'a list) -> 'a list -> unit
 \end{ocaml}
@@ -227,7 +229,10 @@ sketched in the introduction. It has the following signature:
 \end{ocaml}
 Tasks are pairs, of type \of{'a * 'c}, where the first component is
 passed to the worker and the second component is local to the master.
-The \ocaml{worker} function should be pure and is executed in parallel
+The \ocaml{worker} function should be pure\footnote{We mean
+  \emph{observationally pure} here but we allow exceptions to be
+  raised to signal failures.} 
+and is executed in parallel
 in all worker processes. The function \ocaml{master}, on the
 contrary, can be impure and is only executed in the master process.
 The \ocaml{master} function typically stores results 
@@ -465,26 +470,26 @@ lists, that is:
 The next natural operation is a combination of map and fold
 operations, that is a function like
 \begin{ocaml}
- val map_fold : map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+ val map_fold : f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 \end{ocaml}
 which, given two functions, an accumulator $a$ and a list $l$, computes
 \begin{equation}\label{eq:map-fold}
-  \of{fold} ... (\of{fold} (\of{fold} ~ a ~ (\of{map} ~ x_1)) (\of{map} ~ x_2))
-  ... (\of{map} ~ x_n)
+  \of{fold} ... (\of{fold} (\of{fold} ~ a ~ (\of{f} ~ x_1)) (\of{f} ~ x_2))
+  ... (\of{f} ~ x_n)
 \end{equation}
 for some permutation $[x_1,x_2,...,x_n]$ of the list $l$.
-We assume that the \of{map} operations are always performed in parallel.
+We assume that the \of{f} operations are always performed in parallel.
 Regarding \of{fold} operations, we distinguish two cases:
 \begin{itemize}
 \item either \of{fold} operations are computationally less expensive
-  than \of{map} and we perform them locally;
+  than \of{f} and we perform them locally;
 \item or \of{fold} operations are computationally expensive and we
   perform them in parallel.
 \end{itemize}
 We thus provide two functions \of{map_local_fold} and \of{map_remote_fold}.
 
 In the case of \of{map_remote_fold}, only one \of{fold} operation can
-be performed at a time (possibly in parallel with \of{map}
+be performed at a time (possibly in parallel with \of{f}
 operations), as obvious from~(\ref{eq:map-fold}). However, there are
 cases where several \of{fold} operations can be performed in parallel,
 as early as intermediate results of \of{fold} operations are available.
@@ -501,16 +506,16 @@ in Figure~\ref{fig:derived}.
     val map : 
       f:('a -> 'b) -> 'a list -> 'b list 
     val map_local_fold : 
-      map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
+      f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
       'c -> 'a list -> 'c 
     val map_remote_fold : 
-      map:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
+      f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
       'c -> 'a list -> 'c 
     val map_fold_ac : 
-      map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
+      f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
       'b -> 'a list -> 'b 
     val map_fold_a : 
-      map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
+      f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
       'b -> 'a list -> 'b
   \end{ocaml}
   \caption{Derived API.}
@@ -550,20 +555,20 @@ returns, we simply return the current accumulator.
 
 \paragraph{\of{map_remote_fold}.}
 In this case, combining the accumulator with an intermediate result is
-itself a task to be performed in parallel with \of{map} operations.
+itself a task to be performed in parallel with \of{f} operations.
 Thus tasks are of two different kinds and we use a sum type to make
 the distinction.
-When an intermediate \of{map} result is available, the
+When an intermediate \of{f} result is available, the
 accumulator may be already in use in a \of{fold} operation. Hence we
-need to store the intermediate \of{map} result in a table local to the
+need to store the intermediate \of{f} result in a table local to the
 master, to be
 used as soon as the accumulator becomes available.
-The \of{master} function distinguishes between \of{map} and \of{fold}
+The \of{master} function distinguishes between \of{f} and \of{fold}
 results and, accordingly, updates the table and the accumulator. For a
-\of{map} result, either we combine it with the accumulator in a new
+\of{f} result, either we combine it with the accumulator in a new
 task or we simply store it in the local table. For a \of{fold} result,
 either we simply store it into the accumulator or we immediately
-combine it with a pending \of{map} result from the table.
+combine it with a pending \of{f} result from the table.
 Whenever \of{compute} returns, the accumulator must be available and
 we simply return it.
 
@@ -767,7 +772,7 @@ so on.
 Each task only consists of three integers and its result is one integer,
 which is the total number of solutions for this task.
 We make use of function \of{map_local_fold} from the derived API,
-where \of{map} is performing the search and \of{fold} simply adds the
+where \of{f} is performing the search and \of{fold} simply adds the
 intermediate results.
 In the network configuration, we make use of the \of{Network.Same}
 module, workers and master being the same executable.
@@ -902,8 +907,15 @@ architecture, where each worker is a server and the master is the
 client of each worker. The main execution loop is similar to the one
 in the \of{Cores} module, where distant processes on remote machines
 correspond to sub-processes and idle cores are the idle cores 
-of remote workers. In addition to this, it also involves issues of message
-transfer and fault tolerance, which are subsequently described.
+of remote workers. 
+The master is purely sequential. In particular, when running the user
+\of{master} function, it is not capable of performing any task-related
+computation. This is not an issue, as we assume the \of{master}
+function not to be time-consuming.
+The worker, on the other hand, forks a new process to execute the task
+and hence can communicate with the master during its computation.
+We subsequently describe issues of message
+transfer and fault tolerance.
 
 \subsubsection{Protocol}\label{sec:protocol}
 
@@ -1038,7 +1050,7 @@ function, each API now takes two forms, one for the master and another
 for the workers. For example, \of{map_fold_ac} takes the following
 forms.
 \begin{ocaml}
-  Worker.map_fold_ac : map:('a -> 'b) -> fold:('b -> 'b -> 'b) -> unit -> unit
+  Worker.map_fold_ac : f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> unit -> unit
   Master.map_fold_ac : 'b -> 'a list -> 'b
 \end{ocaml}
 It is the responsibility of the user to ensure type consistency between
@@ -1074,7 +1086,11 @@ type \of{'c} here), since it is local to the master.
 
 The main issue in any distributed computing environment is the ability
 to handle faults, which is also a distinguishing feature of our
-library.  Faults are mainly of two kinds: either a worker is stopped,
+library.  
+The fault tolerance mechanism of \functory\ is limited to workers;
+handling master failures is the responsibility of the user, for
+instance by periodically logging the master's state.
+Worker faults are mainly of two kinds: either a worker is stopped,
 and possibly later restarted; or a worker is temporarily or
 permanently unreachable on the network. To provide fault tolerance,
 our master implementation is keeping track of the status of each
@@ -1092,7 +1108,6 @@ respectively. There are four possible statuses for a worker:
 \item[\of{unreachable}:] the worker has not yet responded to the \of{Ping}
   message (for more than $T_2$ seconds).
 \end{description}
-% TODO picture
 Whenever we receive a message from a worker, its status changes to
 \of{alive} and its timeout value is reset.
 \begin{center}
@@ -1107,6 +1122,12 @@ task $t$ is rescheduled, which means it is put back in the set of
 pending tasks. Whenever a task is completed, any rescheduled copy of
 this task is either removed from the set of pending tasks or killed if
 it was already assigned to another worker.
+
+It is worth noticing that our library is also robust w.r.t. exceptions
+raised by the user-provided \of{worker} function. In that case, an
+\of{Aborted} message is sent to the master and the task is
+rescheduled. It is the responsibility of the user to handle such
+exceptions if necessary.
 
 % The signature for the generic
 % implementation is therefore as follows:
@@ -1154,25 +1175,25 @@ second column.  Then the last three columns show execution times in
 seconds for the three implementations. The figures within brackets
 show the speedup w.r.t. sequential implementation.
 \begin{center}
-  \begin{tabular}{|r|r|r|r|r|}
+  \begin{tabular}{|r|r|r|r|r|r|}
     \hline
-    N & \#tasks  & \of{Sequential}& \of{Cores}                 & \of{Network} 
+    N & D & \#tasks  & \of{Sequential}& \of{Cores}              & \of{Network} 
     \\\hline\hline
-    16 &   16    &  15.2     &   2.04 (7.45$\times$) &  2.35  (6.47$\times$) 
+    16 &1&   16    &  15.2     &   2.04 (7.45$\times$) &  2.35  (6.47$\times$) 
     \\\hline
-       &  210    &  15.2     &   2.01 (7.56$\times$) & 21.80  (0.69$\times$)
+       &2&  210    &  15.2     &   2.01 (7.56$\times$) & 21.80  (0.69$\times$)
     \\\hline
-    17 &   17    & 107.0     &  17.20 (6.22$\times$) & 16.20  (6.60$\times$)
+    17 &1&   17    & 107.0     &  17.20 (6.22$\times$) & 16.20  (6.60$\times$)
     \\\hline
-       &  240    & 107.0     &  14.00 (7.64$\times$) & 24.90  (4.30$\times$)
+       &2&  240    & 107.0     &  14.00 (7.64$\times$) & 24.90  (4.30$\times$)
     \\\hline
-    18 &   18    & 787.0     & 123.00 (6.40$\times$) & 125.00 (6.30$\times$)  
+    18 &1&   18    & 787.0     & 123.00 (6.40$\times$) & 125.00 (6.30$\times$)  
     \\\hline
-       &  272    & 787.0     & 103.00 (7.64$\times$) & 124.00 (6.34$\times$)  
+       &2&  272    & 787.0     & 103.00 (7.64$\times$) & 124.00 (6.34$\times$)  
     \\\hline
-    19 &   19    &6120.0     & 937.00 (6.53$\times$) & 940.00 (6.51$\times$)  
+    19 &1&   19    &6120.0     & 937.00 (6.53$\times$) & 940.00 (6.51$\times$)  
     \\\hline
-       &  306    &6130.0     & 796.00 (7.70$\times$) & 819.00 (7.48$\times$)
+       &2&  306    &6130.0     & 796.00 (7.70$\times$) & 819.00 (7.48$\times$)
     \\\hline
   \end{tabular}
 \end{center}
@@ -1386,7 +1407,15 @@ library.
   One is the ability to efficiently assign tasks to workers depending
   on resource parameters, such as data locality, CPU power, memory,
   etc. This could be achieved by providing the user with the means to control
-  task scheduling.  
+  task scheduling.  This would enable \functory\ to scale up to
+  MapReduce-like applications.
+
+  Currently, without any information about the tasks, the scheduling
+  is completely arbitrary. In both \of{Cores} and \of{Network}
+  modules, we use traditional queues for the pending tasks; in
+  particular, new tasks produced by the master are appended at the end
+  of the queue.
+
 \item 
   Another interesting feature could be the ability
   to add or remove machines dynamically. Currently, our library assumes
