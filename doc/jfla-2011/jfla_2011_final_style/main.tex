@@ -1,0 +1,1122 @@
+\documentclass[nofirstpagebreak,cropmarks]{studia-Hermann}
+%\documentclass[english,nofirstpagebreak,cropmarks]{studia-Hermann} %%if the article is written in english language
+
+\usepackage[T1]{fontenc} % if ISO Latin 1 encoding
+%\usepackage[applemac]{inputenc} % if Mac OS Roman encoding
+\usepackage[french]{babel}
+
+%% added from the other file - KK
+% \usepackage{actes,comment,amsmath,graphicx,color,url}
+\usepackage[latin1]{inputenc}
+\usepackage{url}
+\newcommand{\Ocaml}{OCaml}
+\newcommand{\functory}{\textsf{Functory}}
+\newcommand{\JoCaml}{Jo{\&\!}Caml}
+\newcommand{\unix}{\textsc{Unix}}
+\newcommand{\oeuvre}{\oe uvre}
+\newcommand{\coeur}{c\oe ur}
+\newcommand{\coeurs}{c\oe urs}
+%% added from the other file - KK
+
+\selectlanguage{french}
+%%% Commandes spécifiques à l'article
+\newcommand{\cfsect}[1]{(\textit{cf.} section~\ref{#1})}
+\newcommand{\cfsectpage}[1]{(\textit{cf.} section~\ref{#1}, page~\pageref{#1})}
+\providecommand{\figureref}[1]{\figname~\ref{#1}}
+\providecommand{\cftab}[1]{(\textit{cf.} tableau~\ref{#1})}
+\newcommand{\cmd}[1]{{\upshape\texttt{\symbol{"5C}#1}}}
+%%% Fin des commandes spécifiques à l'article
+\newtheorem{thm}{Th\'{e}or\`{e}me}[section]
+\newtheorem{theorem}{Th\'{e}or\`{e}me}[section]
+\newtheorem{defi}{D\'{e}finition}[section]
+\newtheorem{lemme}{Lemme}[section]
+\newtheorem{cor}{Corollaire}[section]
+\newtheorem{proof}{Preuve}[section]
+\newtheorem{preuve}{Preuve}[section]
+\newtheorem{prop}{Proposition}[section]
+\newtheorem{ex}{Exemple}[section]
+\newtheorem{rem}{Remarque}[section]
+\newtheorem{procedure}{Proc\'edure}[section]
+\newenvironment{Boxedminipage}
+{\begin{Sbox}\begin{minipage}}{\end{minipage}\end{Sbox}\fbox{TheSbox}}
+\def\bibfmta#1#2#3#4{{\bf #1.} {#2}. {\em #3}, #4.}
+\journal{Studia Informatica Universalis.}{-}{-}
+
+
+%%%%%Add your package here
+%
+%\usepackage[option]{package}
+%
+
+%%%%%%%%%Preamble, to be modified by the authors
+%
+\title[ \textit{Functory}]  {Functory : Une bibliothèque de calcul distribué pour
+  Objective Caml}
+% \subtitle{Sub-Title}
+\author{Jean-Christophe Filliâtre \fup{1}\fup{2}\fup{3}, K. Kalyanasundaram \fup{3}}
+\address{
+\fup{1}
+CNRS / LRI UMR 8623 F-91405 Orsay\\
+filliatre@lri.fr \\ [3pt]
+\fup{2} Université Paris Sud F-91405 Orsay
+\\[3pt]
+\fup{3}INRIA Saclay -- Île-de-France F-91893 Orsay\\
+kalyan.krishnamani@inria.fr\\[3pt]
+}
+\resume{
+  Cet article présente \functory, une bibliothèque de calcul distribué
+  pour Objective Caml. Les principales caractéristiques de cette
+  bibliothèque sont (1) une interface polymorphe, (2) plusieurs
+  réalisations correspondant à des contextes d'utilisation différents
+  et (3) un mécanisme de tolérance aux pannes.
+  Cet article détaille la conception et la réalisation de Functory et
+  montre son potentiel sur de nombreux exemples.
+}
+\motscles{mapreduce, calcul distribué, OCaml}
+%%%%%%% End Preamble
+
+
+
+\begin{document}
+\maketitlepage 
+
+
+%%%%%Document
+
+
+\section{Introduction}
+
+Cet article présente \functory, une bibliothèque de calcul distribué
+pour Objective Caml. Initialement, ce travail a été motivé par des
+besoins de calcul au sein de notre équipe de recherche, ProVal.
+Nos applications en vérification déductive de programmes incluent
+notamment la validation de très nombreuses formules logiques par des
+démonstrateurs automatiques variés~\cite{filliatre07cav}.
+Nos moyens de calcul consistent en quelques machines très puissantes
+(typiquement 8 ou 16 \coeurs) et plusieurs ordinateurs de bureau
+(typiquement 2 \coeurs). Aucune bibliothèque ne nous permettait de
+tirer facilement partie de cette infrastructure de calcul dans notre
+langage préféré. C'est pourquoi nous avons conçu et réalisé la
+bibliothèque \functory\ qui est le sujet de cet article.
+Cette bibliothèque est réalisée pour \Ocaml\ mais pourrait facilement
+être adaptée pour tout autre langage fonctionnel.
+
+\functory\ n'est pas une bibliothèque qui aide l'utilisateur à
+paralléliser ses calculs. Son rôle consiste plutôt à offrir des
+facilités pour distribuer, de manière sûre, des calculs déjà
+identifiés comme indépendants. En particulier, \functory\ offre
+plusieurs interfaces génériques pour distribuer des calculs sur différents
+\coeurs\ d'une même machine ou sur un réseau de machines. Ceci
+correspond exactement au contexte qui a motivé la construction de
+cette bibliothèque mais aussi, très probablement, à celui de
+nombreuses autres applications.
+Les principales caractéristiques de \functory\ sont les suivantes :
+\begin{itemize}
+\item \emph{généricité} : les
+  traits fonctionnels que sont l'ordre
+  supérieur et le polymorphisme sont exploités pour fournir un maximum
+  de généricité ;
+\item \emph{simplicité} : on passe d'un calcul séquentiel à un
+  calcul multi-\coeurs\ puis à un calcul en réseau en ne modifiant
+  que quelques lignes dans le code ;
+\item \emph{distribution et tolérance aux pannes} : l'intégralité de
+  la gestion de la distribution et de la tolérance aux pannes est
+  prise en charge par la bibliothèque.
+\end{itemize}
+Bien que \functory\ ait été écrite avec un soucis de généralité, elle ne
+vise pas les fermes de calcul où de grandes quantités de données sont
+manipulées, en particulier parce qu'il n'y a pas, pour l'instant, de
+moyen d'assurer la localité des données. 
+Elle s'adresse plutôt aux équipes de recherche qui souhaitent
+exploiter rapidement des capacités de calcul existantes allant d'un
+simple ordinateur de bureau à un réseau de machines.
+Le reste de cette introduction décrit notre approche du calcul
+distribué dans le contexte d'un langage fonctionnel.
+
+\paragraph{Calcul distribué.}
+Initialement inspirée par la bibliothèque
+MapReduce\footnote{Ironiquement, l'approche de Google a été elle-même
+  inspirée par la programmation fonctionnelle.} de
+Google~\cite{mapreduce}, notre approche lui emprunte beaucoup de
+vocabulaire.
+La bibliothèque \functory\ est centrée autour de la notion de
+\emph{tâche}. Les tâches représentent les calculs atomiques pouvant
+être réalisés de manière indépendante.
+Elles sont traitées par un \emph{patron} et des \emph{ouvriers}
+(respectivement \emph{master} et \emph{workers} en anglais).
+Les ouvriers représentent les capacités de calcul qui effectuent les
+tâches. Ils sont
+matérialisés par un ou plusieurs programmes, s'exécutant en parallèle
+sur une ou plusieurs machines.
+Le rôle du patron consiste à distribuer les tâches auprès des ouvriers
+et à récolter les résultats. Il est matérialisé par un unique
+programme s'exécutant de manière séquentielle.
+
+Une partie importante du travail de \functory\ consiste en la
+transmission des tâches et de leurs résultats. 
+Ceci implique leur sérialisation (en anglais
+\emph{marshalling}) à travers le
+réseau, sur un parc potentiellement hétérogène en termes
+d'architectures et de systèmes d'exploitation.
+La taille du mot et l'\emph{endianness} peuvent notamment
+varier\footnote{Les auteurs se refusent à utiliser le mot \og boutisme
+  \fg\ pour désigner l'\emph{endianness}.}.
+Un autre aspect essentiel du calcul distribué, et de \functory\ en
+particulier, est la \emph{tolérance aux pannes}. Les ouvriers peuvent
+ainsi être arrêtés, relancés, temporairement stoppés ou inatteignables
+à cause de problèmes liés au réseau, sans jamais compromettre le
+résultat final du calcul.
+
+\paragraph{Une approche fonctionnelle.}
+Nous avons essayé de tirer partie des spécificités de la programmation
+fonctionnelle pour proposer une interface la plus générique possible.
+L'une des idées principales de \functory\ est que chaque ouvrier est
+une fonction potentiellement polymorphe
+\begin{ocaml}
+  worker: 'a -> 'b
+\end{ocaml}
+où \of{'a} dénote le type des tâches et \of{'b} le type des résultats.
+Le patron est pour sa part une fonction à laquelle on passe 
+d'une part une fonction  pour traiter les résultats et d'autre part
+la liste des tâches initiales~:
+\begin{ocaml}
+  master: ('a -> 'b -> 'a list) -> 'a list -> unit
+\end{ocaml}
+Cette fonction passée en argument à \of{master} est appliquée dès
+qu'un nouveau résultat est disponible. Elle peut produire de nouvelles
+tâches (d'où son type de retour \of{'a list}), qui s'ajoutent alors à
+la liste des tâches à effectuer.
+Le processus complet s'achève lorsque toutes les tâches ont été
+effectuées. 
+
+Notre bibliothèque tire partie des capacités de sérialisation
+d'\Ocaml\ autant que possible. Ainsi lorsque le patron et les ouvriers
+sont matérialisés par le même exécutable, fonctions et valeurs
+polymorphes peuvent être sérialisées, ce qui permet de réaliser
+facilement le schéma ci-dessus. Il n'est cependant pas toujours
+possible d'utiliser le même programme pour le patron et les
+ouvriers. Dans ce cas, on peut tout de même continuer à sérialiser des
+valeurs polymorphes lorsque la version d'\Ocaml\ utilisée est la même
+pour tous. Sinon, on ne peut plus que transmettre des chaînes de
+caractères entre les différents acteurs. La bibliothèque \functory\
+s'adapte à toutes ces situations en proposant plusieurs interfaces.
+ 
+\medskip
+
+Cet article s'organise ainsi.
+La section~\ref{sec:API} présente l'interface de la bibliothèque.
+Son utilisation est alors illustrée sur des exemples dans la
+section~\ref{sec:studies}.
+La section~\ref{sec:implem} donne des détails techniques concernant la
+réalisation de \functory. Enfin la section~\ref{sec:experiments}
+montre le potentiel de cette bibliothèque sur des tests expérimentaux.
+%
+\functory\ est librement distribuée à l'adresse
+\url{http://functory.lri.fr/}. Un rapport plus détaillé que le présent
+article, en anglais, est également disponible sur ce site.
+
+\section{Interface}\label{sec:API}
+Cette section décrit l'interface de la bibliothèque \functory.
+La fonctionnalité primitive est une fonction \of{compute} réalisant
+l'idée principale évoquée dans l'introduction.
+\begin{ocaml}
+  val compute : 
+    worker:('a -> 'b) -> 
+    master:('a * 'c -> 'b -> ('a * 'c) list) -> 
+    ('a * 'c) list -> unit
+\end{ocaml}
+Les tâches sont des paires, de type \of{'a * 'c}, où la première
+composante sera transmise à l'ouvrier et la seconde conservée
+par le patron. La fonction \of{worker} doit être 
+pure\footnote{On entend ici \emph{observationnellement pure} mais on
+  autorise la levée d'exceptions pour signaler l'échec du calcul.}
+et sera exécutée en parallèle par tous les ouvriers. La fonction
+\of{master}, au contraire, peut être impure et sera exécutée
+uniquement au sein d'un unique processus séquentiel.
+Cette fonction \of{master} accumule typiquement les résultats renvoyés
+par les ouvriers dans une structure locale. Elle peut en outre
+produire de nouvelles tâches, 
+sous la forme d'une liste de type \of{('a * 'c) list}, 
+qui sont alors ajoutées aux tâches restant à effectuer.
+Le troisième argument de \of{compute} est la liste des tâches
+initiales, qui déclenchent le calcul.
+La fonction \of{compute} rend la main lorsque toutes les tâches ont
+été effectuées. Il n'y a pas de résultat renvoyé, mais uniquement des
+effets de bord de la fonction \of{master}.
+
+À titre d'illustration, voici comme écrire un équivalent distribué de
+la fonction \of{Array.map}, qui applique une fonction \of{f} à tous
+les éléments d'un tableau \of{a}. 
+\begin{ocaml}
+  let array_map f a =
+    let n = Array.length a in
+    let b = if n = 0 then [| |] 
+      else Array.create n (f a.(0)) in
+    let tasks = 
+      ref [] in for i = 1 to n - 1 do 
+         tasks := (a.(i), i) :: !tasks 
+      done;
+    compute ~worker:f 
+            ~master:(fun (_,i) bi -> 
+              b.(i) <- bi; []) !tasks;
+    b
+\end{ocaml}
+La liste des tâches, \of{tasks}, contient 
+les couples \of{(a.(i), i)} pour tous les indices \of{i} du tableau. La
+fonction \of{worker} se réduit à la fonction \of{f}. La fonction
+\of{master} reçoit un résultat \of{bi} correspondant à un indice
+\of{i} et le stocke dans le tableau résultat \of{b}.
+La fin de cette section décrit plusieurs telles
+fonctions d'ordre supérieur fournies par \functory, toutes dérivées de
+la fonction \of{compute}.
+
+En réalité, la bibliothèque \functory\ fournit \emph{cinq}
+mises en {\oe}uvre différentes de la fonction \of{compute}, correspondant à
+cinq contextes d'utilisation différents.
+Les deux premiers sont les plus simples.
+\begin{enumerate}
+\item \textbf{Exécution purement séquentielle :}
+  Elle permet d'obtenir un code de référence, pour mesurer des
+  performances ou mettre au point son programme.
+
+\item \textbf{Plusieurs \coeurs\ sur une même machine :} 
+  Il s'agit là de distribuer le calcul sur une unique machine,
+  uniquement en créant des processus fils.
+\end{enumerate}
+Les trois contextes suivants correspondent à une distribution du
+calcul sur un réseau de machines.
+\begin{enumerate}
+\setcounter{enumi}{2}
+\item \textbf{Patron et ouvriers sont matérialisés par un même exécutable :}
+  Cette mise en {\oe}uvre exploite la capacité d'\Ocaml\ à sérialiser
+  fonctions et valeurs polymorphes de manière portable.
+  Selon que le programme est exécuté comme le patron ou comme un
+  ouvrier, les arguments pertinents de la fonction \of{compute} sont utilisés.
+
+\item \textbf{Patron et ouvriers sont matérialisés par différents
+    programmes, compilés avec la même version d'\Ocaml\ :} 
+  Il n'est plus possible de sérialiser des fonctions mais on peut
+  encore sérialiser des valeurs polymorphes.
+  En conséquence, la fonction \of{compute} est présentée sous la forme
+  de deux fonctions, servant respectivement à réaliser le patron et
+  les ouvriers :
+\vspace{-0.5em}
+\begin{ocaml}
+val Worker.compute : ('a -> 'b) -> unit
+val Master.compute : ('a * 'c -> 'b -> ('a * 'c) list) -> 
+                     ('a * 'c) list -> unit
+\end{ocaml}
+
+\item \textbf{Patron et ouvriers sont matérialisés par différents
+    programmes, qui ne sont même pas compilés avec la même version
+    d'\Ocaml\ :} Il n'est plus possible d'utiliser la sérialisation
+  d'\Ocaml\ et la fonction \of{compute} est présentée sous la forme
+  de deux fonctions ne manipulant plus que des chaînes de caractères :%
+\vspace{-0.5em}
+\begin{ocaml}
+val Worker.compute : (string -> string) -> unit
+val Master.compute : (string * 'c -> string -> 
+                     (string * 'c) list) ->
+                     (string * 'c) list -> unit
+\end{ocaml}
+\end{enumerate}
+La bibliothèque \functory\ est donc organisée en trois modules :
+\of{Sequential} pour le calcul purement séquentiel ; \of{Cores} pour
+le calcul distribué sur plusieurs \coeurs\ d'une même machine ; et
+enfin \of{Network} pour le calcul en réseau. Ce dernier module
+comporte trois sous-modules, appelés respectivement \of{Same},
+\of{Poly} and \of{Mono}, correspondant aux situations 3, 4 et 5 ci-dessus.
+
+\paragraph{Fonctions dérivées.}\label{sec:derived}
+Dans de nombreuses situations, la mise en \oeuvre\ la plus simple du
+parallélisme consiste à appliquer une opération sur une liste, le
+traitement de chaque élément pouvant être réalisé en parallèle.
+\functory\ fournit plusieurs fonctions d'ordre supérieur
+offrant du calcul parallèle sur des listes, toutes dérivées de la fonction
+\of{compute}. En particulier, elles sont disponibles dans les cinq
+modules décrits ci-dessus.
+
+L'opération la plus naturelle est celle consistant à appliquer une
+fonction à tous les éléments d'une liste, analogue à la fonction
+\of{array_map} décrite plus haut, c'est-à-dire
+\begin{ocaml}
+  val map : ('a -> 'b) -> 'a list -> 'b list
+\end{ocaml}
+Plus subtilement, on peut combiner une fonction \of{f:'a -> 'b}
+avec une fonction \of{fold:'c -> 'b -> 'c} pour calculer, à partir d'une liste
+$l$  et d'un accumulateur initial $a$, la valeur finale
+\begin{equation}\label{eq:map-fold}
+  \of{fold} ~ ... ~ (\of{fold} ~ (\of{fold} ~ a ~ (\of{f} ~ x_1)) ~
+  (\of{f} ~ x_2)) ~ ... ~ (\of{f} ~ x_n)
+\end{equation}
+pour une certaine permutation non spécifiée $[x_1,x_2,...,x_n]$ 
+de la liste $l$.
+On peut alors distinguer deux cas, selon que l'opération \of{fold} est
+beaucoup moins coûteuse que l'opération \of{f}, et peut être
+effectuée localement par le patron, ou qu'au contraire elle peut être
+coûteuse et a donc intérêt à être effectuée en parallèle des
+opérations \of{f}. La bibliothèque fournit donc deux fonctions,
+correspondant à ces deux cas de figure :
+\begin{ocaml}
+  val map_{local,remote}_fold : f:('a -> 'b) -> 
+                               fold:('c -> 'b -> 'c) -> 
+                               'c -> 'a list -> 'c   
+\end{ocaml}
+
+Dans le cas de \of{map_remote_fold}, une seule opération \of{fold}
+peut être effectuée à la fois (possiblement en parallèle d'opérations
+\of{f}), comme le montre l'équation~(\ref{eq:map-fold}).
+Il existe cependant des situations dans lesquelles plusieurs
+opérations \of{fold} peuvent être effectuées en parallèle, dès que des
+résultats intermédiaires de \of{f} sont disponibles. C'est le cas
+notamment lorsque l'opération \of{fold} est associative (ce qui
+implique que les types \of{'b} et \of{'c} sont égaux).
+Lorsque l'opération \of{fold} est de plus commutative, on peut
+effectuer encore plus d'opérations \of{fold} en parallèle.
+Notre interface fournit donc deux autres fonctions pour ces cas
+particuliers :
+\begin{ocaml}
+  val map_fold_{a,ac} : f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
+                        'b -> 'a list -> 'b 
+\end{ocaml}
+Ces cinq fonctions se dérivent facilement de la fonction \of{compute}.
+Voici par exemple comment réaliser la fonction \of{map_fold_a}.
+On commence par introduire un type somme pour distinguer les tâches
+\of{f} des tâches \of{fold}, c'est-à-dire
+\of{type ('a, 'b) map_or_fold = Map of 'a | Fold of 'b}.
+Le code de l'ouvrier se résumé à distinguer les deux types de tâches.
+\begin{ocaml}
+  let worker = function Map x -> f x | 
+                                 Fold (x, y) -> fold x y
+\end{ocaml}
+Le code du patron est plus compliqué. En effet, l'opération \of{fold}
+étant seulement associative, on ne peut calculer d'expression analogue
+à (\ref{eq:map-fold}) que pour des éléments \emph{consécutifs} de la liste
+initiale $l$. 
+Le patron conserve donc, dans une table de hachage locale, tous les intervales
+$[x_i,\dots,x_j]$ de $l$ pour lesquels la valeur
+$$\of{f}~x_i \oplus \dots \oplus \of{f}~x_j$$ a déjà été calculée
+(en notant ici $\of{fold}$ par $\oplus$), ainsi que cette valeur.
+Cete table est doublement indexée, par $i$ et par $j$. Initialement
+cette table est vide et la liste des tâches ne contient que des tâches
+de type \of{Map}, une par élément de $l$.
+De manière générale, chaque tâche est associée au couple $(i,j)$
+dénotant le segment qu'elle représente.
+Lorsque le patron reçoit un résultat $r$ pour un segment
+$[x_i,\dots,x_j]$, trois cas se présentent. Soit il existe dans la
+table un résultat pour un segment de la forme $[x_k,\dots,x_{i-1}]$,
+que l'on extrait grâce à la clé $i-1$, et on produit alors une
+nouvelle tâche \of{Fold} pour calculer la valeur correspondant à
+$[x_k,\dots, x_j]$, après avoir supprimé de la table les entrées pour
+$k$ et $i-1$. Soit il existe dans la table un résultat pour un segment
+de la forme $[x_{j+1},\dots,x_k]$, que l'on traite de la même
+manière. (Si les deux situations se présentent en même temps, on
+choisit arbitrairement, car il y a de toutes façons deux tâches
+\of{Fold} à effectuer.)
+Soit enfin il n'y a ni entrée pour $i-1$ ni entrée pour
+$j+1$ dans la table, auquel cas on se contente d'ajouter la valeur $r$
+pour les deux clés $i$ et $j$. Lorsque toutes les tâches ont été
+effectuées, la table doit contenir exactement une valeur, associée aux
+clés $1$ et $n$, sauf dans le cas $n=0$ où aucun calcul n'est nécessaire.
+Au final, la fonction \of{map_fold_a} prend la forme suivante, où
+on a seulement omis le code de fusion des résultats expliqué ci-dessus.
+\begin{ocaml}
+  let map_fold_a ~f ~fold acc l =
+    let tasks = let i = ref 0 in 
+         List.map (fun x -> incr i; 
+                   Map x, (!i, !i)) l in
+    let results = Hashtbl.create 17 in 
+    let merge i j r = 
+            ... traiter le résultat r du segment [i,j] ... in
+    let worker = function Map x -> 
+                 f x | Fold (x, y) -> fold x y in
+    let master x r = match x with Map _,(i,_) -> 
+             merge i i r | Fold _,(i,j) -> merge i j r in
+    compute ~worker ~master tasks;
+    try let _,_,r = Hashtbl.find results 1 in r with 
+                    Not_found -> acc
+\end{ocaml}
+
+On peut évidemment dériver d'autres fonctions du même genre,
+comme par exemple une variante
+où seule la fonction \of{fold} est significative.
+L'utilisateur de \functory\ ne devrait pas avoir de mal à les dériver
+lui-même de la fonction \of{compute} ou des fonctions du type
+\of{map_fold} ci-dessus.
+
+
+\section{Études de cas}\label{sec:studies}
+
+Cette section présente plusieurs études de cas que nous avons
+réalisées avec \functory. On se concentre ici sur l'utilisation de la
+bibliothèque ; les résultats expérimentaux sont présentés plus loin
+(section~\ref{sec:experiments}). Le code source de tous les exemples
+ci-dessus est contenu dans la distribution de \functory, dans le
+sous-répertoire \texttt{tests}.
+
+\subsection{Multiplication de matrices}\label{sec:matrix}
+
+Comme premier exemple, on considère la multiplication de deux matrices
+\of{a} et \of{b}, de tailles respectives
+$\of{n}\times\of{p}$ et $\of{p}\times\of{m}$. 
+Le résultat sera stocké dans une matrice
+\of{c} de taille $\of{n}\times\of{m}$.
+On suppose que \of{a}, \of{b} et \of{c} sont contenues dans des
+variables globales.
+En supposant en outre \of{a} organisée en lignes et \of{b} en colonnes, une
+multiplication séquentielle s'écrirait ainsi 
+\begin{ocaml}
+  for i = 0 to n-1 do
+    for j = 0 to m-1 do
+      for k = 0 to p-1 do
+	c.(i).(j) <- c.(i).(j) + a.(i).(k) * b.(j).(k) (* b en colonnes *)
+      done
+    done
+  done  
+\end{ocaml}
+l'addition et la multiplication des coefficients étant notées
+respectivement $+$ et $\times$.
+La complexité de ce code est clairement $O(\of{n}\times\of{m}\times\of{p})$, 
+
+Une manière évidente de distribuer ce calcul consiste à faire de la
+boucle interne sur \of{k} une tâche élémentaire.
+On construit alors une liste de $\of{n} \times \of{m}$ tâches, de la
+manière suivante :
+\begin{ocaml}
+  let tasks = 
+    let l = ref [] in
+    for i = 0 to n-1 do for j = 0 to m-1 do
+      tasks := ((a.(i), b.(j)), (i,j)) :: !tasks
+    done done;
+    !l
+\end{ocaml}
+Chaque tâche est une paire formée d'une part d'une ligne \of{a.(i)} et
+d'une colonne \of{b.(j)}, et d'autre part d'une position \of{(i,j)}.
+L'ouvrier reçoit la première composante et calcule le produit scalaire.
+\begin{ocaml}
+  let worker (ai, bj) =
+    let c = ref 0 in
+    for k = 0 to p-1 do c := !c + ai.(k) * bj.(k) done;
+    !c
+\end{ocaml}
+La patron est une fonction d'une ligne, qui reçoit le résultat \of{r}
+renvoyé par l'ouvrier et remplit la matrice \of{c}, en fonction de la
+position contenue dans la seconde composante de la tâche. Aucune 
+nouvelle tâche n'est produite.
+\begin{ocaml}
+  let master (_, (i,j)) r = c.(i).(j) <- r; []
+\end{ocaml}
+Au final, l'ensemble du calcul est lancé par un appel à la fonction
+\of{compute}.
+\begin{ocaml}
+  let () = compute ~worker ~master !tasks
+\end{ocaml}
+où les variables \of{'a}, \of{'b} et \of{'c} du type de
+\of{compute} sont respectivement instanciées par 
+\of{coeff array * coeff array}, \of{coeff} et \of{int * int}.
+
+Utiliser la version séquentielle de \functory\ est aussi simple que
+d'ajouter \of{open Sequential} au début du code. Le calcul est alors
+similaire à la multiplication usuelle donnée plus haut. Cela peut être
+néanmoins utile pour vérifier la correction du code avant de chercher
+à distribuer le calcul.
+
+Supposons maintenant que l'on veuille utiliser une machine 4 \coeurs\
+pour effectuer le calcul. Il suffit alors de remplacer la ligne
+\of{open Sequential} par les deux lignes suivantes.
+\begin{ocaml}
+  open Cores
+  let () = set_number_of_cores 4
+\end{ocaml}
+Le reste du code est inchangé.
+
+Supposons enfin que l'on souhaite utiliser plutôt des machines
+présentes sur le réseau, par exemple deux machines appelées
+\texttt{orcus} et \texttt{belzebuth} offrant respectivement 4 et 8 \coeurs.
+Il suffit de remplacer les deux lignes de code ci-dessus par les suivantes.
+\begin{ocaml}
+  open Network
+  let () = declare_workers ~n:4 "orcus"
+  let () = declare_workers ~n:8 "belzebuth"
+  open Same
+\end{ocaml}
+On utilise ici le sous-module \of{Same} de \of{Network}, qui permet
+d'utiliser le même exécutable pour le patron et les ouvriers. Ce
+module fournit toujours une fonction \of{compute} de même signature
+que dans les modules \of{Sequential} et \of{Cores}, et le reste du
+code est toujours inchangé. Le patron et les ouvriers sont distingués
+à l'exécution par la présence de la variable d'environnement
+\texttt{WORKER}. 
+
+Si on a besoin d'écrire deux programmes différents pour le patron et
+les ouvriers, pour des raisons d'incompatibilité de binaires ou tout
+autre raison, l'interface de \functory\ permet de le faire.
+Si les deux programmes sont compilés avec la même version d'\Ocaml, on
+utilise le module \of{Poly}.
+Commençons par l'ouvrier. Son code prend la forme suivante.
+\begin{ocaml}
+  open Network.Poly
+  let worker (ai, bj) = ...
+  let () = Worker.compute worker ()
+\end{ocaml}
+La fonction \of{Worker.compute} entre dans une boucle qui attend les
+tâches envoyées par le patron et renvoie les résultats calculés par
+la fonction \of{worker}. Le code du patron, quant à lui, est quasiment
+le même qu'auparavant. On commence par remplacer \of{Same} par
+\of{Poly}.
+\begin{ocaml}
+  open Network
+  let () = declare_workers ~n:4 "orcus"
+  let () = declare_workers ~n:8 "belzebuth"
+  open Poly
+\end{ocaml}
+La construction des tâches et la fonction \of{master} sont inchangées.
+\begin{ocaml}
+  let tasks = ...
+  let master (_, (i,j)) r = ...
+\end{ocaml}
+Enfin on lance le calcul avec la fonction \of{Master.compute}, qui ne
+prend plus de fonction \of{worker} en argument.
+\begin{ocaml}
+  let () = Master.compute ~master tasks
+\end{ocaml}
+
+Quand le patron et les ouvriers sont compilés avec des versions
+différentes d'\Ocaml, la bibliothèque fournit une interface
+ne permettant plus que l'échange de chaînes de caractères.
+En conséquence, il faut convertir les tâches et les résultats depuis
+et vers des chaînes, dans les deux programmes.
+L'ouvrier modifié prend alors la forme suivante.
+\begin{ocaml}
+  open Mono
+  let worker (ai, bj) = ...
+  let worker_string s = string_of_coeff (worker (task_of_string s))
+  let () = Worker.compute worker_string ()
+\end{ocaml}
+Le patron est modifié de la même façon.
+On remplace \of{Poly} par \of{Mono} et on encode/décode les tâches et
+résultats.
+\begin{ocaml}
+  let tasks = ... string_of_task ...
+  let master (_, (i,j)) r = c.(i).(j) <- coeff_of_string r; []
+\end{ocaml}
+Les quatre fonctions de conversion \of{string_of_}\{\of{task,coeff}\} et
+\{\of{task,coeff}\}\of{_of_string} sont à la charge de l'utilisateur.
+
+\subsection{Autres études de cas}
+
+Nous présentons ici trois autres études de cas, plus rapidement.
+
+\paragraph{N-reines.}\label{sec:n-queens}
+Il s'agit du problème classique consistant à calculer le nombre de
+façons de disposer $N$ reines sur un échiquier $N\times N$ sans que
+deux d'entre elles soient en prise.
+On utilise un algorithme standard, consistant à positionner une reine
+sur chaque ligne de l'échiquier, en partant de la première ligne. Il
+est facile de distribuer le calcul: on considère toutes les façons de
+placer les reines des $D$ premières lignes et on effectue le reste du
+calcul en parallèle. Pour $D=1$ on obtient ainsi $N$ tâches ; pour
+$D=2$ on obtient $N^2-3N+2$ tâches ; et ainsi de suite.
+Chaque tâche est composée de quelques entiers et son résultat est un
+entier donnant le nombre de solutions pour cette tâche.
+On utilise la fonction \of{map_local_fold} où \of{f} effectue la
+recherche et \of{fold} somme les résultats intermédiaires.
+
+\paragraph{L'ensemble de Mandelbrot.}
+Dessiner l'ensemble de Mandelbrot est un autre exemple de calcul
+aisément distribuable.
+Il s'agit de l'ensemble des points $c$ du plan complexe telle que la
+suite définie par $z_0=0$ et $z_{n+1}=z_n^2+c$ reste de module borné.
+Pour le dessiner, on cherche le plus petit $n$ tel que $|z_n|>2$, ce
+qui assure alors la divergence, en s'arrêtant après un nombre maximal
+d'itérations fixé (par exemple 200).
+Il est clair que la couleur de chaque point peut être
+calculée indépendamment. Supposons donnée une région du plan complexe 
+à dessiner, ainsi
+que la taille $\of{w} \times \of{h}$ en pixels de l'image finale.
+On se donne un nombre de tâches $\of{t} \ge 1$ comme paramètre. Il est
+immédiat de découper l'image en \of{t} sous-images, par exemple en
+bandes horizontales (si $\of{h} \ge \of{t}$) ou plus généralement en
+blocs rectangulaires.
+Chaque tâche est constituée de quatre flottants définissant la
+région à dessiner, ainsi que deux entiers donnant la taille de l'image
+correspondante. Le résultat est une matrice de pixels, de taille
+$(\of{w}\times\of{h}) / \of{t}$.
+Ainsi, dessiner une image $800\times 600$ en utilisant 20 tâches
+donnera 20 sous-images de $176\,000$ octets chacune, en supposant
+chaque pixel représenté par quatre octets.
+
+\paragraph{Démonstrateurs automatiques.}\label{sec:SMT}
+Le dernier exemple correspond à celui mentionné dans l'introduction.
+Il s'agit ici de vérifier la validité de 80 obligations de preuve
+(OP), issues de la plate-forme Why~\cite{filliatre07cav}, à l'aide de
+quatre démonstrateurs automatique de la famille SMT (à savoir
+Alt-Ergo, Simplify, Z3 et CVC3).  Chaque OP est vérifiée avec chaque
+démonstrateur, ce qui fait un total de 320 tâches.
+Les OP sont contenues dans des fichiers accessibles par NFS et une
+tâche est donc un nom de fichier et un nom de démonstrateur. 
+Le démonstrateur est appelé comme un programme externe, avec un temps
+d'exécution maximal. Le
+résultat d'une tâche est la réponse du démonstrateur (valide, abandon,
+temps limite atteint, erreur pendant l'exécution) et son temps de calcul.
+Le patron collecte les résultats et les présente au final sous forme
+d'une table synthétique.
+
+\section{Détails techniques}\label{sec:implem}
+
+Cette section décrit la réalisation des différents modules de la
+bibliothèque \functory\ introduits section~\ref{sec:API}, exception
+faire du module \of{Sequential}, dont la réalisation est immédiate.
+%
+Les deux modules \of{Cores} et \of{Network} contiennent une boucle
+principale analogue, de la forme suivante :
+
+\medskip
+\begin{minipage}{1.0\linewidth}
+  \begin{flushleft}
+    \quad  \textbf{tant que} tâches à faire $\lor$ tâches en cours \\
+    \quad  \quad \textbf{tant que} tâches à faire $\land$ ouvriers disponibles \\
+    \quad  \quad \quad affecter une tâche à un ouvrier \\
+    \quad  \quad \textbf{attendre} la fin d'une tâche \\
+    \quad  \quad \quad ajouter les nouvelles tâches renvoyées par \of{master} \\
+  \end{flushleft}
+\end{minipage}
+
+\medskip\noindent
+La différence se situe dans la technologie utilisée pour affecter une
+tâche à un ouvrier, pour attendre la fin d'une tâche et enfin pour
+ajouter de la tolérance aux pannes.
+
+\subsection{\of{Cores}}
+
+Le module \of{Cores} permet de distribuer le calcul sur une unique
+machine, typiquement en exploitant plusieurs \coeurs. 
+Comme illustré section~\ref{sec:studies}, la fonction
+\of{set_number_of_cores} permet de spécifier le nombre de \coeurs\ à
+utiliser. Ce nombre peut être différent du nombre effectif de \coeurs\ 
+de la machine. Il peut même être strictement plus grand.
+En fait, ce nombre indique tout simplement combien de tâches peuvent être
+effectuées simultanément.
+
+Le module \of{Cores} est réalisé à l'aide de processus \unix, en
+utilisant la fonction \of{Unix.fork} de la bibliothèque standard d'\Ocaml.
+Plus précisément, un compteur indique le nombre d'ouvriers disponibles 
+et l'affectation d'une tâche à un ouvrier se fait en 
+créant un nouveau sous-processus avec \of{fork}.
+À la fin du calcul, le résultat de la tâche est transmis au processus
+père par sérialisation dans un tube.
+La répartition des tâches sur les différents \coeurs\ (physiques) de
+la machine, le cas échéant, est laissée au système. Il se peut donc
+que deux tâches se retrouvent être exécutées sur le même \coeur, y
+compris dans le cas où le nombre de \coeurs\ déclarés est inférieur ou
+égal au nombre de \coeurs\ effectifs.
+
+\subsection{\of{Network}}
+
+Le module \of{Network} permet de distribuer le calcul sur un réseau de
+machines. 
+Comme illustré section~\ref{sec:studies}, la fonction 
+\of{declare_workers: n:int -> string -> unit} permet de déclarer
+l'ensemble des machines du réseau sur lesquels se trouvent des
+ouvriers, en spécifiant un nombre d'ouvriers par machine (qui 
+ne coïncide pas nécessairement avec un nombre effectif de \coeurs).
+Le module \of{Network} est basé sur une architecture client/serveur
+utilisant TCP/IP, où chaque ouvrier est un serveur et où le patron
+est (ironiquement) le client de chaque ouvrier.
+Le patron est un programme purement séquentiel.
+En particulier, il ne peut administrer les tâches pendant l'exécution
+de la fonction \of{master}. Ce n'est pas un problème en pratique, car
+on peut supposer que la fonction \of{master} s'exécute rapidement.
+L'ouvrier, en revanche, crée un nouveau processus avec \of{fork} pour
+exécuter la tâche qui lui est confiée et peut donc continuer à
+communiquer avec le patron pendant son calcul.
+
+\paragraph{Protocole.}\label{sec:protocol}
+Le protocole utilisé comporte sept messages différents.
+Les quatre messages possibles envoyés par le patron à un ouvrier sont : 
+\of{Assign(id:int, f:string, x:string)} pour affecter une nouvelle
+tâche \of{id} à l'ouvrier, sous la forme de deux chaînes \of{f} et \of{x} dont
+le sens dépend du contexte ; 
+\of{Kill(id:int)} pour demander l'interruption de la tâche \of{id} ;
+\of{Stop} pour demander l'arrêt définitif de l'ouvrier ;
+et enfin \of{Ping} pour vérifier que l'ouvrier est toujours réactif.
+Inversement, les trois messages possibles envoyés par un ouvrier au
+patron sont :
+\of{Pong} en réponse à un message \of{Ping} ;
+\of{Completed(id:int, s:string)} pour renvoyer le résultat \of{s} de
+la tâche \of{id} ;
+et enfin \of{Aborted(id:int)} pour signifier l'échec de la tâche
+\of{id}, soit en réponse à \of{Kill}, soit à cause d'une erreur lors
+de l'exécution de la fonction \of{worker}.
+
+Ce protocole est de telle
+sorte que patron et ouvriers peuvent être exécutés sur des
+plate-formes complètement différentes, vis-à-vis de
+l'\emph{endianness}, de la version d'\Ocaml\ et du système d'exploitation.
+Dans le sous-module \of{Same}, les arguments \of{f} et \of{x} du
+message \of{Assign} désignent respectivement
+la sérialisation d'une fonction et de
+son argument, et l'argument \of{s} du message \of{Completed} la
+sérialisation du résultat. Dans les sous-module \of{Poly} et
+\of{Mono}, en revanche, la
+partie \of{f} du message \of{Assign} n'est plus pertinente
+car la fonction \of{worker} est maintenant locale à l'ouvrier.
+Les chaînes \of{x} et \of{s} restent pertinentes ; pour \of{Poly},
+ce sont des sérialisations de valeurs \Ocaml\ et pour \of{Mono}  de
+simples chaînes de caractères.
+
+
+\subsubsection{Tolérance aux pannes}\label{sec:fault}
+
+L'une des principales difficultés dans un environnement de calcul
+distribué est la tolérance aux pannes. C'est l'un des principaux
+atouts de la bibliothèque \functory.
+La tolérance aux pannes de \functory\ est limitée aux ouvriers ; la
+tolérance aux pannes du patron est laissée à l'utilisateur, par
+exemple sous la forme d'une sauvegarde régulière de l'état du patron.
+Les pannes des ouvriers sont de
+deux sortes : un ouvrier peut être stoppé et éventuellement plus tard
+redémarré ; ou un ouvrier peut être temporairement ou définitivement
+inaccessible sur le réseau. Dans tous les cas, on souhaite que le
+calcul parvienne à son terme, dès lors que cela reste possible, et
+idéalement en utilisant au mieux les ressources disponibles.
+
+Pour assurer cette tolérance aux pannes, le patron maintient en
+permanence l'état de chaque ouvrier. Cet état est contrôlé par deux
+délais $T_1$ et $T_2$, paramétrés par l'utilisateur,
+et par l'ensemble des messages échangés.
+Il y a quatre états possibles pour un ouvrier :
+\of{déconnecté} signifie qu'il n'y a pas de connection TCP en cours
+entre le patron et l'ouvrier ; 
+\of{vivant} signifie qu'un message de l'ouvrier a été reçu par le patron
+il y a moins de $T_1$ secondes ;
+\of{contacté} signifie que l'ouvrier n'a pas envoyé de message depuis
+plus de $T_1$ secondes et que le patron lui a envoyé un message
+\of{Ping} depuis moins de $T_2$ secondes ;
+enfin \of{inatteignable} signifie que l'ouvrier n'a toujours pas répondu au
+message \of{Ping} (depuis plus de $T_2$ secondes).
+Dès qu'un message est reçu en provenance d'un ouvrier, son état est
+mis à jour. On a donc l'automate suivant pour les états d'un ouvrier donné.
+\begin{center}
+  \includegraphics{state.mps}
+\end{center}
+
+La tolérance aux pannes est réalisée en exploitant l'état des ouvriers
+de la manière suivante. Les tâches ne sont envoyées qu'à des ouvriers
+se trouvant dans l'état \of{vivant} ou \of{contacté}.
+D'autre part, dès qu'un ouvrier en train d'effectuer une tâche $t$
+passe dans l'état \of{déconnecté} ou \of{inatteignable}, la tâche $t$
+est reprogrammée, ce qui signifie qu'elle est ajoutée de nouveau à
+l'ensemble des tâches restant à effectuer. Lorsque le patron reçoit un
+résultat pour une tâche $t$, il déprogramme la tâche $t$ si elle avait
+été reprogrammée et indique à tout ouvrier ayant déjà entrepris de
+recalculer $t$ de cesser son travail (avec le message \of{Kill}).
+
+Enfin, il est important de signaler que notre bibliothèque est
+également robuste vis-à-vis des exceptions levées par la fonction
+\of{worker}. Le cas échéant, un message \of{Aborted} est envoyé au
+patron et la tâche est reprogrammée. C'est la responsabilité de
+l'utilisateur de rattraper et de traiter ces exceptions si nécessaire.
+
+\section{Résultats expérimentaux}\label{sec:experiments}
+
+Cette section présente quelques résultats expérimentaux obtenus avec
+les quatre programmes décrits section~\ref{sec:studies}.
+
+\paragraph{N-reines.}
+La table suivante montre les temps d'exécution pour différentes valeurs
+de $N$ et pour chacun des trois modules \of{Sequential}, \of{Cores} et
+\of{Network}. L'objectif est ici de mesurer le facteur par rapport à
+l'exécution séquentielle. En conséquence, tous les calculs sont
+effectués sur la même machine, un Intel Xeon 8 \coeurs\ 3.2 GHz sous
+Linux Debian. L'exécution séquentielle utilise un unique \coeur. La
+version multi-\coeurs\ utilise les 8 \coeurs\ de la machine. La
+version réseau utilise également 8 ouvriers locaux à la machine, le
+patron s'exécutant sur une machine distante pour induire des
+communications réseaux réalistes.
+La première colonne donne la valeur de $N$ et la seconde le nombre de
+tâches. Les trois colonnes suivantes donnent les temps d'exécution, en
+secondes, et le facteur d'accélération entre parenthèses.
+\begin{center}
+  \begin{tabular}{|r|r|r|r|r|r|}
+    \hline
+    N & D & \#tâches  & \of{Sequential}& \of{Cores}            & \of{Network} 
+    \\\hline\hline
+    16 & 1 &   16    &  15.2     &   2.04 (7.45$\times$) &  2.35  (6.47$\times$) 
+    \\\hline
+       & 2 & 210    &  15.2     &   2.01 (7.56$\times$) & 21.80  (0.69$\times$)
+    \\\hline
+    17 & 1 &   17    & 107.0     &  17.20 (6.22$\times$) & 16.20  (6.60$\times$)
+    \\\hline
+       & 2 & 240    & 107.0     &  14.00 (7.64$\times$) & 24.90  (4.30$\times$)
+    \\\hline
+    18 & 1 &   18    & 787.0     & 123.00 (6.40$\times$) & 125.00 (6.30$\times$)  
+    \\\hline
+       & 2 & 272    & 787.0     & 103.00 (7.64$\times$) & 124.00 (6.34$\times$)  
+    \\\hline
+    19 & 1 &   19    &6120.0     & 937.00 (6.53$\times$) & 940.00 (6.51$\times$)  
+    \\\hline
+       & 2 & 306    &6130.0     & 796.00 (7.70$\times$) & 819.00 (7.48$\times$)
+    \\\hline
+  \end{tabular}
+\end{center}
+Il apparaît clairement que les modules \of{Cores} et \of{Network}
+permettent d'obtenir un facteur d'accélération significatif, qui
+atteint presque 8, c'est-à-dire le nombre de \coeurs\ utilisés.
+Il apparaît également que le module \of{Network} donne de meilleurs
+résultats lorsque le temps de calcul domine largement le temps de
+communication. Les deux cas extrêmes correspondent aux 
+deuxième et dernière lignes : dans la deuxième ligne, le temps de
+communication domine et représente en fait plus de 91\%\ du temps
+total ; dans la dernière, au contraire, il ne représente plus que
+4.6\%\ du temps total.
+D'une manière générale, le module \of{Network} n'est intéressant que
+si le temps de calcul de chaque tâche est significatif.
+
+\paragraph{L'ensemble de Mandelbrot.}
+Dans cette expérience, on dessine le fragment rectangulaire de l'ensemble de
+Mandelbrot compris entre les points $(-1.1, 0.2)$ et $(-0.8, 
+0.4)$, sous la forme d'une image de résolution $9\,000\times6\,000$.
+On utilise la même machine que dans l'expérience précédente.
+Un calcul purement séquentiel prend 29,4 secondes.
+Les résultats pour les modules \of{Cores} et \of{Network} sont
+présentés figure~\ref{fig:bench:mandelbrot}.
+\begin{figure}
+  \centering
+  \begin{center}
+    \begin{tabular}{|r|r|r|r|r|}
+      \hline
+      \#\coeurs  &\#tâches & \of{Cores} & \of{Network} \\
+      \hline\hline
+      2       & 10 & 15.8       (1.86$\times$) &  20.3  (1.45$\times$)      \\
+      & 30 & 15.7       (\underline{1.87}$\times$) &  18.7 (1.57$\times$)       \\
+      & 100 & 16.1      (1.83$\times$) &  19.8   (1.48$\times$)    \\
+      & 1000 & 19.6     (1.50$\times$) &  38.6    (0.76$\times$)  \\
+      \hline
+      4       & 10 & 9.50       (3.09$\times$)  &  14.4     (2.04$\times$)  \\
+      & 30 & 8.26       (\underline{3.56}$\times$)  &  11.4  (2.58$\times$) \\
+      & 100 & 8.37      (3.51$\times$)  &  11.4  (2.58$\times$) \\
+      & 1000 & 10.6     (2.77$\times$)  &  20.5   (1.43$\times$) \\
+      \hline
+      8       & 10 & 9.40       (3.13$\times$)  &  12.6    (2.33$\times$)  \\
+      & 30 & 4.24       (\underline{6.93}$\times$)  &   7.6  (3.87$\times$)    \\
+      & 100 & 4.38      (6.71$\times$)  &   7.5    (3.92$\times$)  \\
+      & 1000 & 6.86     (4.29$\times$)  &  11.3    (2.60$\times$)  \\
+      \hline
+    \end{tabular}
+  \end{center}
+  
+  \caption{Résultats pour l'ensemble de Mandelbrot.}
+\label{fig:bench:mandelbrot}
+\end{figure}
+Les meilleurs résultats sont obtenus avec le module \of{Cores}, où la
+communication n'intervient que localement, entre processus.
+Il y a deux différences significatives avec l'expérience précédente
+des $N$-reines. D'un côté, le nombre de tâches peut être contrôlé
+beaucoup plus facilement. Expérimentalement, on constate que le nombre
+optimal de tâches est de l'ordre de 30. D'un autre côté, en revanche,
+le résultat de chaque calcul est une image, et non plus un simple
+entier. En conséquence, les coûts de communication sont bien plus
+grands. Dans cette expérience particulière, la taille totale des
+résultats dépasse les 200 Mo.
+
+\paragraph{Multiplication de matrices}
+Cette expérience a été inspirée par le concours de programmation
+associé à la conférence PASCO 2010~\cite{PASCO}.
+L'un des problèmes consistait à multiplier deux matrices de taille
+$100\times 100$, c'est-à-dire $\of{n} = \of{p} =
+\of{m} = 100$ avec les notations de la section~\ref{sec:matrix}.
+Les coefficients sont entiers mais peuvent avoir des milliers de
+chiffres et GMP~\cite{GMP} est utilisé ici pour les calculs relatifs
+aux coefficients.
+
+On compare les performances de deux programmes distribués utilisant
+\functory. Dans le premier, appelé \of{mm1}, chaque tâche consiste en
+le calcul d'un unique coefficient de la matrice résultat, exactement 
+comme décrit section~\ref{sec:matrix}. 
+Dans le second, appelé \of{mm2}, chaque tâche consiste en le calcul de
+toute une ligne de la matrice résultat.
+En conséquence, le nombre total de tâches est $\of{n}\times\of{m}=10,000$ 
+pour \of{mm1} et seulement $\of{n}=100$ pour \of{mm2}.
+Les résultats expérimentaux, toujours en secondes et toujours sur la
+même machine, sont les suivants.
+\begin{center}
+  \begin{tabular}{|r|r|r|}
+    \hline
+    & \of{mm1}       & \of{mm2}  \\
+    & (10,000 tâches) & (100 tâches) \\
+    \hline\hline
+\of{Sequential} & 20.3 \phantom{(0.00)$\times$} &  20.2 \phantom{(0.00)$\times$} \\
+\hline
+ \of{Cores} 
+ (2 \coeurs)     &   22.7 (0.89$\times$) &  11.3 (1.79$\times$) \\
+ (4 \coeurs)     &   12.3 (1.65$\times$) &   6.1 (3.31$\times$) \\
+ (6 \coeurs)     &    8.6 (2.36$\times$) &   4.3 (4.70$\times$) \\
+ (8 \coeurs)     &    8.0 (2.54$\times$) &   3.5 (\underline{5.77}$\times$) \\
+ \hline
+  \end{tabular}
+\end{center}
+On exclut les résultats pour la configuration en réseau, car ils
+n'apportent aucune amélioration par rapport à l'exécution séquentielle.
+La raison en est que les coûts de communication dominent largement les
+coûts de calcul, donnant un temps d'exécution total supérieur à 30
+secondes. Que ce soit pour \of{mm1} ou \of{mm2}, le nombre total de
+coefficients transmis est en effet en
+$O(\of{n}\times\of{m}\times\of{p})$, ce qui représente ici des
+milliards d'octets.
+Dans une réalisation moins naïve, les ouvriers pourrait lire les deux
+matrices une seule fois, par exemple depuis un fichier, et le patron
+n'enverrait uniquement que des indices de lignes et de colonnes. Cela
+réduirait le volume des communications à seulement $O(\of{n}\times\of{m})$.
+
+\paragraph{Démonstrateur automatiques.}
+Comme expliqué plus haut, cette expérience consiste à vérifier la
+validité de 80 formules logiques à l'aide de quatre démonstrateurs
+automatiques de la famille SMT. Chacune de ces 320 tâches est exécutée
+dans une limite de temps fixée à une minute.
+La plate-forme de test est ici constituée de trois machines en réseau,
+de 4, 8 et 8 \coeurs\ respectivement.
+Le tableau ci-dessus indique le temps total passé dans chaque
+démonstrateur automatique, cumulé pour chacune des réponses possibles.
+\begin{center}
+  \begin{tabular}{|r||r|r|r|r|}
+    \hline
+    démonstrateur   & valide & abandon & temps limite & erreur
+    \\\hline\hline
+    Alt-ergo & 406.0 & 3.0   &  11\,400.0 & 0.0       
+    \\\hline
+    Simplify &  0.5   & 0.4   &  1\,200.0 & 222.0   
+    \\\hline
+    Z3       & 80.7   & 0.0   &  1\,800.0 & 1\,695.0   
+    \\\hline
+    CVC3     & 303.0  & 82.7  &  4\,200.0 & 659.0   
+    \\\hline
+  \end{tabular}
+\end{center}
+Ce qui nous intéresse ici est en particulier le temps total
+d'exécution séquentielle cumulée, qui dépasse les 6 heures de calcul.
+Cependant, en utilisant \functory\ et notre petit réseau de trois
+machines, le temps total de calcul n'a pas dépassé 22 minutes et 30
+secondes, ce qui représente une accélération d'un facteur 16.
+On est encore loin du facteur optimal 20 (on utilise ici 20 \coeurs\
+de puissance équivalente), en particulier parce que certains
+démonstrateurs allouent beaucoup de mémoire et que le temps passé dans
+les appels systèmes n'est pas pris en compte ici.
+Un facteur 16 est cependant une accélération significative pour une
+utilisation au jour le jour.
+
+\section{Conclusion et perspectives}\label{sec:future}
+
+Nous avons présenté \functory, une bibliothèque de calcul distribué
+pour \Ocaml. Les caractéristiques principales de cette
+bibliothèque sont son interface générique, sous forme de fonctions
+polymorphes d'ordre supérieur, et la possibilité de basculer aisément
+entre exécutions séquentielle, multi-\coeurs\ et réseau.
+En particulier, \functory\ permet d'utiliser le même exécutable pour
+le patron et les ouvriers, ce qui rend le déploiement de petits
+programmes immédiat --- les deux ne sont distingués que par une
+variable d'environnement. Bien entendu, \functory\ permet également
+l'utilisation de deux programmes complètement différents, ce qui est
+toujours le cas dans une application à grande échelle.
+Une autre caractéristique essentielle de \functory\ est son mécanisme
+robuste de tolérance aux pannes, qui simplifie grandement le code de
+l'utilisateur. 
+% Enfin, une dernière caractéristique non évoquée dans
+% cet article, est la possibilité d'enchaîner plusieurs calculs
+% distribués dans un même programme.
+
+\paragraph{Travaux connexes.}
+Une bibliothèque relativement proche de la nôtre est l'implémentation
+de MapReduce pour \Ocaml\ par Yohann Padioleau~\cite{poor-man-mapreduce}.
+Elle est construite au dessus d'OCamlMPI~\cite{ocamlMPI}, alors que
+notre bibliothèque utilise son propre protocole.
+OCamlMPI permet notamment un déploiement plus flexible des ouvriers.
+D'un autre côté, notre bibliothèque offre une interface plus générique
+et surtout la tolérance aux pannes.
+Mis à part OcamlMPI, 
+il existe d'autres environnements sur lesquels une bibliothèque comme
+\functory\ pourrait être construite. Un exemple est
+\JoCaml~\cite{jocaml}. Il est cependant important de noter que
+\JoCaml\ n'offre pas de tolérance aux pannes \emph{de
+  facto}. L'utilisateur doit l'inclure dans son code, comme cela a
+déjà été démontré dans certaines expériences impliquant
+\JoCaml~\cite{mandel2008}.  Vu que l'essentiel de la complexité de
+\functory\ se situe dans le code de tolérance aux pannes, l'apport de
+\JoCaml\ serait relativement anecdotique.
+
+% TODO Mathias Kende
+
+Il existe également des bibliothèques de calcul distribué pour
+d'autres langages fonctionnels. L'une d'elles est le projet
+Disco~\cite{disco}, une implémentation de MapReduce dans le
+langage Erlang~\cite{erlang}. Notre bibliothèque, au contraire, n'est
+pas une implémentation de MapReduce. Une autre manière d'exploiter les
+architectures multi-\coeurs\ consiste à faire du parallélisme de
+données, et cela reste pertinent dans le contexte de la programmation
+fonctionnelle~\cite{parallel-haskell}. Le parallélisme de données
+n'est pas du tout l'objectif de \functory.
+
+\paragraph{Perspectives.}
+La bibliothèque \functory\ pourrait être enrichie de nombreuses façons.
+L'une d'elles est la prise en compte, dans l'affectation des tâches
+aux ouvriers, de paramètres de ressources telles que la localité des données,
+la puissance de calcul, l'espace mémoire disponible, etc. On peut
+imaginer pour cela offrir à l'utilisateur des moyens de contrôle de
+l'affectation des tâches ou un processus plus automatique.
+Cela permettrait d'utiliser \functory\ dans les mêmes contextes que MapReduce.
+Il est important de noter qu'à l'heure actuelle, en l'absence de toute
+information concernant les tâches, leur ordonnancement est complètement
+arbitraire. Les modules \of{Cores} et \of{Network} utilisent de
+une simple file pour les tâches restant à effectuer et les nouvelles
+tâches, produites par le patron, sont ajoutées à la fin de cette file.
+% TODO tel que dans la biblio de MK
+
+Une autre amélioration consiste à faciliter le déploiement en réseau,
+en permettant l'ajout et le retrait dynamique de machines
+ouvrières. Pour l'instant notre bibliothèque utilise une liste de
+machines spécifiées \emph{a priori} mais elle pourrait par exemple lire des noms
+de machines depuis un fichier, périodiquement. 
+
+\functory\ offre peu d'outils pour visualiser en temps réel l'état des
+calculs et des communications (mis à part quelques informations de
+\emph{debugging}). Calculer et stocker une telle information est immédiat,
+et en partie déjà fait, mais son observation en temps réel demande
+plus de travail. Une possibilité serait de réutiliser une partie de
+l'outil \textsf{Ocamlviz}~\cite{ocamlviz}. 
+
+Enfin, une fonctionnalité appréciable du MapReduce de Google est
+l'accélération des fins de calcul en utilisant des ouvriers
+disponibles pour dupliquer les toutes dernières tâches. Vu que
+\functory\ comporte déjà tout le mécanisme de tolérance aux pannes,
+ajouter une telle fonctionnalité devrait être relativement simple.
+
+\remerciements{
+Les auteurs remercient Alain Mebsout et Johannes Kanig pour avoir testé
+la bibliothèque \functory\ et pour leurs commentaires, ainsi que Claude
+Marché pour sa relecture attentive de cet article.
+}
+
+
+%\subsubsection{Annexe pour le service de fabrication~: commande \cmd{publisher}}
+
+%Pour la remise finale des articles, il nous faut une version abrégée du titre courant
+%(normalement déjà placée dans l'en-tête des pages impaires) et les coordonnées
+%des auteurs pour les joindre si nécessaire. La commande \cmd{publisher} qui se
+%place au début ou à la fin de l'article fait apparaître en dernière page
+%l'annexe demandée, avec un report des informations déjà connues comme le titre
+%(version longue et abrégée), les noms d'auteurs, les références du logiciel
+%utilisé. Il ne manque que les coordonnées (numéro de téléphone, numéro de fax
+%et e-mail) pour construire cette page. 
+
+
+
+%BIBLIOGRAPHIE
+\bibliographystyle{alpha}
+\bibliography{./biblio}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\end{document}
+  
