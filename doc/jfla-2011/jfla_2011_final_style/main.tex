@@ -10,7 +10,7 @@
 \usepackage[latin1]{inputenc}
 \usepackage{url}
 \newcommand{\Ocaml}{OCaml}
-\newcommand{\functory}{\textsf{Functory}}
+\newcommand{\functory}{\textsc{Functory}}
 \newcommand{\JoCaml}{Jo{\&\!}Caml}
 \newcommand{\unix}{\textsc{Unix}}
 \newcommand{\oeuvre}{\oe uvre}
@@ -133,7 +133,7 @@ simple ordinateur de bureau à un réseau de machines.
 Le reste de cette introduction décrit notre approche du calcul
 distribué dans le contexte d'un langage fonctionnel.
 
-\paragraph{Calcul distribué.}
+\paragraph*{\bf Calcul distribué}
 Initialement inspirée par la bibliothèque
 MapReduce\footnote{Ironiquement, l'approche de Google a été elle-même
   inspirée par la programmation fonctionnelle.} de
@@ -167,7 +167,7 @@ ainsi être arrêtés, relancés, temporairement stoppés ou inatteignables
 à cause de problèmes liés au réseau, sans jamais compromettre le
 résultat final du calcul.
 
-\paragraph{Une approche fonctionnelle.}
+\paragraph*{\bf Une approche fonctionnelle}
 Nous avons essayé de tirer partie des spécificités de la programmation
 fonctionnelle pour proposer une interface la plus générique possible.
 L'une des idées principales de \functory\ est que chaque ouvrier est
@@ -327,7 +327,7 @@ enfin \of{Network} pour le calcul en réseau. Ce dernier module
 comporte trois sous-modules, appelés respectivement \of{Same},
 \of{Poly} and \of{Mono}, correspondant aux situations 3, 4 et 5 ci-dessus.
 
-\paragraph{Fonctions dérivées.}\label{sec:derived}
+\paragraph*{\bf Fonctions dérivées}\label{sec:derived}
 Dans de nombreuses situations, la mise en \oeuvre\ la plus simple du
 parallélisme consiste à appliquer une opération sur une liste, le
 traitement de chaque élément pouvant être réalisé en parallèle.
@@ -607,7 +607,7 @@ Les quatre fonctions de conversion \of{string_of_}\{\of{task,coeff}\} et
 
 Nous présentons ici trois autres études de cas, plus rapidement.
 
-\paragraph{N-reines.}\label{sec:n-queens}
+\paragraph*{\bf N-reines}\label{sec:n-queens}
 Il s'agit du problème classique consistant à calculer le nombre de
 façons de disposer $N$ reines sur un échiquier $N\times N$ sans que
 deux d'entre elles soient en prise.
@@ -622,7 +622,7 @@ entier donnant le nombre de solutions pour cette tâche.
 On utilise la fonction \of{map_local_fold} où \of{f} effectue la
 recherche et \of{fold} somme les résultats intermédiaires.
 
-\paragraph{L'ensemble de Mandelbrot.}
+\paragraph*{\bf L'ensemble de Mandelbrot}
 Dessiner l'ensemble de Mandelbrot est un autre exemple de calcul
 aisément distribuable.
 Il s'agit de l'ensemble des points $c$ du plan complexe telle que la
@@ -646,7 +646,7 @@ Ainsi, dessiner une image $800\times 600$ en utilisant 20 tâches
 donnera 20 sous-images de $176\,000$ octets chacune, en supposant
 chaque pixel représenté par quatre octets.
 
-\paragraph{Démonstrateurs automatiques.}\label{sec:SMT}
+\paragraph*{\bf Démonstrateurs automatiques}\label{sec:SMT}
 Le dernier exemple correspond à celui mentionné dans l'introduction.
 Il s'agit ici de vérifier la validité de 80 obligations de preuve
 (OP), issues de la plate-forme Why~\cite{filliatre07cav}, à l'aide de
@@ -731,7 +731,7 @@ L'ouvrier, en revanche, crée un nouveau processus avec \of{fork} pour
 exécuter la tâche qui lui est confiée et peut donc continuer à
 communiquer avec le patron pendant son calcul.
 
-\paragraph{Protocole.}\label{sec:protocol}
+\paragraph*{\bf Protocole}\label{sec:protocol}
 Le protocole utilisé comporte sept messages différents.
 Les quatre messages possibles envoyés par le patron à un ouvrier sont : 
 \of{Assign(id:int, f:string, x:string)} pour affecter une nouvelle
@@ -766,7 +766,7 @@ ce sont des sérialisations de valeurs \Ocaml\ et pour \of{Mono}  de
 simples chaînes de caractères.
 
 
-\subsubsection{Tolérance aux pannes}\label{sec:fault}
+\paragraph*{\bf Tolérance aux pannes}\label{sec:fault}
 
 L'une des principales difficultés dans un environnement de calcul
 distribué est la tolérance aux pannes. C'est l'un des principaux
@@ -823,7 +823,7 @@ l'utilisateur de rattraper et de traiter ces exceptions si nécessaire.
 Cette section présente quelques résultats expérimentaux obtenus avec
 les quatre programmes décrits section~\ref{sec:studies}.
 
-\paragraph{N-reines.}
+\paragraph*{\bf N-reines}
 La table suivante montre les temps d'exécution pour différentes valeurs
 de $N$ et pour chacun des trois modules \of{Sequential}, \of{Cores} et
 \of{Network}. L'objectif est ici de mesurer le facteur par rapport à
@@ -873,7 +873,7 @@ total ; dans la dernière, au contraire, il ne représente plus que
 D'une manière générale, le module \of{Network} n'est intéressant que
 si le temps de calcul de chaque tâche est significatif.
 
-\paragraph{L'ensemble de Mandelbrot.}
+\paragraph*{\bf L'ensemble de Mandelbrot}
 Dans cette expérience, on dessine le fragment rectangulaire de l'ensemble de
 Mandelbrot compris entre les points $(-1.1, 0.2)$ et $(-0.8, 
 0.4)$, sous la forme d'une image de résolution $9\,000\times6\,000$.
@@ -920,7 +920,7 @@ entier. En conséquence, les coûts de communication sont bien plus
 grands. Dans cette expérience particulière, la taille totale des
 résultats dépasse les 200 Mo.
 
-\paragraph{Multiplication de matrices}
+\paragraph*{\bf Multiplication de matrices}
 Cette expérience a été inspirée par le concours de programmation
 associé à la conférence PASCO 2010~\cite{PASCO}.
 L'un des problèmes consistait à multiplier deux matrices de taille
@@ -969,7 +969,7 @@ matrices une seule fois, par exemple depuis un fichier, et le patron
 n'enverrait uniquement que des indices de lignes et de colonnes. Cela
 réduirait le volume des communications à seulement $O(\of{n}\times\of{m})$.
 
-\paragraph{Démonstrateur automatiques.}
+\paragraph*{\bf Démonstrateur automatiques}
 Comme expliqué plus haut, cette expérience consiste à vérifier la
 validité de 80 formules logiques à l'aide de quatre démonstrateurs
 automatiques de la famille SMT. Chacune de ces 320 tâches est exécutée
@@ -1025,7 +1025,7 @@ l'utilisateur.
 % cet article, est la possibilité d'enchaîner plusieurs calculs
 % distribués dans un même programme.
 
-\paragraph{Travaux connexes.}
+\paragraph*{\bf Travaux connexes}
 Une bibliothèque relativement proche de la nôtre est l'implémentation
 de MapReduce pour \Ocaml\ par Yohann Padioleau~\cite{poor-man-mapreduce}.
 Elle est construite au dessus d'OCamlMPI~\cite{ocamlMPI}, alors que
@@ -1056,7 +1056,7 @@ données, et cela reste pertinent dans le contexte de la programmation
 fonctionnelle~\cite{parallel-haskell}. Le parallélisme de données
 n'est pas du tout l'objectif de \functory.
 
-\paragraph{Perspectives.}
+\paragraph*{\bf Perspectives}
 La bibliothèque \functory\ pourrait être enrichie de nombreuses façons.
 L'une d'elles est la prise en compte, dans l'affectation des tâches
 aux ouvriers, de paramètres de ressources telles que la localité des données,
@@ -1082,7 +1082,7 @@ calculs et des communications (mis à part quelques informations de
 \emph{debugging}). Calculer et stocker une telle information est immédiat,
 et en partie déjà fait, mais son observation en temps réel demande
 plus de travail. Une possibilité serait de réutiliser une partie de
-l'outil \textsf{Ocamlviz}~\cite{ocamlviz}. 
+l'outil \textsc{Ocamlviz}~\cite{ocamlviz}. 
 
 Enfin, une fonctionnalité appréciable du MapReduce de Google est
 l'accélération des fins de calcul en utilisant des ouvriers
@@ -1094,6 +1094,8 @@ ajouter une telle fonctionnalité devrait être relativement simple.
 Les auteurs remercient Alain Mebsout et Johannes Kanig pour avoir testé
 la bibliothèque \functory\ et pour leurs commentaires, ainsi que Claude
 Marché pour sa relecture attentive de cet article.
+Les auteurs remercient également les rapporteurs pour
+leurs commentaires, précis et pertinents.
 }
 
 
@@ -1119,4 +1121,3 @@ Marché pour sa relecture attentive de cet article.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 \end{document}
-  
