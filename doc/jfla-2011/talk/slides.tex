@@ -1,0 +1,47 @@
+\documentclass{beamer}
+%\documentclass[handout]{beamer}
+
+%\usepackage{beamerjcf}
+\usepackage[latin1]{inputenc}
+
+\definecolor{kwblue}{rgb}{0.67,0.12,0.92}
+\definecolor{ceruleanblue}{rgb}{0, 0.48, 0.65}
+\definecolor{lightpink}{rgb}{1., 0.71, 0.75}
+\definecolor{lightblue}{rgb}{0.8,0.8,1}
+\definecolor{lightred}{rgb}{1,0.8,0.8}
+
+\let\emph\alert
+
+\begin{document}
+
+\title{Functory : Une bibliothèque de calcul distribué \\ pour
+  Objective Caml}
+\author[Jean-Christophe]{Jean-Christophe Filli\^atre \& Kalyan Krishnamani}
+\date{JFLA, 31 janvier 2011}
+
+\begin{frame}
+  \titlepage
+  \pgfimage[height=8mm]{cnrs-logo2}\hfill
+  \pgfimage[height=6mm]{saclay}\hfill
+  \pgfimage[height=10mm]{lrilogo}\hfill
+  \pgfimage[height=8mm]{upsudlogo}
+\end{frame}
+
+\begin{frame}
+  \includegraphics{state.mps}
+\end{frame}
+
+\begin{frame}
+\begin{ocaml}
+val compute : ('a -> 'b) -> 'a list
+\end{ocaml}
+\end{frame}
+
+\end{document}
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 
+
+% LocalWords:  parallelization Google
