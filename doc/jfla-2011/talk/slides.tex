@@ -1,8 +1,8 @@
 \documentclass{beamer}
 %\documentclass[handout]{beamer}
 
-%\usepackage{beamerjcf}
 \usepackage[latin1]{inputenc}
+\usepackage[french]{babel}
 
 \definecolor{kwblue}{rgb}{0.67,0.12,0.92}
 \definecolor{ceruleanblue}{rgb}{0, 0.48, 0.65}
@@ -27,15 +27,100 @@
   \pgfimage[height=8mm]{upsudlogo}
 \end{frame}
 
-\begin{frame}
-  \includegraphics{state.mps}
+\begin{frame}\frametitle{}
+  motivating example = SMT solvers on numerous VC during the night, 3
+  machines, etc.
 \end{frame}
 
-\begin{frame}
-\begin{ocaml}
-val compute : ('a -> 'b) -> 'a list
-\end{ocaml}
+\begin{frame}\frametitle{}
+  requirements
+  \begin{itemize}
+  \item ocaml library
+  \item fault tolerance
+  \item user-friendly API
+  \end{itemize}
 \end{frame}
+
+\begin{frame}\frametitle{}
+  design a la Map/Reduce (1/2 slides)
+
+  TODO : a nice picture here
+\end{frame}
+
+\begin{frame}\frametitle{}
+  API main idea = compute function
+\end{frame}
+
+\begin{frame}\frametitle{}
+  simpler situations $=>$ simpler implementations but same API
+
+  sequential
+  cores
+\end{frame}
+
+\begin{frame}\frametitle{}
+  network and marshaling considerations
+
+  if both programs are the same, API is unchanged
+\end{frame}
+
+\begin{frame}\frametitle{}
+  but sometimes you can't afford running the same program as master
+  and workers $=>$ not more marshaling of closures $=>$ slightly different API
+\end{frame}
+
+\begin{frame}\frametitle{}
+  derived API
+
+  (mention that details are in the paper)
+\end{frame}
+
+\begin{frame}\frametitle{}
+  implementation details
+
+  first, cores, reusing the picture to explain that workers are simply
+  forks (no control over scheduling)
+
+  explain the main loop with pending tasks and associated data structure
+\end{frame}
+
+\begin{frame}\frametitle{}
+  network implementation
+
+  first, communication model (client/server, TCP/IP, etc.), reusing
+  the picture 
+\end{frame}
+
+\begin{frame}\frametitle{}
+  fault tolerance, protocol
+
+  \begin{center}
+    \includegraphics{state.mps}
+  \end{center}
+\end{frame}
+
+\begin{frame}\frametitle{}
+  benchmarks
+
+  SMT solvers first
+\end{frame}
+
+\begin{frame}\frametitle{}
+  n-queens
+\end{frame}
+
+\begin{frame}\frametitle{}
+  Mandelbrot
+\end{frame}
+
+\begin{frame}\frametitle{}
+  matrix multiplication
+\end{frame}
+
+\begin{frame}\frametitle{}
+  conclusion, future work, etc.
+\end{frame}
+
 
 \end{document}
 
@@ -44,4 +129,3 @@ val compute : ('a -> 'b) -> 'a list
 %%% TeX-master: t
 %%% End: 
 
-% LocalWords:  parallelization Google
