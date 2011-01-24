@@ -44,7 +44,9 @@
 \begin{frame}\frametitle{}
   design a la Map/Reduce (1/2 slides)
 
-  TODO : a nice picture here
+  \begin{center}
+    \includegraphics{master_workers_1.mps}
+  \end{center}
 \end{frame}
 
 \begin{frame}\frametitle{}
@@ -80,6 +82,9 @@
 
   first, cores, reusing the picture to explain that workers are simply
   forks (no control over scheduling)
+  \begin{center}
+    \includegraphics{master_workers_1.mps}
+  \end{center}
 
   explain the main loop with pending tasks and associated data structure
 \end{frame}
@@ -89,6 +94,34 @@
 
   first, communication model (client/server, TCP/IP, etc.), reusing
   the picture 
+  \begin{center}
+    \includegraphics{master_workers_network.mps}
+  \end{center}
+\end{frame}
+
+\begin{frame}\frametitle{Protocol}
+  \only<1>{master sends a task to a worker}
+  \only<2>{worker computes and sends back a result}
+  \only<3-4>{worker and workers exchange \emph{ping}/\emph{pong} messages}
+  \only<5>{in case of a disconnection...}
+  \only<6>{the task is \emph{rescheduled} to another worker}
+  \only<7>{whenever one completes...}
+  \only<8>{the other one is stopped}
+  \only<9>{the master is notified when a computation fails}
+  \only<10>{at the very end, the master may ask the workers to stop}
+  \vfill
+  \begin{center}
+    \only<1>{\includegraphics{master_workers_assign.mps}}
+    \only<2>{\includegraphics{master_workers_completed.mps}}
+    \only<3>{\includegraphics{master_workers_ping.mps}}
+    \only<4>{\includegraphics{master_workers_pong.mps}}
+    \only<5>{\includegraphics{master_workers_disconnection.mps}}
+    \only<6>{\includegraphics{master_workers_assign_2.mps}}
+    \only<7>{\includegraphics{master_workers_completed_2.mps}}
+    \only<8>{\includegraphics{master_workers_kill.mps}}
+    \only<9>{\includegraphics{master_workers_aborted.mps}}
+    \only<10>{\includegraphics{master_workers_stop.mps}}
+  \end{center}
 \end{frame}
 
 \begin{frame}\frametitle{}
