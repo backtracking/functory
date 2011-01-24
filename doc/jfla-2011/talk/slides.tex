@@ -29,100 +29,184 @@
   \pgfimage[height=8mm]{upsudlogo}
 \end{frame}
 
-\begin{frame}\frametitle{}
-  motivating example = SMT solvers on numerous VC during the night, 3
-  machines, etc.
+\begin{frame}\frametitle{Motivation}
+  \begin{itemize}
+  \item Why platform: a set of tools for deductive program verification
+  \item generates numerous verification conditions (VCs)
+  \item discharged by various automated theorem provers
+  \item typically takes hours to complete
+  \end{itemize}
+
+
+  \begin{itemize}
+  \item a few multi-core machines at our disposal
+  \item how to make the best possible use of them?
+  \end{itemize}
 \end{frame}
 
-\begin{frame}\frametitle{}
+\begin{frame}\frametitle{A Distributed Computing Library}
+
   requirements
   \begin{itemize}
-  \item ocaml library
+  \item ideally in Ocaml
   \item fault tolerance
   \item user-friendly API
   \end{itemize}
 \end{frame}
 
-\begin{frame}\frametitle{}
-  design a la Map/Reduce (1/2 slides)
+\begin{frame}\frametitle{Basic Design}
+  inspired by Google's Map/Reduce (OSDI 2004)
+
 
   \begin{center}
     \includegraphics{master_workers_1.mps}
   \end{center}
 \end{frame}
 
-\begin{frame}\frametitle{}
-  API main idea = compute function
+\begin{frame}\frametitle{Interface}
+
+  \begin{ocaml}
+  val compute : 
+    worker:('a -> 'b) -> 
+    master:('a * 'c -> 'b -> ('a * 'c) list) -> 
+    ('a * 'c) list -> 
+    unit
+  \end{ocaml}
+
+
+
+  \begin{itemize}
+  \item a task has type \ocaml{'a * 'c}, its result has type \ocaml{'b}
+  \item a completed task may generate new tasks
+  \item the whole computation returns when there is no more task
+  \end{itemize}
 \end{frame}
 
-\begin{frame}\frametitle{}
-  simpler situations $=>$ simpler implementations but same API
+% TODO: insert a small example here?
 
-  sequential
-  cores
+\begin{frame}\frametitle{Simple Implementations}
+  \begin{description}
+  \item[sequential]
+    \begin{itemize}
+    \item used for debugging and comparison
+    \end{itemize}
+
+
+  \item[multi-core] 
+    \begin{itemize}
+    \item to utilize multiple cores on a single machine
+    \end{itemize}
+  \end{description}
 \end{frame}
 
-\begin{frame}\frametitle{}
-  network and marshaling considerations
-
-  if both programs are the same, API is unchanged
+\begin{frame}\frametitle{Network Implementation}
+  based on
+  \begin{itemize}
+  \item TCP/IP client/server architecture
+  \item Ocaml's marshaling capabilities
+  \end{itemize}
+  
+  \vfill
+  marshaling considerations
+  \begin{enumerate}
+  \item \emph{same binary}: we can marshal closures
+  \item \emph{same version of Ocaml}: we can only marshal values
+  \item \emph{otherwise}: we only marshal strings
+  \end{enumerate}
 \end{frame}
 
-\begin{frame}\frametitle{}
-  but sometimes you can't afford running the same program as master
-  and workers $=>$ not more marshaling of closures $=>$ slightly different API
+\begin{frame}\frametitle{Three Network Implementations}
+\emph{same binary}
+\begin{ocaml}
+val compute : (* same as before *) ...
+\end{ocaml}
+
+
+
+\emph{same version of Caml}
+    \begin{ocaml}
+val Worker.compute : ('a -> 'b) -> unit
+val Master.compute : 
+  ('a * 'c -> 'b -> ('a * 'c) list) ->
+  ('a * 'c) list -> unit
+\end{ocaml}
+
+
+
+\emph{otherwise}
+    \begin{ocaml}
+val Worker.compute : (string -> string) -> unit
+val Master.compute : 
+  (string * 'c -> string -> (string * 'c) list) ->
+  (string * 'c) list -> unit
+\end{ocaml}
 \end{frame}
 
-\begin{frame}\frametitle{}
-  derived API
+\begin{frame}\frametitle{Implementation Details: Cores}
 
-  (mention that details are in the paper)
-\end{frame}
+  simply uses \texttt{Unix.fork} (no control over scheduling)
 
-\begin{frame}\frametitle{}
-  implementation details
+  \begin{ocaml}
+  open Cores
+  let () = set_number_of_cores 4
+  \end{ocaml}
 
-  first, cores, reusing the picture to explain that workers are simply
-  forks (no control over scheduling)
   \begin{center}
-    \includegraphics{master_workers_1.mps}
+    \includegraphics{master_workers_cores.mps}
   \end{center}
 
-  explain the main loop with pending tasks and associated data structure
+  master maintains a queue of pending tasks
 \end{frame}
 
-\begin{frame}\frametitle{}
-  network implementation
+\begin{frame}\frametitle{Implementation Details: Netwok}
 
-  first, communication model (client/server, TCP/IP, etc.), reusing
-  the picture 
+  \begin{ocaml}
+  open Network
+  let () = declare_workers ~n:3 "moloch"
+  let () = declare_workers ~n:2 "orcus"
+  \end{ocaml}
+
   \begin{center}
     \includegraphics{master_workers_network.mps}
   \end{center}
+  each worker behaves as a server, the master being the client
 \end{frame}
 
 \begin{frame}\frametitle{Protocol}
-  \only<1>{master sends a task to a worker}
+  \only<1,5>{master sends a task to a worker}
   \only<2>{worker computes and sends back a result}
   \only<3-4>{master and workers exchange \emph{ping}/\emph{pong} messages}
-  \only<5>{in case of a disconnection...}
-  \only<6>{the task is \emph{rescheduled} to another worker}
-  \only<7>{whenever one completes...}
-  \only<8>{the other one is stopped}
-  \only<9>{the master is notified when a computation fails}
-  \only<10>{at the very end, the master may ask the workers to stop}
+  \only<6>{in case of a disconnection...}
+  \only<7>{the task is \emph{rescheduled} to another worker}
+  \only<8>{whenever one completes...}
+  \only<9>{the other one is stopped}
+  \only<10>{the master is notified when a computation fails}
+  \only<11>{at the very end, the master may ask the workers to stop}
   \vfill
   \begin{center}
-    \only<1>{\includegraphics{master_workers_assign.mps}}
+    \only<1,5>{\includegraphics{master_workers_assign.mps}}
     \only<2>{\includegraphics{master_workers_completed.mps}}
     \only<3>{\includegraphics{master_workers_ping.mps}}
     \only<4>{\includegraphics{master_workers_pong.mps}}
-    \only<5>{\includegraphics{master_workers_disconnection.mps}}
-    \only<6>{\includegraphics{master_workers_assign_2.mps}}
-    \only<7>{\includegraphics{master_workers_completed_2.mps}}
-    \only<8>{\includegraphics{master_workers_kill.mps}}
-    \only<9>{\includegraphics{master_workers_aborted.mps}}
-    \only<10>{\includegraphics{master_workers_stop.mps}}
+    \only<6>{\includegraphics{master_workers_disconnection.mps}}
+    \only<7>{\includegraphics{master_workers_assign_2.mps}}
+    \only<8>{\includegraphics{master_workers_completed_2.mps}}
+    \only<9>{\includegraphics{master_workers_kill.mps}}
+    \only<10>{\includegraphics{master_workers_aborted.mps}}
+    \only<11>{\includegraphics{master_workers_stop.mps}}
+  \end{center}
+  \begin{center}
+    \only<1>{\ocaml{Assign(42, f, a)}}
+    \only<2>{\ocaml{Completed (42, b)}}
+    \only<3>{\ocaml{Ping}}
+    \only<4>{\ocaml{Pong}}
+    \only<5>{\ocaml{Assign(43, f, a)}}
+    \only<6>{\ocaml{}} % disconnection
+    \only<7>{\ocaml{Assign(43, f, a)}}
+    \only<8>{\ocaml{Completed (43, b)}}
+    \only<9>{\ocaml{Kill 43}}
+    \only<10>{\ocaml{Aborted 44}}
+    \only<11>{\ocaml{Stop}}
   \end{center}
 \end{frame}
 
@@ -132,6 +216,13 @@
   \begin{center}
     \includegraphics{state.mps}
   \end{center}
+\end{frame}
+
+% here?
+\begin{frame}\frametitle{}
+  derived API
+
+  (mention that details are in the paper)
 \end{frame}
 
 \begin{frame}\frametitle{}

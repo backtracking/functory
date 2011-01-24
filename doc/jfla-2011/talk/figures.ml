@@ -82,6 +82,17 @@ let master_workers_1 =
 
 let () = Metapost.emit "master_workers_1" master_workers_1
 
+let master_workers_cores =
+  let m, w, b = master_workers [| "worker 1"; "worker 2"; "worker 3"|] in
+  draw b ++ 
+  iter 0 2 
+    (fun i -> blue_arrow ~tex:"fork()" 
+       (out (sub m b) (2. -. 2. *. float i)) 
+       (west (sub w.(i) b))) ++
+  nop
+
+let () = Metapost.emit "master_workers_cores" master_workers_cores
+
 let master_workers_network =
   let m, w, b = 
     master_workers ~padding:(bp 10.)
