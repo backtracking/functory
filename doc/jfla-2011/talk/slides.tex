@@ -4,6 +4,8 @@
 \usepackage[latin1]{inputenc}
 %\usepackage[french]{babel}
 
+\beamertemplatenavigationsymbolsempty
+
 \definecolor{kwblue}{rgb}{0.67,0.12,0.92}
 \definecolor{ceruleanblue}{rgb}{0, 0.48, 0.65}
 \definecolor{lightpink}{rgb}{1., 0.71, 0.75}
@@ -102,7 +104,7 @@
 \begin{frame}\frametitle{Protocol}
   \only<1>{master sends a task to a worker}
   \only<2>{worker computes and sends back a result}
-  \only<3-4>{worker and workers exchange \emph{ping}/\emph{pong} messages}
+  \only<3-4>{master and workers exchange \emph{ping}/\emph{pong} messages}
   \only<5>{in case of a disconnection...}
   \only<6>{the task is \emph{rescheduled} to another worker}
   \only<7>{whenever one completes...}

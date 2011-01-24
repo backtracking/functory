@@ -99,7 +99,8 @@ let () = Metapost.emit "master_workers_network" master_workers_network
 let master_workers_protocol msg =
   let m, w, b = master_workers [| "worker 1"; "worker 2"; "worker 3"|] in
   let pm = out (sub m b) 2. in
-  let pw1 = west (sub w.(0) b) and pw2 = west (sub w.(1) b) in
+  let pw1 = west (sub w.(0) b) and pw2 = west (sub w.(1) b)
+			       and pw3 = west (sub w.(2) b) in
   draw b ++ 
   (match msg with 
      (* Assign *)
@@ -109,7 +110,9 @@ let master_workers_protocol msg =
      (* Ping *)
      | "ping" -> blue_arrow ~pos:0.7 ~tex:"ping~~~~~~~~~~~~~" pm pw1
      (* Stop *)
-     | "stop" -> blue_arrow ~pos:0.7 ~tex:"stop~~~~~~~~~~~~~" pm pw1
+     | "stop" -> blue_arrow ~pos:0.7 ~tex:"stop~~~~~~~~~~~~~" pm pw1 ++
+	         blue_arrow ~pos:0.7 ~tex:"stop~~~~~~~~~" pm pw2 ++
+	         blue_arrow ~pos:0.7 ~tex:"stop~~~~~~~~~~~~~" pm pw3
      (* Pong *)
      | "pong" -> red_arrow ~pos:0.3 ~tex:"pong~~~~~~~~~~~~~" pw1 pm
      (* Completed *)
