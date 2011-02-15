@@ -425,24 +425,25 @@ let create_sock_addr name port =
   in
   ADDR_INET (addr, port) 
 
-let declare_workers =
+let create_worker =
   let r = ref 0 in
-  fun ?(port = !default_port_number) ?(n=1) s ->
-    if n <= 0 then invalid_arg "declare_workers";
-    for i = 1 to n do
-      incr r;
-      let a = create_sock_addr s port in
-      let w = { 
-	worker_id = !r;
-	sockaddr = a; 
-	state = Disconnected;
-	fdin = stdin; 
-	fdout = stdout;
-	job = None; (* idle *)
-      } 
-      in
-      workers := w :: !workers
-    done
+  fun ?(port = !default_port_number) s ->
+    incr r;
+    let a = create_sock_addr s port in
+    { 
+      worker_id = !r;
+      sockaddr = a; 
+      state = Disconnected;
+      fdin = stdin; 
+      fdout = stdout;
+      job = None; (* idle *)
+    } 
+
+let declare_workers ?(port = !default_port_number) ?(n=1) s =
+  if n <= 0 then invalid_arg "declare_workers";
+  for i = 1 to n do
+    workers := create_worker ~port s :: !workers
+  done
 
 let worker_fd = Hashtbl.create 17
 
@@ -465,6 +466,229 @@ let create_task t =
 
 let job_id = let r = ref 0 in fun () -> incr r; !r
 
+type ('a, 'c) computation_ = {
+  mutable is_done : bool;
+  assign_job : 'a -> string * string;
+  master : 'a * 'c -> string -> ('a * 'c) list;
+  old_sigpipe_handler : Sys.signal_behavior;
+  todo : ('a * 'c) task Queue.t;
+  idle_workers : WorkerSet.t;
+  running_tasks : (int, ('a * 'c) task) Hashtbl.t;
+  mutable last_printed_state : int * int * int;
+}
+
+let push_new_task c t = Queue.add (create_task t) c.todo
+
+let create_computation_
+    ~(assign_job : 'a -> string * string)
+    ~(master : 'a * 'c -> string -> ('a * 'c) list) 
+    (tasks : ('a * 'c) list)
+    =
+  let c = { 
+    is_done = false;
+    old_sigpipe_handler = Sys.signal Sys.sigpipe Sys.Signal_ignore;
+    assign_job = assign_job;
+    master = master;
+    todo = Queue.create ();
+    idle_workers = WorkerSet.create ();
+    running_tasks = Hashtbl.create 17;
+    last_printed_state = 0,0,0;
+  }
+  in
+  List.iter (push_new_task c) tasks;
+  c
+
+let add_worker c w = match w.state with
+  | Ok _ | Pinged _ -> 
+      if w.job = None then WorkerSet.add c.idle_workers w
+  | Disconnected | Error _ -> 
+      ()
+
+let print_computation c =
+  let n1 = Queue.length c.todo in
+  let n2 = WorkerSet.cardinal c.idle_workers in
+  let n3 = Hashtbl.length c.running_tasks in
+  let st = (n1, n2, n3) in 
+  if st <> c.last_printed_state then begin
+    c.last_printed_state <- st;
+    dprintf "***@.";
+    dprintf "  %d tasks todo@." n1;
+    dprintf "  %d idle workers@." n2;
+    dprintf "  %d running tasks (" n3;
+    Hashtbl.iter (fun jid _ -> dprintf "%d, " jid) c.running_tasks;
+    dprintf ")@.";
+    dprintf "***@.";
+  end
+
+let do_one_step c =
+  let send w m =
+    try 
+      Protocol.Master.send w.fdout m
+    with e -> 
+      dprintf "@[<hov 2>could not send message %a@ to worker %a@ (%a)@]@." 
+	Protocol.Master.print m print_worker w print_exception e;
+      raise e
+  in
+  let send_ping w = send w Protocol.Master.Ping in
+  let create_job w t =
+    assert (not t.task_done);
+    dprintf "@[<hov 2>create_job: worker=%a,@ task=%a@]@." 
+      print_worker w print_task t;
+    connect_worker w;
+    let id = job_id () in
+    let f, a = c.assign_job (fst t.task) in
+    send w (Protocol.Master.Assign (id, f, a));
+    send_ping w;
+    w.state <- Pinged (Unix.time ());
+    t.task_workers <- (id, w)  :: t.task_workers;
+    Hashtbl.replace c.running_tasks id t;
+    w.job <- Some id;
+    WorkerSet.remove c.idle_workers w
+  in
+  let reschedule_task ~remove w = match w.job with
+    | None ->
+        () (* may be idle *)
+    | Some jid ->
+        assert (Hashtbl.mem c.running_tasks jid);
+        let t = Hashtbl.find c.running_tasks jid in
+	if remove then begin
+	  Hashtbl.remove c.running_tasks jid;
+	  t.task_workers <- List.filter (fun (_,w') -> w' != w) t.task_workers
+	end;
+	Queue.add t c.todo
+  in
+  let manage_disconnection w =
+    w.state <- Disconnected;
+    WorkerSet.remove c.idle_workers w;
+    reschedule_task ~remove:true w
+  in
+  let make_idle w =
+    w.job <- None;
+    WorkerSet.add c.idle_workers w 
+  in
+  (* kill job jid on worker w *)
+  let kill w jid =
+    dprintf "kill job id %d on worker %d@." jid w.worker_id;
+    Hashtbl.remove c.running_tasks jid;
+    if w.state <> Disconnected then begin
+      send w (Protocol.Master.Kill jid);
+      make_idle w
+    end
+  in
+  (* kill jobs different from jid *)
+  let kill_jobs jid l =
+    List.iter (fun (jid', w) -> if jid' <> jid then kill w jid') l
+  in
+  let listen_for_worker w =
+    let m = Protocol.Worker.receive w.fdin in
+    dprintf "received from %a: %a@." print_worker w Protocol.Worker.print m;
+    w.state <- Ok (Unix.time ());
+    match m with
+      | Protocol.Worker.Pong ->
+	  if w.job = None then WorkerSet.add c.idle_workers w
+      | Protocol.Worker.Completed (id, r) ->
+	  make_idle w;
+	  let t = Hashtbl.find c.running_tasks id in
+	  dprintf "completed task: job id=%d, %a@." id print_task t;
+	  Hashtbl.remove c.running_tasks id;
+	  if not t.task_done then begin
+	    t.task_done <- true;
+	    kill_jobs id t.task_workers;
+	    List.iter (push_new_task c) (c.master t.task r)
+	  end 
+      | Protocol.Worker.Aborted id ->
+	  make_idle w;
+	  let t = Hashtbl.find c.running_tasks id in
+	  Hashtbl.remove c.running_tasks id;
+	  push_new_task c t.task
+  in
+  print_computation c;
+  (* 1. try to connect if not already connected *)
+  let current = Unix.time () in
+  List.iter 
+    (fun w -> match w.state with
+       | Disconnected ->
+	   begin try 
+	     connect_worker w;
+	     dprintf "new connection to %a@." print_worker w;
+	     make_idle w
+	   with e ->
+	     ()
+	   end
+       | Pinged t ->
+	   if current > t +. !pong_timeout then begin
+	     dprintf "worker %a timed out@." print_worker w;
+	     w.state <- Error current;
+	     WorkerSet.remove c.idle_workers w;
+	     reschedule_task ~remove:false w
+	   end
+       | Ok t when current > t +. !ping_interval ->
+	   send_ping w;
+	   w.state <- Pinged current
+       | Error t when current > t +. !ping_interval ->
+	   send_ping w;
+	   w.state <- Error current
+       | Ok _ | Error _ ->
+	   ())
+    !workers;
+  print_computation c;
+  (* 2. if possible, start new jobs *)
+  while not (WorkerSet.is_empty c.idle_workers) && not (Queue.is_empty c.todo) 
+  do
+    let t = Queue.pop c.todo in
+    if not t.task_done then begin
+      let w = WorkerSet.choose c.idle_workers in
+      try 
+	create_job w t 
+      with e -> 
+	dprintf "@[<hov 2>create_job for worker %a failed:@ %a@]"
+	  print_worker w print_exception e;
+	Queue.push t c.todo;
+	manage_disconnection w
+    end
+  done;
+  print_computation c;
+  (* 3. if not, listen for workers *)
+  let fds = 
+    let wl = List.filter (fun w -> w.state <> Disconnected) !workers in
+    List.map (fun w -> w.fdin) wl
+  in
+  let l,_,_ = select fds [] [] 0.1 in
+  List.iter 
+    (fun fd -> 
+       let w = Hashtbl.find worker_fd fd in
+       try  
+	 listen_for_worker w
+       with e -> 
+	 dprintf "@[<hov 2>worker %a failure:@ %s@]@." 
+	   print_worker w (Printexc.to_string e);
+	 manage_disconnection w)
+    l
+  
+let one_step c =
+  if not (Queue.is_empty c.todo) || (Hashtbl.length c.running_tasks > 0) then 
+  begin
+    do_one_step c
+  end else begin
+    (* we are done *)
+    c.is_done <- true;
+    ignore (Sys.signal Sys.sigpipe c.old_sigpipe_handler);
+  end
+
+let is_done c = c.is_done
+
+let main_master 
+    ~(assign_job : 'a -> string * string)
+    ~(master : 'a * 'c -> string -> ('a * 'c) list) 
+    (tasks : ('a * 'c) list)
+    =
+  let c = create_computation_ ~assign_job ~master tasks in
+  List.iter (add_worker c) !workers;
+  while not (is_done c) do
+    one_step c
+  done
+
+(*****
 let main_master 
     ~(assign_job : 'a -> string * string)
     ~(master : 'a * 'c -> string -> ('a * 'c) list) 
@@ -658,6 +882,7 @@ let main_master
   assert (Queue.is_empty todo && Hashtbl.length running_tasks = 0);
   ignore (Sys.signal Sys.sigpipe old_sigpipe_handler);
   ()
+****)
 
 (** Three implementations ***************************************************)
 
@@ -746,6 +971,22 @@ module Same = struct
       ignore (Worker.compute compute ?stop ?port ())
 
   end
+
+  type ('a, 'c) computation = ('a, 'c) computation_
+
+  let create_computation 
+    ~(worker : 'a -> 'b) 
+    ~(master : 'a * 'c -> 'b -> ('a * 'c) list) 
+    tasks
+  = 
+    let worker_closure = Marshal.to_string worker [Marshal.Closures] in
+    let assign_job x = worker_closure, Marshal.to_string x [] in
+    let master ac r = master ac (Marshal.from_string r 0) in
+    create_computation_ ~assign_job ~master tasks
+
+  let add_worker = add_worker
+  let is_done = is_done
+  let one_step = one_step
 
   let () = 
     if is_worker then begin

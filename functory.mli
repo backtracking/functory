@@ -115,6 +115,10 @@ module Network : sig
 
   (** {2 Setup} *)
 
+  type worker
+
+  val create_worker : ?port:int -> string -> worker
+
   val declare_workers : ?port:int -> ?n:int -> string -> unit
     (** [declare_workers s] declares [n] workers on machine [s]
         (when [n] is not given, it defaults to 1).
@@ -156,6 +160,23 @@ module Network : sig
         user program. *)
 
   module Same : sig
+
+    (** {2 Low level API} *)
+
+    type ('a, 'c) computation
+
+    val create_computation : 
+      worker:('a -> 'b) -> 
+      master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list ->
+      ('a, 'c) computation
+
+    val add_worker : ('a, 'c) computation -> worker -> unit
+
+    val one_step : ('a, 'c) computation -> unit
+
+    val is_done : ('a, 'c) computation -> bool
+
+    (** {2 High level API} *)
 
     val compute : 
       worker:('a -> 'b) -> 
