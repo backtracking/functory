@@ -1,12 +1,7 @@
 
-(* open Functory.Sequential *)
-
-(* open Functory.Cores *)
-(* let () = set_number_of_cores (int_of_string Sys.argv.(3)) *)
-
 open Functory.Network
-let () = declare_workers ~n:2 "moloch"
-(* let () = Functory.Control.set_debug true *)
+let () = declare_workers ~n:2 "localhost"
+let () = Functory.Control.set_debug true
 open Poly
 
 let is_worker = Array.length Sys.argv >= 2 && Sys.argv.(1) = "-w"
@@ -74,18 +69,15 @@ let master ((_,_,_,_,w,h), j) m = images.(j) <- m; []
 
 let () = Master.compute ~master tasks
 
-(* let og = ref false *)
+(* Ocaml BUG? *)
+(* let () = Graphics.open_graph (Printf.sprintf " %dx%d" width height) *)
 
 (* let master ((_,_,_,_,_,h), j) m = *)
-(*   if not !og then begin *)
-(*     Graphics.open_graph (Printf.sprintf " %dx%d" width height); og := true *)
-(*   end; *)
 (*   let img = Graphics.make_image m in *)
 (*   Graphics.draw_image img 0 (j * h); *)
 (*   [] *)
 
-(* let () = compute ~worker ~master tasks; ignore (Graphics.read_key ()) *)
-(* Ocaml BUG? *)
+(* let () = Master.compute ~master tasks; ignore (Graphics.read_key ()) *)
 
 (*
 run on moloch 
@@ -133,6 +125,6 @@ network = workers on moloch, remote master on belzebuth
 
 (*
 Local Variables: 
-compile-command: "make -C ../.. tests/mandelbrot/a.out"
+compile-command: "make -C ../.. tests/mandelbrot/main_poly.opt"
 End: 
 *)

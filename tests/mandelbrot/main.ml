@@ -1,8 +1,14 @@
 
 (* open Functory.Sequential *)
 
-open Functory.Cores
-let () = set_number_of_cores (int_of_string Sys.argv.(3))
+(* open Functory.Cores *)
+(* let () = set_number_of_cores (int_of_string Sys.argv.(3)) *)
+
+open Functory
+let () = Control.set_debug true
+open Network
+let () = declare_workers ~n:2 "localhost"
+open Same
   
 let max_iter = 200 (* nombre maximum d'itérations *)
 let f_max_iter = float max_iter
@@ -65,17 +71,17 @@ let master ((_,_,_,_,w,h), j) m = images.(j) <- m; []
 
 let () = compute ~worker ~master tasks
 
-(* let og = ref false *)
+let og = ref false
 
-(* let master ((_,_,_,_,_,h), j) m = *)
-(*   if not !og then begin *)
-(*     Graphics.open_graph (Printf.sprintf " %dx%d" width height); og := true *)
-(*   end; *)
-(*   let img = Graphics.make_image m in *)
-(*   Graphics.draw_image img 0 (j * h); *)
-(*   [] *)
+let master ((_,_,_,_,_,h), j) m =
+  if not !og then begin
+    Graphics.open_graph (Printf.sprintf " %dx%d" width height); og := true
+  end;
+  let img = Graphics.make_image m in
+  Graphics.draw_image img 0 (j * h);
+  []
 
-(* let () = compute ~worker ~master tasks; ignore (Graphics.read_key ()) *)
+let () = compute ~worker ~master tasks; ignore (Graphics.read_key ())
 (* Ocaml BUG? *)
 
 (*
