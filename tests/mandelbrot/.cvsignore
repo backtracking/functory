@@ -1,3 +1,5 @@
 main.annot main_poly.annot quad_poly.annot
 main_poly.opt quad_poly.opt
 a.out
+gquad.gtk2
+gquad.annot

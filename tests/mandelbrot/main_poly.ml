@@ -22,7 +22,7 @@ let color xc yc =
       let x2 = x *. x in
       let y2 = y *. y in
       if x2 +. y2 > 4. then
-	interpolation i
+	Graphics.white (*interpolation i*)
       else
 	iter (succ i) (x2 -. y2 +. xc) (2. *. x *. y +. yc)
   in
@@ -46,13 +46,20 @@ let worker (xmi, xma, ymi, yma, w, h) = draw xmi xma ymi yma w h
 let () = if is_worker then begin Worker.compute worker (); assert false end
 
 let width = int_of_string Sys.argv.(1)
-let height = width * 2 / 3
 let t = int_of_string Sys.argv.(2)
 
-let xmin = -1.1
-let xmax = -0.8
-let ymin =  0.2
-let ymax =  0.4 
+(* values for the JFLA paper benchmark; see below *)
+(* let xmin = -1.1 *)
+(* let xmax = -0.8 *)
+(* let ymin =  0.2 *)
+(* let ymax =  0.4  *)
+(* let height = width * 2 / 3 *)
+
+let xmin = -2.0
+let xmax =  1.0
+let ymin = -1.5
+let ymax =  1.5 
+let height = width
 
 let tasks = 
   let l = ref [] in
@@ -70,7 +77,7 @@ let master (_, j) m = images.(j) <- m; []
 let () = Master.compute ~master tasks
 
 let () = 
-  if false then begin
+  if true then begin
     Graphics.open_graph (Printf.sprintf " %dx%d" width height);
     let h = height / t in
     Array.iteri
