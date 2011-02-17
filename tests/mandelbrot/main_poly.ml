@@ -1,6 +1,6 @@
 
 open Functory.Network
-let () = declare_workers ~n:2 "localhost"
+let () = declare_workers ~n:8 "belzebuth"
 let () = Functory.Control.set_debug true
 open Poly
 
@@ -65,18 +65,28 @@ let tasks =
 
 let images = Array.create t ([||] : Graphics.color array array)
 
-let master ((_,_,_,_,w,h), j) m = images.(j) <- m; []
+let master (_, j) m = images.(j) <- m; []
 
 let () = Master.compute ~master tasks
 
-(* Ocaml BUG? *)
-(* let () = Graphics.open_graph (Printf.sprintf " %dx%d" width height) *)
+let () = 
+  if false then begin
+    Graphics.open_graph (Printf.sprintf " %dx%d" width height);
+    let h = height / t in
+    Array.iteri
+      (fun j m ->
+	 let img = Graphics.make_image m in
+	 Graphics.draw_image img 0 (j * h))
+      images; 
+    ignore (Graphics.read_key ())
+  end
 
+(* Ocaml bug? *)
+(* let () = Graphics.open_graph (Printf.sprintf " %dx%d" width height) *)
 (* let master ((_,_,_,_,_,h), j) m = *)
 (*   let img = Graphics.make_image m in *)
 (*   Graphics.draw_image img 0 (j * h); *)
 (*   [] *)
-
 (* let () = Master.compute ~master tasks; ignore (Graphics.read_key ()) *)
 
 (*

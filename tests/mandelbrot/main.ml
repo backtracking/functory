@@ -7,7 +7,7 @@
 open Functory
 let () = Control.set_debug true
 open Network
-let () = declare_workers ~n:2 "localhost"
+let () = declare_workers ~n:8 "localhost"
 open Same
   
 let max_iter = 200 (* nombre maximum d'itérations *)
