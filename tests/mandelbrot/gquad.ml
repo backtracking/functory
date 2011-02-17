@@ -73,12 +73,6 @@ let tasks =
   done done;
   !l
 
-(* let images = Array.create_matrix t t White *)
-
-(* let master (_, (i,j)) q = images.(i).(j) <- q; [] *)
-
-(* let () = Master.compute ~master tasks *)
-
 let locale = GtkMain.Main.init ()
 let window = GWindow.window ()
 let vbox = GPack.vbox ~packing:window#add ()
@@ -104,17 +98,16 @@ let rec draw_quad x y w = function
       draw_quad x (y + w) w q3;
       draw_quad (x + w) (y + w) w q4
 
-(* let draw () = *)
-(*   let w = width / t in *)
-(*   Array.iteri *)
-(*     (fun i -> Array.iteri (fun j q -> draw_quad (i*w) (j*w) w q)) images *)
+let master (_, (i,j)) q = 
+  let w = width / t in
+  draw_quad (i*w) (j*w) w q; []
+
+let c = Master.create_computation ~master tasks
+let callback () = Master.one_step c; true
 
 let _ =
-  let w = width / t in
   button#connect#clicked ~callback:
-    (fun () -> 
-       let master (_, (i,j)) q = draw_quad (i*w) (j*w) w q; [] in
-       Master.compute ~master tasks)
+    (fun () -> ignore (GMain.Timeout.add ~ms:100 ~callback))
 
 let () = 
   ignore (window#connect#destroy ~callback:GMain.Main.quit);

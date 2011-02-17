@@ -908,6 +908,17 @@ module Poly = struct
 
   module Master = struct
 
+    type ('a, 'c) computation = ('a, 'c) computation_
+
+    let create_computation ~(master : 'a * 'c -> 'b -> ('a * 'c) list) tasks = 
+      let assign_job x = "f", Marshal.to_string x [] in
+      let master t s = let r = Marshal.from_string s 0 in master t r in
+      create_computation_ ~assign_job ~master tasks
+
+    let add_worker = add_worker
+    let is_done = is_done
+    let one_step = one_step
+
     let compute ~master tl =
       main_master 
 	~assign_job:(fun x -> "f", Marshal.to_string x []) 

@@ -217,6 +217,15 @@ module Network : sig
   module Poly : sig
 
     module Master : sig
+
+      type ('a, 'c) computation
+      val create_computation : 
+	master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list ->
+	('a, 'c) computation
+      val add_worker : ('a, 'c) computation -> worker -> unit
+      val one_step : ('a, 'c) computation -> unit
+      val is_done : ('a, 'c) computation -> bool
+
       val compute : 
 	master:('a * 'c -> 'b -> ('a * 'c) list) -> 
 	('a * 'c) list -> unit
