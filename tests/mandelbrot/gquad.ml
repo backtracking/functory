@@ -1,7 +1,7 @@
 
 open Functory.Network
 let () = declare_workers ~n:8 "belzebuth"
-let () = Functory.Control.set_debug true
+let () = Functory.Control.set_debug false
 open Poly
 
 let is_worker = Array.length Sys.argv >= 2 && Sys.argv.(1) = "-w"
@@ -56,19 +56,19 @@ let () = assert (width mod t = 0)
 let n = log2 (width / t)
 let () = assert (width / t = 1 lsl n)
 
-let xmin = -2.0
-let xmax =  1.0
-let ymin = -1.5
-let ymax =  1.5 
+let xmin = ref (-2.0)
+let xmax = ref ( 1.0)
+let ymin = ref (-1.5)
+let ymax = ref ( 1.5)
 
-let () = assert (xmax -. xmin = ymax -. ymin)
+let () = assert (!xmax -. !xmin = !ymax -. !ymin)
 
-let tasks = 
+let tasks () = 
   let l = ref [] in
-  let w = (xmax -. xmin) /. float t in
+  let w = (!xmax -. !xmin) /. float t in
   for i = 0 to t-1 do for j = 0 to t-1 do
-    let x = xmin +. float i *. w in
-    let y = ymin +. float j *. w in
+    let x = !xmin +. float i *. w in
+    let y = !ymin +. float j *. w in
     l := ((x, y, w, n), (i, j)) :: !l
   done done;
   !l
@@ -102,8 +102,24 @@ let master (_, (i,j)) q =
   let w = width / t in
   draw_quad (i*w) (j*w) w q; []
 
-let c = Master.create_computation ~master tasks
-let callback () = Master.one_step c; true
+let c = Master.create_computation ~master (tasks ())
+let callback () = Master.one_step c; not (Master.is_done c)
+
+let _ = 
+  let rect = GnoCanvas.rect group
+    ~props:[ `X1 0.; `Y1 0.; 
+	     `X2 (float width); `Y2 (float height);
+	     `FILL_COLOR "tan"]
+  in
+  rect#connect#event 
+    ~callback:(fun ev -> begin match ev with
+		 | `BUTTON_PRESS ev ->
+		     let x = GdkEvent.Button.x ev  in
+		     let y = GdkEvent.Button.y ev  in
+		     Format.printf "click at %f, %f@." x y
+		 | _ -> ()
+	       end;
+	      false)
 
 let _ =
   button#connect#clicked ~callback:

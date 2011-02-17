@@ -18,7 +18,7 @@ open Format
 open Unix
 open Control
 
-let () = set_debug true
+let () = set_debug false
 
 let default_port_number = ref 51000
 
