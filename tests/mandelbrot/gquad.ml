@@ -107,7 +107,7 @@ let callback () = Master.one_step c; true
 
 let _ =
   button#connect#clicked ~callback:
-    (fun () -> ignore (GMain.Timeout.add ~ms:100 ~callback))
+    (fun () -> ignore (GMain.Timeout.add ~ms:10 ~callback))
 
 let () = 
   ignore (window#connect#destroy ~callback:GMain.Main.quit);
