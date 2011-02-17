@@ -65,29 +65,40 @@ let () = assert (xmax -. xmin = ymax -. ymin)
 
 let tasks = 
   let l = ref [] in
-  for j = 0 to t-1 do
-    let ymi = ymin +. float j *. (ymax -. ymin) /. float t in
-    let yma = ymin +. float (j+1) *. (ymax -. ymin) /. float t in
-    l := ((xmin, xmax, ymi, yma, width, height / t), j) :: !l
-  done;
+  let w = (xmax -. xmin) /. float t in
+  for i = 0 to t-1 do for j = 0 to t-1 do
+    let x = xmin +. float i *. w in
+    let y = ymin +. float j *. w in
+    l := ((x, y, w, n), (i, j)) :: !l
+  done done;
   !l
 
-let images = Array.create t ([||] : Graphics.color array array)
+let images = Array.create_matrix t t White
 
-let master (_, j) m = images.(j) <- m; []
+let master (_, (i,j)) q = images.(i).(j) <- q; []
 
 let () = Master.compute ~master tasks
 
-let () = 
-  if false then begin
-    Graphics.open_graph (Printf.sprintf " %dx%d" width height);
-    let h = height / t in
-    Array.iteri
-      (fun j m ->
-	 let img = Graphics.make_image m in
-	 Graphics.draw_image img 0 (j * h))
-      images; 
-    ignore (Graphics.read_key ())
+open Graphics
+
+let rec draw_quad x y w = function
+  | White -> ()
+  | Black -> fill_rect x y w w
+  | Quad (q1, q2, q3, q4) -> 
+      let w = w / 2 in
+      draw_quad x y w q1;
+      draw_quad (x + w) y w q2;
+      draw_quad x (y + w) w q3;
+      draw_quad (x + w) (y + w) w q4
+
+let () =
+  if true then begin
+    open_graph (Printf.sprintf " %dx%d" width height);
+    let w = width / t in
+    set_color black;
+    Array.iteri 
+      (fun i -> Array.iteri (fun j q -> draw_quad (i*w) (j*w) w q)) images;
+    ignore (read_key ())
   end
 
 
