@@ -151,6 +151,8 @@ module Network : sig
 	Port number is given by [port]; default value is [51000] and can
 	be changed using function [set_default_port_number] above. *)
 
+  type computation_status = Running | Done | Dead
+
   (** {2 Same binary executed as master and workers}
 
       A worker is distinguished from the master in two possible ways:
@@ -163,18 +165,21 @@ module Network : sig
 
     (** {2 Low level API} *)
 
-    type ('a, 'c) computation
+    module Computation : sig
+      type ('a, 'c) t
 
-    val create_computation : 
-      worker:('a -> 'b) -> 
-      master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list ->
-      ('a, 'c) computation
+      val create : 
+	worker:('a -> 'b) -> 
+	master:('a * 'c -> 'b -> ('a * 'c) list) ->
+	('a, 'c) t
 
-    val add_worker : ('a, 'c) computation -> worker -> unit
+      val add_worker : ('a, 'c) t -> worker -> unit
+	
+      val one_step : ('a, 'c) t -> unit
+	
+      val status : ('a, 'c) t -> computation_status
 
-    val one_step : ('a, 'c) computation -> unit
-
-    val is_done : ('a, 'c) computation -> bool
+    end
 
     (** {2 High level API} *)
 
@@ -218,13 +223,16 @@ module Network : sig
 
     module Master : sig
 
-      type ('a, 'c) computation
-      val create_computation : 
-	master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list ->
-	('a, 'c) computation
-      val add_worker : ('a, 'c) computation -> worker -> unit
-      val one_step : ('a, 'c) computation -> unit
-      val is_done : ('a, 'c) computation -> bool
+      module Computation : sig
+	type ('a, 'c) t
+	val create : master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a, 'c) t
+	val add_worker : ('a, 'c) t -> worker -> unit
+	val one_step : ('a, 'c) t -> unit
+	val status : ('a, 'c) t -> computation_status
+	val kill : ('a, 'c) t -> unit
+	val clear : ('a, 'c) t -> unit
+	val add_task : ('a, 'c) t -> 'a * 'c -> unit
+      end
 
       val compute : 
 	master:('a * 'c -> 'b -> ('a * 'c) list) -> 

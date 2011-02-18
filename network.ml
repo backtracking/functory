@@ -18,7 +18,7 @@ open Format
 open Unix
 open Control
 
-let () = set_debug false
+let () = set_debug true
 
 let default_port_number = ref 51000
 
@@ -379,12 +379,14 @@ let print_worker fmt w = match w.job with
 module WorkerSet : sig
   type t
   val create : unit -> t
+  val clear : t -> unit
   val add : t -> worker -> unit
   val mem : t -> worker -> bool
   val remove : t -> worker -> unit
   val is_empty : t -> bool
   val choose : t -> worker (* does not remove it *)
   val cardinal : t -> int
+  val iter : (worker -> unit) -> t -> unit
 end = struct
   module S = 
     Set.Make(struct 
@@ -393,12 +395,14 @@ end = struct
 	     end)
   type t = S.t ref
   let create () = ref S.empty
+  let clear h = h := S.empty
   let add h w = h := S.add w !h
   let mem h w = S.mem w !h
   let remove h w = h := S.remove w !h
   let is_empty h = S.is_empty !h
   let choose h = assert (not (S.is_empty !h)); S.choose !h
   let cardinal h = S.cardinal !h
+  let iter f h = S.iter f !h
 end
 
 let workers = ref []
@@ -466,69 +470,100 @@ let create_task t =
 
 let job_id = let r = ref 0 in fun () -> incr r; !r
 
+type computation_status = Running | Done | Dead
+
 type ('a, 'c) computation_ = {
-  mutable is_done : bool;
+  mutable status : computation_status;
   assign_job : 'a -> string * string;
   master : 'a * 'c -> string -> ('a * 'c) list;
   old_sigpipe_handler : Sys.signal_behavior;
   todo : ('a * 'c) task Queue.t;
-  idle_workers : WorkerSet.t;
+  workers : WorkerSet.t;
+  idle_workers : WorkerSet.t; (* subset of workers *)
   running_tasks : (int, ('a * 'c) task) Hashtbl.t;
   mutable last_printed_state : int * int * int;
 }
 
-let push_new_task c t = Queue.add (create_task t) c.todo
+let add_task c t = 
+  if c.status = Dead then invalid_arg "add_task: dead computation";
+  Queue.add (create_task t) c.todo;
+  c.status <- Running
 
-let create_computation_
-    ~(assign_job : 'a -> string * string)
-    ~(master : 'a * 'c -> string -> ('a * 'c) list) 
-    (tasks : ('a * 'c) list)
-    =
-  let c = { 
-    is_done = false;
-    old_sigpipe_handler = Sys.signal Sys.sigpipe Sys.Signal_ignore;
-    assign_job = assign_job;
-    master = master;
-    todo = Queue.create ();
-    idle_workers = WorkerSet.create ();
-    running_tasks = Hashtbl.create 17;
-    last_printed_state = 0,0,0;
-  }
-  in
-  List.iter (push_new_task c) tasks;
-  c
-
-let add_worker c w = match w.state with
+let add_worker c w =
+  WorkerSet.add c.workers w;
+  match w.state with
   | Ok _ | Pinged _ -> 
       if w.job = None then WorkerSet.add c.idle_workers w
   | Disconnected | Error _ -> 
       ()
 
-let print_computation c =
-  let n1 = Queue.length c.todo in
-  let n2 = WorkerSet.cardinal c.idle_workers in
-  let n3 = Hashtbl.length c.running_tasks in
-  let st = (n1, n2, n3) in 
-  if st <> c.last_printed_state then begin
-    c.last_printed_state <- st;
-    dprintf "***@.";
-    dprintf "  %d tasks todo@." n1;
-    dprintf "  %d idle workers@." n2;
-    dprintf "  %d running tasks (" n3;
-    Hashtbl.iter (fun jid _ -> dprintf "%d, " jid) c.running_tasks;
-    dprintf ")@.";
-    dprintf "***@.";
+let create_computation_
+    ~(assign_job : 'a -> string * string)
+    ~(master : 'a * 'c -> string -> ('a * 'c) list) 
+    =
+  let c = { 
+    status = Done;
+    old_sigpipe_handler = Sys.signal Sys.sigpipe Sys.Signal_ignore;
+    assign_job = assign_job;
+    master = master;
+    todo = Queue.create ();
+    workers = WorkerSet.create ();
+    idle_workers = WorkerSet.create ();
+    running_tasks = Hashtbl.create 17;
+    last_printed_state = 0,0,0;
+  }
+  in
+  List.iter (add_worker c) !workers;
+  c
+
+let print_computation c = match c.status with
+  | Dead ->
+      dprintf "dead computation"
+  | Done ->
+      dprintf "computation done"
+  | Running ->
+      let n1 = Queue.length c.todo in
+      let n2 = WorkerSet.cardinal c.idle_workers in
+      let n3 = Hashtbl.length c.running_tasks in
+      let st = (n1, n2, n3) in 
+      if st <> c.last_printed_state then begin
+	c.last_printed_state <- st;
+	dprintf "***@.";
+	dprintf "  %d tasks todo@." n1;
+	dprintf "  %d idle workers@." n2;
+	dprintf "  %d running tasks (" n3;
+	Hashtbl.iter (fun jid _ -> dprintf "%d, " jid) c.running_tasks;
+	dprintf ")@.";
+	dprintf "***@.";
+      end
+
+let send w m =
+  try 
+    Protocol.Master.send w.fdout m
+  with e -> 
+    dprintf "@[<hov 2>could not send message %a@ to worker %a@ (%a)@]@." 
+      Protocol.Master.print m print_worker w print_exception e;
+    raise e
+
+let make_idle c w =
+  w.job <- None;
+  WorkerSet.add c.idle_workers w 
+
+(* kill job jid on worker w *)
+let kill_job c w jid =
+  dprintf "kill job id %d on worker %d@." jid w.worker_id;
+  Hashtbl.remove c.running_tasks jid;
+  if w.state <> Disconnected then begin
+    send w (Protocol.Master.Kill jid);
+    make_idle c w
   end
 
+let remove_worker c w =
+  (* TODO: remove from c.workers and c.idle_workers if relevant
+     reschedule all tasks for this worker *)
+  assert false (*TODO*)
+
 let do_one_step c =
-  let send w m =
-    try 
-      Protocol.Master.send w.fdout m
-    with e -> 
-      dprintf "@[<hov 2>could not send message %a@ to worker %a@ (%a)@]@." 
-	Protocol.Master.print m print_worker w print_exception e;
-      raise e
-  in
   let send_ping w = send w Protocol.Master.Ping in
   let create_job w t =
     assert (not t.task_done);
@@ -562,22 +597,9 @@ let do_one_step c =
     WorkerSet.remove c.idle_workers w;
     reschedule_task ~remove:true w
   in
-  let make_idle w =
-    w.job <- None;
-    WorkerSet.add c.idle_workers w 
-  in
-  (* kill job jid on worker w *)
-  let kill w jid =
-    dprintf "kill job id %d on worker %d@." jid w.worker_id;
-    Hashtbl.remove c.running_tasks jid;
-    if w.state <> Disconnected then begin
-      send w (Protocol.Master.Kill jid);
-      make_idle w
-    end
-  in
   (* kill jobs different from jid *)
   let kill_jobs jid l =
-    List.iter (fun (jid', w) -> if jid' <> jid then kill w jid') l
+    List.iter (fun (jid', w) -> if jid' <> jid then kill_job c w jid') l
   in
   let listen_for_worker w =
     let m = Protocol.Worker.receive w.fdin in
@@ -587,31 +609,31 @@ let do_one_step c =
       | Protocol.Worker.Pong ->
 	  if w.job = None then WorkerSet.add c.idle_workers w
       | Protocol.Worker.Completed (id, r) ->
-	  make_idle w;
+	  make_idle c w;
 	  let t = Hashtbl.find c.running_tasks id in
 	  dprintf "completed task: job id=%d, %a@." id print_task t;
 	  Hashtbl.remove c.running_tasks id;
 	  if not t.task_done then begin
 	    t.task_done <- true;
 	    kill_jobs id t.task_workers;
-	    List.iter (push_new_task c) (c.master t.task r)
+	    List.iter (add_task c) (c.master t.task r)
 	  end 
       | Protocol.Worker.Aborted id ->
-	  make_idle w;
+	  make_idle c w;
 	  let t = Hashtbl.find c.running_tasks id in
 	  Hashtbl.remove c.running_tasks id;
-	  push_new_task c t.task
+	  add_task c t.task
   in
   print_computation c;
   (* 1. try to connect if not already connected *)
   let current = Unix.time () in
-  List.iter 
+  WorkerSet.iter 
     (fun w -> match w.state with
        | Disconnected ->
 	   begin try 
 	     connect_worker w;
 	     dprintf "new connection to %a@." print_worker w;
-	     make_idle w
+	     make_idle c w
 	   with e ->
 	     ()
 	   end
@@ -630,7 +652,7 @@ let do_one_step c =
 	   w.state <- Error current
        | Ok _ | Error _ ->
 	   ())
-    !workers;
+    c.workers;
   print_computation c;
   (* 2. if possible, start new jobs *)
   while not (WorkerSet.is_empty c.idle_workers) && not (Queue.is_empty c.todo) 
@@ -650,8 +672,11 @@ let do_one_step c =
   print_computation c;
   (* 3. if not, listen for workers *)
   let fds = 
-    let wl = List.filter (fun w -> w.state <> Disconnected) !workers in
-    List.map (fun w -> w.fdin) wl
+    let wl = ref [] in
+    WorkerSet.iter 
+      (fun w -> if w.state <> Disconnected then wl := w :: !wl) 
+      c.workers;
+    List.map (fun w -> w.fdin) !wl
   in
   let l,_,_ = select fds [] [] 0.1 in
   List.iter 
@@ -665,28 +690,52 @@ let do_one_step c =
 	 manage_disconnection w)
     l
   
-let one_step c =
-  if not (Queue.is_empty c.todo) || (Hashtbl.length c.running_tasks > 0) then 
-  begin
-    do_one_step c
-  end else begin
-    (* we are done *)
-    c.is_done <- true;
-    ignore (Sys.signal Sys.sigpipe c.old_sigpipe_handler);
-  end
+let one_step c = match c.status with
+  | Dead ->
+      invalid_arg "one_step: dead computation"
+  | Done ->
+      ()
+  | Running when Queue.is_empty c.todo && Hashtbl.length c.running_tasks = 0 ->
+      (* we are done *)
+      c.status <- Done;
+      ignore (Sys.signal Sys.sigpipe c.old_sigpipe_handler)
+  | Running ->
+      Format.eprintf "HELLO@.";
+      do_one_step c
 
-let is_done c = c.is_done
+let status c = c.status
+
+let clear c =
+  let killed = Hashtbl.create 17 in
+  let kill (jid, w) = 
+    if not (Hashtbl.mem killed jid) then begin 
+      kill_job c w jid; 
+      Hashtbl.add killed jid ()
+    end
+  in
+  Hashtbl.iter (fun _ t -> List.iter kill t.task_workers) c.running_tasks;
+  Queue.clear c.todo;
+  Hashtbl.clear c.running_tasks;
+  c.status <- Done
+
+let kill c =
+  clear c;
+  let stop_msg = Protocol.Master.Stop "kill computation" in
+  WorkerSet.iter (fun w -> send w stop_msg) c.idle_workers;
+  WorkerSet.clear c.idle_workers;
+  c.status <- Dead
 
 let main_master 
     ~(assign_job : 'a -> string * string)
     ~(master : 'a * 'c -> string -> ('a * 'c) list) 
     (tasks : ('a * 'c) list)
     =
-  let c = create_computation_ ~assign_job ~master tasks in
-  List.iter (add_worker c) !workers;
-  while not (is_done c) do
+  let c = create_computation_ ~assign_job ~master in
+  List.iter (add_task c) tasks;
+  while c.status = Running do
     one_step c
-  done
+  done;
+  kill c
 
 (*****
 let main_master 
@@ -908,16 +957,22 @@ module Poly = struct
 
   module Master = struct
 
-    type ('a, 'c) computation = ('a, 'c) computation_
+    module Computation = struct
+      type ('a, 'c) t = ('a, 'c) computation_
 
-    let create_computation ~(master : 'a * 'c -> 'b -> ('a * 'c) list) tasks = 
-      let assign_job x = "f", Marshal.to_string x [] in
-      let master t s = let r = Marshal.from_string s 0 in master t r in
-      create_computation_ ~assign_job ~master tasks
+      let create ~(master : 'a * 'c -> 'b -> ('a * 'c) list) = 
+	let assign_job x = "f", Marshal.to_string x [] in
+	let master t s = let r = Marshal.from_string s 0 in master t r in
+	create_computation_ ~assign_job ~master
 
-    let add_worker = add_worker
-    let is_done = is_done
-    let one_step = one_step
+      let add_worker = add_worker
+      let status = status
+      let one_step = one_step
+      let add_task = add_task
+      let kill = kill
+      let clear = clear
+
+    end
 
     let compute ~master tl =
       main_master 
@@ -983,21 +1038,27 @@ module Same = struct
 
   end
 
-  type ('a, 'c) computation = ('a, 'c) computation_
+  module Computation = struct
 
-  let create_computation 
-    ~(worker : 'a -> 'b) 
-    ~(master : 'a * 'c -> 'b -> ('a * 'c) list) 
-    tasks
-  = 
-    let worker_closure = Marshal.to_string worker [Marshal.Closures] in
-    let assign_job x = worker_closure, Marshal.to_string x [] in
-    let master ac r = master ac (Marshal.from_string r 0) in
-    create_computation_ ~assign_job ~master tasks
+    type ('a, 'c) t = ('a, 'c) computation_
 
-  let add_worker = add_worker
-  let is_done = is_done
-  let one_step = one_step
+    let create 
+	~(worker : 'a -> 'b) 
+	~(master : 'a * 'c -> 'b -> ('a * 'c) list) 
+    = 
+      let worker_closure = Marshal.to_string worker [Marshal.Closures] in
+      let assign_job x = worker_closure, Marshal.to_string x [] in
+      let master ac r = master ac (Marshal.from_string r 0) in
+      create_computation_ ~assign_job ~master
+
+    let add_worker = add_worker
+    let status = status
+    let one_step = one_step
+    let add_task = add_task
+    let kill = kill
+    let clear = clear
+
+  end
 
   let () = 
     if is_worker then begin
