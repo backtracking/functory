@@ -175,7 +175,7 @@ module Network : sig
 
       val add_worker : ('a, 'c) t -> worker -> unit
 	
-      val one_step : ('a, 'c) t -> unit
+      val one_step : ?timeout:float -> ('a, 'c) t -> unit
 	
       val status : ('a, 'c) t -> computation_status
 
@@ -227,7 +227,7 @@ module Network : sig
 	type ('a, 'c) t
 	val create : master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a, 'c) t
 	val add_worker : ('a, 'c) t -> worker -> unit
-	val one_step : ('a, 'c) t -> unit
+	val one_step : ?timeout:float -> ('a, 'c) t -> unit
 	val status : ('a, 'c) t -> computation_status
 	val kill : ('a, 'c) t -> unit
 	val clear : ('a, 'c) t -> unit

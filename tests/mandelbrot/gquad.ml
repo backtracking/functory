@@ -1,7 +1,7 @@
 
 open Functory.Network
 let () = set_default_port_number 51002
-let () = declare_workers ~n:4 "belzebuth"
+let () = declare_workers ~n:6 "belzebuth"
 let () = Functory.Control.set_debug true
 open Poly
 

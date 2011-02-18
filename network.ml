@@ -563,7 +563,7 @@ let remove_worker c w =
      reschedule all tasks for this worker *)
   assert false (*TODO*)
 
-let do_one_step c =
+let do_one_step ?(timeout=0.) c =
   let send_ping w = send w Protocol.Master.Ping in
   let create_job w t =
     assert (not t.task_done);
@@ -678,7 +678,7 @@ let do_one_step c =
       c.workers;
     List.map (fun w -> w.fdin) !wl
   in
-  let l,_,_ = select fds [] [] 0.1 in
+  let l,_,_ = select fds [] [] timeout in
   List.iter 
     (fun fd -> 
        let w = Hashtbl.find worker_fd fd in
@@ -690,7 +690,7 @@ let do_one_step c =
 	 manage_disconnection w)
     l
   
-let one_step c = match c.status with
+let one_step ?timeout c = match c.status with
   | Dead ->
       invalid_arg "one_step: dead computation"
   | Done ->
@@ -701,7 +701,7 @@ let one_step c = match c.status with
       ignore (Sys.signal Sys.sigpipe c.old_sigpipe_handler)
   | Running ->
       Format.eprintf "HELLO@.";
-      do_one_step c
+      do_one_step ?timeout c
 
 let status c = c.status
 
@@ -733,7 +733,7 @@ let main_master
   let c = create_computation_ ~assign_job ~master in
   List.iter (add_task c) tasks;
   while c.status = Running do
-    one_step c
+    one_step ~timeout:0.1 c
   done;
   kill c
 
