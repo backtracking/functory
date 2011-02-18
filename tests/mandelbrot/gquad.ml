@@ -77,15 +77,27 @@ let tasks () =
 
 let locale = GtkMain.Main.init ()
 let window = GWindow.window ()
-let vbox = GPack.vbox ~packing:window#add ()
-let hbox = GPack.hbox ~packing:vbox#add ()
+let hbox = GPack.hbox ~packing:window#add ()
+
+(* left panel *)
+let vbox = GPack.vbox ~packing:hbox#add ()
 let start_button = 
-  GButton.button ~label:"Start" ~packing:(hbox#pack ~padding:5) ()
+  GButton.button ~label:"Start" ~packing:(vbox#pack ~padding:5) ()
 let clear_button = 
-  GButton.button ~label:"Clear" ~packing:(hbox#pack ~padding:5) ()
+  GButton.button ~label:"Clear" ~packing:(vbox#pack ~padding:5) ()
 let stop_button = 
-  GButton.button ~label:"Stop" ~packing:(hbox#pack ~padding:5) ()
-let canvas = GnoCanvas.canvas ~width ~height ~packing:vbox#pack ()
+  GButton.button ~label:"Stop" ~packing:(vbox#pack ~padding:5) ()
+let entry = GEdit.entry ~max_length: 50 ~packing: vbox#pack ()
+let clist =
+  let h = GPack.hbox ~packing:vbox#pack () in
+  let sb = GRange.scrollbar `VERTICAL ~packing:(h#pack ~from:`END) () in
+  GList.clist ~titles:["Workers"] ~shadow_type:`OUT ~height:200
+    ~packing:h#add ~vadjustment:sb#adjustment () 
+let remove_button = 
+  GButton.button ~label:"Remove" ~packing:(vbox#pack ~padding:5) ()
+
+(* right panel is canvas *)
+let canvas = GnoCanvas.canvas ~width ~height ~packing:hbox#pack ()
 let () = canvas#set_scroll_region 0. 0. (float width) (float height)
 let group = GnoCanvas.group canvas#root ~x:0. ~y:0.
 
@@ -168,6 +180,48 @@ let _ =
 	 | None -> () 
 	 | Some id -> GMain.Timeout.remove id; timer := None
        end)
+
+let worker_table = Hashtbl.create 17
+
+let add_worker_to_list =
+  let worker_count = ref 0 in
+  fun s w -> 
+    incr worker_count;
+    let id = Printf.sprintf "%d - %s" !worker_count s in
+    Hashtbl.add worker_table id w;
+    ignore (clist#append [id])
+
+let _ = 
+  entry#connect#activate 
+    ~callback:(fun () -> 
+		 let s = entry#text in
+		 try 
+		   let w = create_worker s in
+		   C.add_worker c w;
+		   add_worker_to_list s w
+		 with Invalid_argument msg -> 
+		   Format.eprintf "cannot add worker: %s@." msg
+	      )
+
+let selection = ref None
+
+let _ = 
+  clist#connect#select_row ~callback:
+    begin fun ~row ~column ~event ->
+      selection := Some (row, column)
+    end
+
+let _ =
+  remove_button#connect#clicked ~callback:
+    (fun () -> match !selection with
+       | None -> 
+	   ()
+       | Some (row, column) ->
+	   let id = clist#cell_text row column in
+	   clist#remove row;
+	   let w = Hashtbl.find worker_table id in
+	   C.remove_worker c w
+    )
 
 let () = 
   ignore (window#connect#destroy ~callback:GMain.Main.quit);

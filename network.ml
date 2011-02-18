@@ -424,8 +424,7 @@ let create_sock_addr name port =
       try 
 	(gethostbyname name).h_addr_list.(0) 
       with Not_found ->
-	eprintf "%s : Unknown server@." name ;
-	exit 1
+	invalid_arg (sprintf "%s : Unknown server@." name)
   in
   ADDR_INET (addr, port) 
 
@@ -513,7 +512,6 @@ let create_computation_
     last_printed_state = 0,0,0;
   }
   in
-  List.iter (add_worker c) !workers;
   c
 
 let print_computation c = match c.status with
@@ -558,10 +556,30 @@ let kill_job c w jid =
     make_idle c w
   end
 
+let reschedule_task c ~remove w = match w.job with
+  | None ->
+      () (* may be idle *)
+  | Some jid ->
+      assert (Hashtbl.mem c.running_tasks jid);
+      let t = Hashtbl.find c.running_tasks jid in
+      if remove then begin
+	Hashtbl.remove c.running_tasks jid;
+	t.task_workers <- List.filter (fun (_,w') -> w' != w) t.task_workers
+      end;
+      Queue.add t c.todo
+
+let manage_disconnection c w =
+  begin match w.job with
+    | Some jid when w.state <> Disconnected -> send w (Protocol.Master.Kill jid)
+    | _ -> ()
+  end;
+  w.state <- Disconnected;
+  WorkerSet.remove c.idle_workers w;
+  reschedule_task c ~remove:true w
+
 let remove_worker c w =
-  (* TODO: remove from c.workers and c.idle_workers if relevant
-     reschedule all tasks for this worker *)
-  assert false (*TODO*)
+  manage_disconnection c w;
+  WorkerSet.remove c.workers w
 
 let do_one_step ?(timeout=0.) c =
   let send_ping w = send w Protocol.Master.Ping in
@@ -579,23 +597,6 @@ let do_one_step ?(timeout=0.) c =
     Hashtbl.replace c.running_tasks id t;
     w.job <- Some id;
     WorkerSet.remove c.idle_workers w
-  in
-  let reschedule_task ~remove w = match w.job with
-    | None ->
-        () (* may be idle *)
-    | Some jid ->
-        assert (Hashtbl.mem c.running_tasks jid);
-        let t = Hashtbl.find c.running_tasks jid in
-	if remove then begin
-	  Hashtbl.remove c.running_tasks jid;
-	  t.task_workers <- List.filter (fun (_,w') -> w' != w) t.task_workers
-	end;
-	Queue.add t c.todo
-  in
-  let manage_disconnection w =
-    w.state <- Disconnected;
-    WorkerSet.remove c.idle_workers w;
-    reschedule_task ~remove:true w
   in
   (* kill jobs different from jid *)
   let kill_jobs jid l =
@@ -642,7 +643,7 @@ let do_one_step ?(timeout=0.) c =
 	     dprintf "worker %a timed out@." print_worker w;
 	     w.state <- Error current;
 	     WorkerSet.remove c.idle_workers w;
-	     reschedule_task ~remove:false w
+	     reschedule_task c ~remove:false w
 	   end
        | Ok t when current > t +. !ping_interval ->
 	   send_ping w;
@@ -666,7 +667,7 @@ let do_one_step ?(timeout=0.) c =
 	dprintf "@[<hov 2>create_job for worker %a failed:@ %a@]"
 	  print_worker w print_exception e;
 	Queue.push t c.todo;
-	manage_disconnection w
+	manage_disconnection c w
     end
   done;
   print_computation c;
@@ -687,7 +688,7 @@ let do_one_step ?(timeout=0.) c =
        with e -> 
 	 dprintf "@[<hov 2>worker %a failure:@ %s@]@." 
 	   print_worker w (Printexc.to_string e);
-	 manage_disconnection w)
+	 manage_disconnection c w)
     l
   
 let one_step ?timeout c = match c.status with
@@ -731,6 +732,7 @@ let main_master
     (tasks : ('a * 'c) list)
     =
   let c = create_computation_ ~assign_job ~master in
+  List.iter (add_worker c) !workers;
   List.iter (add_task c) tasks;
   while c.status = Running do
     one_step ~timeout:0.1 c
@@ -966,6 +968,7 @@ module Poly = struct
 	create_computation_ ~assign_job ~master
 
       let add_worker = add_worker
+      let remove_worker = remove_worker
       let status = status
       let one_step = one_step
       let add_task = add_task

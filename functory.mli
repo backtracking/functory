@@ -118,6 +118,8 @@ module Network : sig
   type worker
 
   val create_worker : ?port:int -> string -> worker
+    (** [create_worker s] creates a new worker located on machine [s].
+        Raises [Invalid_argument] if [s] is not a valid machine. *)
 
   val declare_workers : ?port:int -> ?n:int -> string -> unit
     (** [declare_workers s] declares [n] workers on machine [s]
@@ -227,6 +229,7 @@ module Network : sig
 	type ('a, 'c) t
 	val create : master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a, 'c) t
 	val add_worker : ('a, 'c) t -> worker -> unit
+	val remove_worker : ('a, 'c) t -> worker -> unit
 	val one_step : ?timeout:float -> ('a, 'c) t -> unit
 	val status : ('a, 'c) t -> computation_status
 	val kill : ('a, 'c) t -> unit
