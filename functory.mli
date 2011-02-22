@@ -166,22 +166,68 @@ module Network : sig
     (** {2 Low level API} *)
 
     module Computation : sig
+
       type ('a, 'c) t
+	(** The type of distributed computations. *)
 
       val create : 
 	worker:('a -> 'b) -> 
 	master:('a * 'c -> 'b -> ('a * 'c) list) ->
 	('a, 'c) t
+        (** [create worker master] creates a new distributed computation.
+	    It has no worker, nor tasks. 
+	    Workers (resp.tasks) should be added using function [add_worker]
+	    (resp. [add_task]) below. 
+	    Note: function [declare_workers] above is only meaningful for 
+	    high-level API functions such as [compute], [map], etc. See below.
+	*)
 
       val add_worker : ('a, 'c) t -> worker -> unit
+	(** [add_worker c w] adds worker [w] to computation [c]. *)
+
+      val add_task : ('a, 'c) t -> 'a * 'c -> unit
+	(** [add_task c t] adds task [t] to computation [c]. *)
+
       val remove_worker : ('a, 'c) t -> worker -> unit
-	
+	(** [remove_worker c w] removes worker [w] from computation [c]. 
+	    If [w] was running some task, it will be eventually 
+	    rescheduled to another worker. *)
+
       val one_step : ?timeout:float -> ('a, 'c) t -> unit
+	(** [one_step ~timeout c] runs one step of computation [c].
+	    That is, it
+	    - connects, or reconnects, to workers if necessary;
+	    - pings connected workers;
+	    - schedule new pending tasks to idle workers if possible;
+	    - listens to incoming messages from workers, if any.
+	    The optional argument [timeout] indicates how long we should 
+	    listen to incoming messages. Its default value is [0] which 
+	    means that we handle messages if any, otherwise we immediately 
+	    return. A value greater than 0 can be used to avoid busy waiting 
+	    in a loop which does nothing but [one_step].
+	*)
 	
       val status : ('a, 'c) t -> computation_status
-      val kill : ('a, 'c) t -> unit
+	(** [status c] queries the statis of computation [c].
+	    It has three possible values:
+	    - [Running]: on-going computation.
+	    - [Done]: completed computation i.e. there is no pending task and
+	      no currently running task. This state could be reached either
+	      by completion of all tasks or by function [clear] below.
+	    - [Dead]: computation [c] was killed (see function [kill] below).
+	*)
+
       val clear : ('a, 'c) t -> unit
-      val add_task : ('a, 'c) t -> 'a * 'c -> unit
+	(** [clear c] clears all tasks from computation [c] i.e. all pending 
+	    tasks as well as all currently running tasks. The status of [c]
+	    is set to [Done]. One can still add new tasks, which will
+	      put [c] back to the [Running] state. *)
+
+      val kill : ('a, 'c) t -> unit
+	(** [kill c] kills computation [c]. 
+	    It turns the status of [c] to [Dead].
+	    [c] cannot be used anymore i.e. any operation applied to [c] will
+  	    raise an [Invalid_argument] exception. *)
 
     end
 
