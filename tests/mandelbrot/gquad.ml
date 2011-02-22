@@ -55,6 +55,7 @@ let t = int_of_string Sys.argv.(2)
 
 let rec log2 x = if x = 1 then 0 else 1 + log2 (x lsr 1)
 let () = assert (width mod t = 0)
+let logt = log2 t
 let n = log2 (width / t)
 let () = assert (width / t = 1 lsl n)
 
@@ -65,15 +66,20 @@ let ymax = ref ( 1.5)
 
 let () = assert (!xmax -. !xmin = !ymax -. !ymin)
 
+(* tasks *)
+
 let tasks () = 
   let l = ref [] in
   let w = (!xmax -. !xmin) /. float t in
+  let gw = width / t in
   for i = 0 to t-1 do for j = 0 to t-1 do
     let x = !xmin +. float i *. w in
     let y = !ymin +. float j *. w in
-    l := ((x, y, w, n), (i, j)) :: !l
+    l := ((x, y, w, 0), (gw, i, j)) :: !l
   done done;
   !l
+
+(* let tasks () = [(!xmin, !ymin, !xmax -. !xmin, 0), (width,0,0)] *)
 
 let locale = GtkMain.Main.init ()
 let window = GWindow.window ()
@@ -101,16 +107,16 @@ let canvas = GnoCanvas.canvas ~width ~height ~packing:hbox#pack ()
 let () = canvas#set_scroll_region 0. 0. (float width) (float height)
 let group = GnoCanvas.group canvas#root ~x:0. ~y:0.
 
-let fill_rect x y w h =
+let fill_rect x y w h c =
   ignore 
     (GnoCanvas.rect group
        ~props:[ `X1 (float x); `Y1 (float y); 
 		`X2 (float (x + w)); `Y2 (float (y + h)); 
-		`FILL_COLOR "black" ])
+		`FILL_COLOR c ])
 
 let rec draw_quad x y w = function
   | White -> ()
-  | Black -> fill_rect x y w w
+  | Black -> fill_rect x y w w "black"
   | Quad (q1, q2, q3, q4) ->
       let w = w / 2 in
       draw_quad x y w q1;
@@ -118,9 +124,21 @@ let rec draw_quad x y w = function
       draw_quad x (y + w) w q3;
       draw_quad (x + w) (y + w) w q4
 
+(***
 let master (_, (i,j)) q = 
   let w = width / t in
   draw_quad (i*w) (j*w) w q; []
+***)
+
+let master ((x,y,w,d), (gw,i,j)) q = 
+  let gx = i * gw and gy = j * gw in
+  fill_rect gx gy gw gw "tan";
+  draw_quad gx gy gw q; 
+  if d < logt then
+    let d = if d < logt-1 then d+1 else n in
+    [(x, y, w, d), (gw, i, j)]
+  else 
+    []
 
 module C = Master.Computation
 
