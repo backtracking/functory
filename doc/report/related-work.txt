@@ -1,0 +1,49 @@
+
+Related Work
+============
+
+* Map/Reduce: many implementations of Map/Reduce as libraries in functional
+  programming languages => but our library *is not* map/reduce at all
+
+* plasma
+
+* Distributed Functional Languages (DFLs)
+  i.e. functional languages with built-in distribution i.e. code mobility
+  Examples:
+  - ML5 http://www.cs.cmu.edu/~rwh/papers.htm \cite{ML5}
+  - JoCaml (at least in earlier implementations)
+  - Glasgow Distributed Haskell (GdH) http://www.macs.hw.ac.uk/~dsg/gdh/
+  - Erlang
+
+  Our library could be easily be implemented in any of these languages
+  (most likely). But our purpose was to provide a library for an
+  existing, general purpose, language, not a new language. 
+
+  Fault tolerance
+  
+  Functory provides some particular notion of fault-tolerance: mostly
+  network fault-tolerance and some rough notion of worker
+  fault-tolerance (if worker function fails, the task will be
+  restarted). With a DFL, you have low level primitives, which lets
+  you control how you want to recover from a faulty computation.
+
+* OcamlP3L
+
+
+type-safe marshalling
+---------------------
+  - HashCaml http://www.cl.cam.ac.uk/~pes20/hashcaml/
+    \cite{HashCaml}
+ => could be performed by the user, using an existing type-safe
+    marshalling library (aka dynamics, such as Julien's)
+
+master/worker consistency
+-------------------------
+  could be done with checksums of executables (for Same) or magic
+  numbers (for Mono and Poly)
+
+  for the latter, could also be done by the user, having magic numbers
+  as part of tasks
+
+
+  
