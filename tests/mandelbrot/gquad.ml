@@ -47,7 +47,7 @@ let rec draw x y w n =
 let worker (x, y, w, n) = draw x y w n
 
 let () = 
-  if is_worker then begin Worker.compute ~stop:false worker (); exit 0 end
+  if is_worker then begin Worker.compute worker (); assert false end
 
 let width = int_of_string Sys.argv.(1)
 let height = width

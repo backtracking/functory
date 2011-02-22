@@ -41,7 +41,7 @@ let add s1 s2 = string_of_int (int_of_string s1 + int_of_string s2)
 
 let () = Network.Worker.register_computation2 "fold" (^)
 
-let _ = Network.Worker.compute ~stop:false ~port ()
+let _ = Network.Worker.compute ~port ()
 
 let () = printf "it works!@."
 

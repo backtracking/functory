@@ -18,7 +18,7 @@ open Format
 open Unix
 open Control
 
-let () = set_debug true
+let () = set_debug false
 
 let default_port_number = ref 51000
 
@@ -261,32 +261,24 @@ module Worker = struct
       Hashtbl.add sockets_fd port s;
       s
 
-  let compute compute ?(stop=false) ?(port = !default_port_number) () = 
+  let compute compute ?(port = !default_port_number) () = 
     dprintf "port = %d@." port;
-    if stop then begin
-      let s = get_socket_fd port in
-      let inchan = Unix.in_channel_of_descr s 
-      and outchan = Unix.out_channel_of_descr s in 
-      server_fun compute inchan outchan 
-    end else begin
-      let sock = get_socket port in
-      while true do
-	let s, _ = Unix.accept sock in 
-	match Unix.fork() with
-	  | 0 -> 
-	      if Unix.fork() <> 0 then exit 0; 
-              let inchan = Unix.in_channel_of_descr s 
-              and outchan = Unix.out_channel_of_descr s in 
-	      ignore (server_fun compute inchan outchan);
-              close_in inchan;
-              close_out outchan;
-              exit 0
-	  | id -> 
-	      Unix.close s;
-	      ignore (Unix.waitpid [] id)
-      done;
-      assert false
-    end
+    let sock = get_socket port in
+    while true do
+      let s, _ = Unix.accept sock in 
+      match Unix.fork() with
+	| 0 -> 
+	    if Unix.fork() <> 0 then exit 0; 
+            let inchan = Unix.in_channel_of_descr s 
+            and outchan = Unix.out_channel_of_descr s in 
+	    ignore (server_fun compute inchan outchan);
+            begin try close_in inchan; close_out outchan with _ -> () end;
+            exit 0
+	| id -> 
+	    Unix.close s;
+	    ignore (Unix.waitpid [] id)
+    done;
+    assert false
 
 end
 
@@ -701,7 +693,6 @@ let one_step ?timeout c = match c.status with
       c.status <- Done;
       ignore (Sys.signal Sys.sigpipe c.old_sigpipe_handler)
   | Running ->
-      Format.eprintf "HELLO@.";
       do_one_step ?timeout c
 
 let status c = c.status
@@ -937,9 +928,27 @@ let main_master
 
 (** Three implementations ***************************************************)
 
-type worker_type = ?stop:bool -> ?port:int -> unit -> unit
+type worker_type = ?port:int -> unit -> unit
 
 module Mono = struct
+
+  module Computation = struct
+
+    type 'c t = (string, 'c) computation_
+
+    let create ~master =
+      let assign_job x = "f", x in
+      create_computation_ ~assign_job ~master 
+
+    let add_worker = add_worker
+    let remove_worker = remove_worker
+    let status = status
+    let one_step = one_step
+    let add_task = add_task
+    let kill = kill
+    let clear = clear
+
+  end
 
   module Master = struct
 
@@ -949,8 +958,8 @@ module Mono = struct
   end
 
   module Worker = struct
-    let compute f ?stop ?port () = 
-      ignore (Worker.compute (fun _ x -> f x) ?stop ?port ())
+    let compute f ?port () = 
+      ignore (Worker.compute (fun _ x -> f x) ?port ())
   end
 
 end
@@ -1010,8 +1019,8 @@ module Poly = struct
       let r = f x in
       Marshal.to_string r []
 
-    let compute f ?stop ?port () = 
-      ignore (Worker.compute (fun _ -> unpoly f) ?stop ?port ())
+    let compute f ?port () = 
+      ignore (Worker.compute (fun _ -> unpoly f) ?port ())
 
     let map ~f = 
       compute f
@@ -1031,13 +1040,13 @@ module Same = struct
 
   module Worker = struct 
 
-    let compute ?stop ?port () =
+    let compute ?port () =
       let compute f x = 
 	let f = (Marshal.from_string f 0 : 'a -> 'b) in
 	let x = (Marshal.from_string x 0 : 'a) in
 	Marshal.to_string (f x) []
       in
-      ignore (Worker.compute compute ?stop ?port ())
+      ignore (Worker.compute compute ?port ())
 
   end
 
@@ -1055,6 +1064,7 @@ module Same = struct
       create_computation_ ~assign_job ~master
 
     let add_worker = add_worker
+    let remove_worker = remove_worker
     let status = status
     let one_step = one_step
     let add_task = add_task
@@ -1066,7 +1076,7 @@ module Same = struct
   let () = 
     if is_worker then begin
       dprintf "starting worker loop...@.";
-      Worker.compute ~stop:false ()
+      Worker.compute () (* never returns *)
     end
       
   let compute

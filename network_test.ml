@@ -23,8 +23,7 @@ let worker = ref false
 let kind = ref Poly
 let test = ref ""
 let local = ref false
-let stop = ref false
-let port = ref 51004
+let port = ref 51005
 
 let () = Arg.parse
   ["-w", Arg.Set worker, "runs as a worker";
@@ -33,13 +32,11 @@ let () = Arg.parse
    "-poly", Arg.Unit (fun () -> kind := Poly), "use Network.Poly";
    "-test", Arg.Set_string test, "<int> ";
    "-local", Arg.Set local, "use a worker on localhost";
-   "-stop", Arg.Set stop, "stop the worker";
    "-port", Arg.Set_int port, "<int> set the port number";
   ]
   (fun _ -> ())
   "usage: "
 
-let stop = !stop
 let () = Functory.Network.set_default_port_number !port
 
 let () = 
@@ -51,8 +48,6 @@ let () =
   end
 
 let () = Functory.Control.set_debug true
-
-open Mono
 
 let double x = x+x
 let double_string x = let x = int_of_string x in string_of_int (double x)
@@ -75,17 +70,17 @@ let () = match !kind with
 	printf "I'm a poly worker...@.";
 	match !test with
 	  | "" ->
-	      Poly.Worker.compute double ~stop ()
+	      Poly.Worker.compute double ()
 	  | "map" ->
-	      Poly.Worker.map ~f:double ~stop ()
+	      Poly.Worker.map ~f:double ()
 	  | "map_local_fold" ->
-	      Poly.Worker.map_local_fold ~f:double ~stop ()
+	      Poly.Worker.map_local_fold ~f:double ()
 	  | "map_remote_fold" ->
-	      Poly.Worker.map_remote_fold ~f:double ~fold:(+) ~stop ()
+	      Poly.Worker.map_remote_fold ~f:double ~fold:(+) ()
 	  | "map_fold_ac" ->
-	      Poly.Worker.map_fold_ac ~f:double ~fold:(+) ~stop ()
+	      Poly.Worker.map_fold_ac ~f:double ~fold:(+) ()
 	  | "map_fold_a" ->
-	      Poly.Worker.map_fold_a ~f:double ~fold:(+) ~stop ()
+	      Poly.Worker.map_fold_a ~f:double ~fold:(+) ()
 	  | _ ->
 	      assert false (*TODO*)
       end else begin

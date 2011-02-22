@@ -146,10 +146,8 @@ module Network : sig
 
   (** {2 Worker type} *)
 
-  type worker_type = ?stop:bool -> ?port:int -> unit -> unit
+  type worker_type = ?port:int -> unit -> unit
     (** The type of forthcoming worker implementations.
-	If set, the [stop] boolean indicates that the worker should 
-	stop whenever master disconnects.
 	Port number is given by [port]; default value is [51000] and can
 	be changed using function [set_default_port_number] above. *)
 
@@ -176,10 +174,14 @@ module Network : sig
 	('a, 'c) t
 
       val add_worker : ('a, 'c) t -> worker -> unit
+      val remove_worker : ('a, 'c) t -> worker -> unit
 	
       val one_step : ?timeout:float -> ('a, 'c) t -> unit
 	
       val status : ('a, 'c) t -> computation_status
+      val kill : ('a, 'c) t -> unit
+      val clear : ('a, 'c) t -> unit
+      val add_task : ('a, 'c) t -> 'a * 'c -> unit
 
     end
 
@@ -274,6 +276,19 @@ module Network : sig
       As of now, there is no derived API in this module. *)
 
   module Mono : sig
+
+    module Computation : sig
+      type 'c t
+      val create : 
+	master:(string * 'c -> string -> (string * 'c) list) -> 'c t
+      val add_worker : 'c t -> worker -> unit
+      val remove_worker : 'c t -> worker -> unit
+      val one_step : ?timeout:float -> 'c t -> unit
+      val status : 'c t -> computation_status
+      val kill : 'c t -> unit
+      val clear : 'c t -> unit
+      val add_task : 'c t -> string * 'c -> unit
+    end
 
     module Master : sig
       val compute : 
