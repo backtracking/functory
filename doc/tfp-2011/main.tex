@@ -74,6 +74,10 @@
 
 \section{Introduction}
 
+% TODO
+% Our library, \functory, is implemented in \Ocaml\ and is available
+% from \url{http://www.lri.fr/~filliatr/functory/}.
+
 This paper introduces a generic library for distributed computing,
 targeted at functional programming. 
 This work was initially motivated by the computing needs that exist in our
@@ -981,162 +985,14 @@ exceptions if necessary.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Experiments}\label{sec:experiments}
 
-Our library, \functory, is implemented in \Ocaml\ and is available
-from \url{http://www.lri.fr/~filliatr/functory/}.
-In this section, we show the experimental results pertaining to the
-case studies of Section~\ref{sec:studies}.
-
-% \section{Illustrative Case Studies}\label{sec:studies}
-
-In this section, we show how to use \functory\ on several case studies.
-We focus here on the use of the API. Experimental results of these
-case studies are given in Section~\ref{sec:experiments}.
+In this section, we demonstrate the potential of using \functory\ on
+several case studies.
 The source code for all these case studies is contained in the
-distribution, in sub-directory \texttt{tests}.
-
-\subsection{Matrix Multiplication}\label{sec:matrix}
-
-As a first example, let us consider matrix multiplication.
-We assume two matrices \of{a} and \of{b}, respectively of size
-$\of{n}\times\of{p}$ and $\of{p}\times\of{m}$, given as input, as well as
-a matrix \of{c} of size $\of{n}\times\of{m}$ to store the result.
-Assuming \of{a} being a row-matrix and \of{b} a column-matrix,
-the standard matrix multiplication would be as follows:
-\begin{ocaml}
-  for i = 0 to n-1 do
-    for j = 0 to m-1 do
-      for k = 0 to p-1 do
-	c.(i).(j) <- c.(i).(j) + a.(i).(k) * b.(j).(k)
-      done
-    done
-  done  
-\end{ocaml}
-and runs in $O(\of{n}\times\of{p}\times\of{m})$, 
-assuming addition and multiplication over coefficients to be 
-denoted $+$ and $\times$ respectively.
-An easy way to distribute this computation is obviously to turn each
-computation of the inner loop over \of{k} into a task.
-To do so, we first prepare the list of tasks:
-\begin{ocaml}
-  let tasks = 
-    let l = ref [] in
-    for i = 0 to n-1 do for j = 0 to m-1 do
-      tasks := ((a.(i), b.(j)), (i,j)) :: !tasks
-    done done;
-    !l
-\end{ocaml}
-Each task consists of row \of{a.(i)} and column \of{b.(j)} as first
-tuple, together with position \of{(i,j)} as a second tuple.
-The worker is receiving the first tuple as argument and computes
-the dot product:
-\begin{ocaml}
-  let worker (ai, bj) =
-    let c = ref 0 in
-    for k = 0 to p-1 do c := !c + ai.(k) * bj.(k) done;
-    !c
-\end{ocaml}
-The master is a one line function which receives the result \of{r}
-from the worker and simply stores it into \of{c}, according to the
-position contained in the input task. It produces no new task.
-\begin{ocaml}
-  let master (_, (i,j)) r = c.(i).(j) <- r; []
-\end{ocaml}
-Finally, the overall computation is started by invoking \of{compute}
-as follows:
-\begin{ocaml}
-  let () = compute ~worker ~master !tasks
-\end{ocaml}
-The total number of tasks is $\of{n}\times\of{m}$.
-
-Using the sequential implementation provided by \of{Functory} is as
-simple as including the following line in the code:
-\begin{ocaml}
-  open Sequential
-\end{ocaml}
-Then the computation is roughly similar to the standard multiplication
-described above. 
-
-Now, let us assume we want to make use of a 4-core machine to perform
-the same computation. 
-This is achieved by just replacing the line above by
-\begin{ocaml}
-  open Cores
-  let () = set_number_of_cores 4
-\end{ocaml}
-while the rest of the code remains unchanged.
-
-Later, we may want to use a network of machines instead, for example
-two machines called \texttt{orcus} and \texttt{belzebuth} with 4 and 8
-cores respectively. Similar to the above, we turn the above lines into
-\begin{ocaml}
-  open Network
-  let () = declare_workers ~n:4 "orcus"
-  let () = declare_workers ~n:8 "belzebuth"
-  open Same
-\end{ocaml}
-Here, \of{Same} is a module which is to be used when master and worker
-are running the same executable. It provides a \of{compute} function
-which has the same signature as in modules \of{Sequential} and
-\of{Cores}, so that the rest of the code remains unchanged. Master and
-worker processes are distinguished at run-time using an environment
-variable \texttt{WORKER} which is set/unset.
-
-If we need to write two different programs for master and worker, for
-reason of binary incompatibility or any other reason, the library API
-is providing functions to do that. If master and worker are still
-compiled with the same version of \Ocaml, we use the \of{Poly} module
-which provides a polymorphic API. Let us start with the worker program.
-It now looks like:
-\begin{ocaml}
-  open Poly
-  let worker (ai, bj) = ...
-  let () = Worker.compute worker ()
-\end{ocaml}
-The \of{Worker.compute} function enters a loop which waits for
-tasks sent by the master and returns results computed using \of{worker}.
-The master program is almost the same as before. First, we replace
-module \of{Same} with module \of{Poly}:
-\begin{ocaml}
-  open Network
-  let () = declare_workers ~n:4 "orcus"
-  let () = declare_workers ~n:8 "belzebuth"
-  open Poly
-\end{ocaml}
-Tasks and \of{master} function are unchanged:
-\begin{ocaml}
-  let tasks = ...
-  let master (_, (i,j)) r = ...
-\end{ocaml}
-Finally, we start the computation with \of{Master.compute}, which does
-not have a \of{worker} parameter anymore:
-\begin{ocaml}
-  let () = Master.compute ~master tasks
-\end{ocaml}
-
-When master and worker programs are compiled with different
-versions of the \Ocaml\ compiler, our library still provides
-a monomorphic API over strings. As a consequence, we need to convert
-tasks and results to and from strings in both master and worker.
-The modified worker program then looks as follows:
-\begin{ocaml}
-  open Mono
-  let worker (ai, bj) = ...
-  let worker_string s = string_of_coeff (worker (task_of_string s))
-  let () = Worker.compute worker_string ()
-\end{ocaml}
-The master program is modified in a similar way.
-We simply replace \of{Poly} with \of{Mono} and encode/decode coefficients
-as strings, as follows:
-\begin{ocaml}
-  let tasks = ... string_of_task ...
-  let master (_, (i,j)) r = c.(i).(j) <- coeff_of_string r; []
-\end{ocaml}
-where \of{string_of_task} and \of{task_of_string} are user-defined
-functions to convert tasks to and from strings.
+distribution, in sub-directory \texttt{tests/}.
 
 \subsection{N-queens}\label{sec:n-queens}
 
-The next example is the classical $N$-queens problem, where we
+The first example is the classical $N$-queens problem, where we
 compute the total number of ways to place $N$ queens on a $N\times N$
 chessboard in such a way no two queens attack each other.
 We use a standard backtracking algorithm for this problem, which
@@ -1156,62 +1012,6 @@ where \of{f} is performing the search and \of{fold} simply adds the
 intermediate results.
 In the network configuration, we make use of the \of{Network.Same}
 module, workers and master being the same executable.
-
-\subsection{Mandelbrot Set}
-
-Drawing the Mandelbrot set is another classical example that could be
-distributed easily, since the color of each point can be computed
-independently of the others. 
-Let us assume we are given the coordinates of the region to be drawn,
-along with the width \of{w} and height \of{h} of the resulting image
-(in pixels). 
-Let us assume the total number of tasks $\of{t} \ge 1$ is given as a
-parameter. It is immediate to split the image into \of{t} sub-images,
-each of which is computed in parallel with and independently of the
-others. For instance, the image could be split into horizontal slices
-or, more generally, into rectangular blocks.
-
-Each task is thus four floating-point numbers denoting the region
-coordinates, together with two integers denoting the dimensions of the
-sub-image to be drawn. The result of the task is a matrix of pixels,
-of size $(\of{w}\times\of{h}) / \of{t}$. 
-For instance, drawing a $800\times 600$ image using 20 tasks will
-result in 20 sub-images of size $176,000$ bytes each,
-assuming each pixel is encoded in four bytes.
-
-In the network configuration, we deliberately choose to have two
-different programs for master and workers, using the \of{Network.Poly}
-module (actually, a single source code with a command line option).
-
-% \subsection{Polynomial Multiplication}
-% TODO?
-
-\subsection{SMT Solvers}\label{sec:SMT}
-
-Here we demonstrate the potential of our library for our application
-needs as mentioned in the introduction. In this case study,
-we consider 80 challenging verification conditions
-(VC) obtained from the Why platform~\cite{filliatre07cav}.  Each
-VC is stored in a file, which is accessible over
-NFS. The purpose of the experiment is to check the validity of each VC
-using several automated provers (namely Alt-Ergo, Simplify, Z3 and CVC3),
-which are all installed on each of the machines in use.
-
-The master program proceeds by reading the file names, turning them
-into tasks by multiplying them by the number of provers (more than
-300 tasks in total).
-Each worker in turn invokes the given prover on the given file, within
-a timeout limit.
-Each task completes with one of the four possible outcomes: \emph{valid},
-\emph{unknown} (depending on
-whether the VC is valid or undecided by the prover), 
-\emph{timeout} and \emph{failure}.
-
-The result of each computation is a pair denoting the status and the
-time spent in the prover call. The master collects these results and
-sums up the timings for each prover and each possible status.
-
-\subsection{N-queens}
 
 The following table shows execution times for various values of $N$
 and our three different implementations: \of{Sequential}, \of{Cores}, and
@@ -1264,11 +1064,218 @@ As expected, the network implementation is only beneficial when the
 computation time for each individual task is significant, which is the
 case in realistic examples.
 
+\subsection{Matrix Multiplication}\label{sec:matrix}
+
+This benchmark was inspired by the PASCO'10 programming contest~\cite{PASCO}.
+It consists of multiplication of
+two square matrices of dimension 100 with integer coefficients.
+Coefficients have several thousands of digits, hence we use
+GMP~\cite{GMP} to handle operations over coefficients.
+
+We compare the performances of two different implementations. In the
+first one, called \of{mm1}, each task consists of the computation of a single
+coefficient of the resultant matrix. 
+In the second one, called \of{mm2}, each task consists of the
+computation of a whole row of the resultant matrix.
+As a consequence, the total number of tasks in
+$10,000$ for \of{mm1} and only $100$ for \of{mm2}.
+On the contrary, each task result for \of{mm1} is a single integer,
+while for \of{mm2} it is a row of 100 integers.
+%
+The experimental results (in seconds) are tabulated below.
+\begin{center}
+  \begin{tabular}{|r|r|r|}
+    \hline
+    & \of{mm1}       & \of{mm2}  \\
+    & (10,000 tasks) & (100 tasks) \\
+    \hline\hline
+\of{Sequential} & 20.3 &  20.2 \\
+\hline
+ \of{Cores} 
+ (2 cores)     &   22.7 (0.89$\times$) &  11.3 (1.79$\times$) \\
+ (4 cores)     &   12.3 (1.65$\times$) &   6.1 (3.31$\times$) \\
+ (6 cores)     &    8.6 (2.36$\times$) &   4.3 (4.70$\times$) \\
+ (8 cores)     &    8.0 (2.54$\times$) &   3.5 (\underline{5.77}$\times$) \\
+ \hline
+  \end{tabular}
+\end{center}
+We do not include results for the network configuration, as they do
+not achieve any benefit with respect to the sequential
+implementation. The reason is that the communication cost dominates the
+computation cost in such a way that the total execution time is
+always greater than 30 seconds. Indeed, irrespective of the
+implementation (\of{mm1} or \of{mm2}), the total size of the
+transmitted data is $10^6$ integers, which in our case amounts to
+billions of bytes.
+
+A less naive implementation would have the worker read the input matrices
+only once, \emph{e.g.} from a file, and then have the master send only
+row and column indices. This would reduce the amount of transmitted data to
+$10,000$ integers only.
+
+%             mm1     mm2
+
+% # tasks    10,000   100
+
+% sequential  20.3   20.2
+
+% cores 2     22.7   11.3
+% cores 4     12.3    6.1
+% cores 6      8.6    4.3
+% cores 8      8.0    3.5
+
+% network = workers on moloch + master on belzebuth
+
+% cores 2     93     32.3
+% cores 4     87     33.7
+% cores 6     92     33.5
+% cores 8     88     32.5
+
+
+\begin{comment}
+  As a first example, let us consider matrix multiplication.  We
+  assume two matrices \of{a} and \of{b}, respectively of size
+  $\of{n}\times\of{p}$ and $\of{p}\times\of{m}$, given as input, as
+  well as a matrix \of{c} of size $\of{n}\times\of{m}$ to store the
+  result.  Assuming \of{a} being a row-matrix and \of{b} a
+  column-matrix, the standard matrix multiplication would be as
+  follows:
+  \begin{ocaml}
+    for i = 0 to n-1 do for j = 0 to m-1 do for k = 0 to p-1 do
+    c.(i).(j) <- c.(i).(j) + a.(i).(k) * b.(j).(k) done done done
+  \end{ocaml}
+  and runs in $O(\of{n}\times\of{p}\times\of{m})$, assuming addition
+  and multiplication over coefficients to be denoted $+$ and $\times$
+  respectively.  An easy way to distribute this computation is
+  obviously to turn each computation of the inner loop over \of{k}
+  into a task.  To do so, we first prepare the list of tasks:
+  \begin{ocaml}
+    let tasks = let l = ref [] in for i = 0 to n-1 do for j = 0 to m-1
+    do tasks := ((a.(i), b.(j)), (i,j)) :: !tasks done done; !l
+  \end{ocaml}
+  Each task consists of row \of{a.(i)} and column \of{b.(j)} as first
+  tuple, together with position \of{(i,j)} as a second tuple.  The
+  worker is receiving the first tuple as argument and computes the dot
+  product:
+  \begin{ocaml}
+    let worker (ai, bj) = let c = ref 0 in for k = 0 to p-1 do c := !c
+    + ai.(k) * bj.(k) done; !c
+  \end{ocaml}
+  The master is a one line function which receives the result \of{r}
+  from the worker and simply stores it into \of{c}, according to the
+  position contained in the input task. It produces no new task.
+  \begin{ocaml}
+    let master (_, (i,j)) r = c.(i).(j) <- r; []
+  \end{ocaml}
+  Finally, the overall computation is started by invoking \of{compute}
+  as follows:
+  \begin{ocaml}
+    let () = compute ~worker ~master !tasks
+  \end{ocaml}
+  The total number of tasks is $\of{n}\times\of{m}$.
+
+  Using the sequential implementation provided by \of{Functory} is as
+  simple as including the following line in the code:
+  \begin{ocaml}
+    open Sequential
+  \end{ocaml}
+  Then the computation is roughly similar to the standard
+  multiplication described above.
+
+  Now, let us assume we want to make use of a 4-core machine to
+  perform the same computation.  This is achieved by just replacing
+  the line above by
+  \begin{ocaml}
+    open Cores let () = set_number_of_cores 4
+  \end{ocaml}
+  while the rest of the code remains unchanged.
+
+  Later, we may want to use a network of machines instead, for example
+  two machines called \texttt{orcus} and \texttt{belzebuth} with 4 and
+  8 cores respectively. Similar to the above, we turn the above lines
+  into
+  \begin{ocaml}
+    open Network let () = declare_workers ~n:4 "orcus" let () =
+    declare_workers ~n:8 "belzebuth" open Same
+  \end{ocaml}
+  Here, \of{Same} is a module which is to be used when master and
+  worker are running the same executable. It provides a \of{compute}
+  function which has the same signature as in modules \of{Sequential}
+  and \of{Cores}, so that the rest of the code remains
+  unchanged. Master and worker processes are distinguished at run-time
+  using an environment variable \texttt{WORKER} which is set/unset.
+
+  If we need to write two different programs for master and worker,
+  for reason of binary incompatibility or any other reason, the
+  library API is providing functions to do that. If master and worker
+  are still compiled with the same version of \Ocaml, we use the
+  \of{Poly} module which provides a polymorphic API. Let us start with
+  the worker program.  It now looks like:
+  \begin{ocaml}
+    open Poly let worker (ai, bj) = ...  let () = Worker.compute
+    worker ()
+  \end{ocaml}
+  The \of{Worker.compute} function enters a loop which waits for tasks
+  sent by the master and returns results computed using \of{worker}.
+  The master program is almost the same as before. First, we replace
+  module \of{Same} with module \of{Poly}:
+  \begin{ocaml}
+    open Network let () = declare_workers ~n:4 "orcus" let () =
+    declare_workers ~n:8 "belzebuth" open Poly
+  \end{ocaml}
+  Tasks and \of{master} function are unchanged:
+  \begin{ocaml}
+    let tasks = ...  let master (_, (i,j)) r = ...
+  \end{ocaml}
+  Finally, we start the computation with \of{Master.compute}, which
+  does not have a \of{worker} parameter anymore:
+  \begin{ocaml}
+    let () = Master.compute ~master tasks
+  \end{ocaml}
+
+  When master and worker programs are compiled with different versions
+  of the \Ocaml\ compiler, our library still provides a monomorphic
+  API over strings. As a consequence, we need to convert tasks and
+  results to and from strings in both master and worker.  The modified
+  worker program then looks as follows:
+  \begin{ocaml}
+    open Mono let worker (ai, bj) = ...  let worker_string s =
+    string_of_coeff (worker (task_of_string s)) let () =
+    Worker.compute worker_string ()
+  \end{ocaml}
+  The master program is modified in a similar way.  We simply replace
+  \of{Poly} with \of{Mono} and encode/decode coefficients as strings,
+  as follows:
+  \begin{ocaml}
+    let tasks = ... string_of_task ...  let master (_, (i,j)) r =
+    c.(i).(j) <- coeff_of_string r; []
+  \end{ocaml}
+  where \of{string_of_task} and \of{task_of_string} are user-defined
+  functions to convert tasks to and from strings.
+\end{comment}
+
 \subsection{Mandelbrot Set}
 
+Drawing the Mandelbrot set is another classical example that could be
+distributed easily, since the color of each point can be computed
+independently of the others. 
 This benchmark consists in drawing the fragment of the Mandelbrot set
 with lower left corner $(-1.1, 0.2)$ and upper right corner $(-0.8,
-0.4)$, as a $9,000\times6,000$ image. The sequential computation of
+0.4)$, as a $9,000\times6,000$ image. 
+%
+If the total number of tasks $\of{t} \ge 1$ is given as a
+parameter,  it is immediate to split the image into \of{t} sub-images,
+each of which is computed in parallel with and independently of the
+others. In our case, the image is split into horizontal slices.
+Each task is thus four floating-point numbers denoting the region
+coordinates, together with two integers denoting the dimensions of the
+sub-image to be drawn. The result of the task is a matrix of pixels,
+of size $54,000,000 / \of{t}$. 
+For instance, using $\of{t}=20$ tasks will
+result in 20 sub-images of size $10.3$ Mb each,
+assuming each pixel is encoded in four bytes.
+
+The sequential computation of
 this image consumes 29.4 seconds. For \of{Cores} and \of{Network}
 implementations, the computation times in seconds are tabulated below.
 
@@ -1306,72 +1313,33 @@ n-queens. Consequently, communication costs are much greater.
 In this particular experiment, the total size of the results
 transmitted is more than 200 Mb.
 
-\subsection{Matrix Multiplication}
 
-This benchmark was inspired by the PASCO'10 programming contest~\cite{PASCO}.
-It consists of multiplication of
-two square matrices of dimension 100, that is $\of{n} = \of{p} =
-\of{m} = 100$, with integer coefficients.
-Coefficients have several thousands of digits, hence we use
-GMP~\cite{GMP} to handle operations over coefficients.
+\subsection{SMT Solvers}\label{sec:SMT}
 
-We compare the performances of two different implementations. In the
-first one, called \of{mm1}, each task consists of the computation of a single
-coefficient of the resultant matrix, as described in Section~\ref{sec:matrix}.
-In the second one, called \of{mm2}, each task consists of the
-computation of a whole row of the resultant matrix.
-As a consequence, the total number of tasks in
-$\of{n}\times\of{m}=10,000$ for \of{mm1} and only $\of{n}=100$ for \of{mm2}.
-The experimental results (in seconds) are tabulated below.
-\begin{center}
-  \begin{tabular}{|r|r|r|}
-    \hline
-    & \of{mm1}       & \of{mm2}  \\
-    & (10,000 tasks) & (100 tasks) \\
-    \hline\hline
-\of{Sequential} & 20.3 &  20.2 \\
-\hline
- \of{Cores} 
- (2 cores)     &   22.7 (0.89$\times$) &  11.3 (1.79$\times$) \\
- (4 cores)     &   12.3 (1.65$\times$) &   6.1 (3.31$\times$) \\
- (6 cores)     &    8.6 (2.36$\times$) &   4.3 (4.70$\times$) \\
- (8 cores)     &    8.0 (2.54$\times$) &   3.5 (\underline{5.77}$\times$) \\
- \hline
-  \end{tabular}
-\end{center}
-We do not include results for the network configuration, as they do
-not achieve any benefit with respect to the sequential
-implementation. The reason is that the communication cost dominates the
-computation cost in such a way that the total execution time is
-always greater than 30 seconds. Indeed, irrespective of the
-implementation (\of{mm1} or \of{mm2}), the total size of the
-transmitted data is 
-$O(\of{n}\times\of{m}\times\of{p})$, which in our case amounts to
-billions of bytes.
+% ICI
 
-A less naive implementation would have the worker read the input matrices
-only once, \emph{e.g.} from a file, and then have the master send only
-row and column indices. This would reduce the communication cost to
-$O(\of{n}\times\of{m})$ only.
+Here we demonstrate the potential of our library for our application
+needs as mentioned in the introduction. In this case study,
+we consider 80 challenging verification conditions
+(VC) obtained from the Why platform~\cite{filliatre07cav}.  Each
+VC is stored in a file, which is accessible over
+NFS. The purpose of the experiment is to check the validity of each VC
+using several automated provers (namely Alt-Ergo, Simplify, Z3 and CVC3),
+which are all installed on each of the machines in use.
 
-%             mm1     mm2
+The master program proceeds by reading the file names, turning them
+into tasks by multiplying them by the number of provers (more than
+300 tasks in total).
+Each worker in turn invokes the given prover on the given file, within
+a timeout limit.
+Each task completes with one of the four possible outcomes: \emph{valid},
+\emph{unknown} (depending on
+whether the VC is valid or undecided by the prover), 
+\emph{timeout} and \emph{failure}.
 
-% # tasks    10,000   100
-
-% sequential  20.3   20.2
-
-% cores 2     22.7   11.3
-% cores 4     12.3    6.1
-% cores 6      8.6    4.3
-% cores 8      8.0    3.5
-
-% network = workers on moloch + master on belzebuth
-
-% cores 2     93     32.3
-% cores 4     87     33.7
-% cores 6     92     33.5
-% cores 8     88     32.5
-
+The result of each computation is a pair denoting the status and the
+time spent in the prover call. The master collects these results and
+sums up the timings for each prover and each possible status.
 
 
 
