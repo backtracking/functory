@@ -990,6 +990,15 @@ several case studies.
 The source code for all these case studies is contained in the
 distribution, in sub-directory \texttt{tests/}.
 
+The purpose of the following experiments is to compare the various
+deployments, namely sequential, cores and network.
+For this comparison to be fair, all
+computations are performed on the same machine, a 8 cores Intel Xeon
+3.2 GHz running Debian Linux. The sequential implementation uses a
+single core. The multi-core implementation uses up to 8 cores of
+the machine. The network implementation uses 8 workers running locally and
+a master running on a remote machine (which incurs communication cost).
+
 \subsection{N-queens}\label{sec:n-queens}
 
 The first example is the classical $N$-queens problem, where we
@@ -1016,12 +1025,7 @@ module, workers and master being the same executable.
 The following table shows execution times for various values of $N$
 and our three different implementations: \of{Sequential}, \of{Cores}, and
 \of{Network}. The purpose of this experiment is to measure the speedup
-w.r.t. the sequential implementation. Therefore, all
-computations are performed on the same machine, a 8 cores Intel Xeon
-3.2 GHz running Debian Linux. The sequential implementation uses a
-single core. The multi-core implementation uses the 8 cores of
-the machine. The network implementation uses 8 workers running locally and
-a master running on a remote machine (which incurs communication cost).
+w.r.t. the sequential implementation.
 
 The first column shows the value of $N$.  The number of tasks is shown in
 second column.  Then the last three columns show execution times in
@@ -1316,38 +1320,27 @@ transmitted is more than 200 Mb.
 
 \subsection{SMT Solvers}\label{sec:SMT}
 
-% ICI
-
 Here we demonstrate the potential of our library for our application
-needs as mentioned in the introduction. In this case study,
-we consider 80 challenging verification conditions
+needs as mentioned in the introduction. 
+We consider 80 challenging verification conditions
 (VC) obtained from the Why platform~\cite{filliatre07cav}.  Each
 VC is stored in a file, which is accessible over
 NFS. The purpose of the experiment is to check the validity of each VC
-using several automated provers (namely Alt-Ergo, Simplify, Z3 and CVC3),
-which are all installed on each of the machines in use.
+using several automated provers (namely Alt-Ergo, Simplify, Z3 and CVC3).
 
 The master program proceeds by reading the file names, turning them
-into tasks by multiplying them by the number of provers (more than
-300 tasks in total).
+into tasks by multiplying them by the number of provers, resulting in
+320 tasks in total.
 Each worker in turn invokes the given prover on the given file, within
-a timeout limit.
+a timeout limit of 1 minute.
 Each task completes with one of the four possible outcomes: \emph{valid},
 \emph{unknown} (depending on
 whether the VC is valid or undecided by the prover), 
 \emph{timeout} and \emph{failure}.
-
 The result of each computation is a pair denoting the status and the
 time spent in the prover call. The master collects these results and
 sums up the timings for each prover and each possible status.
 
-
-
-\subsection{SMT Solvers}
-
-As explained in Section~\ref{sec:SMT}, this benchmark consists of 80
-verification conditions, each being checked by 4 different SMT
-solvers. Each task is executed with a timeout limit of 1 minute.
 Our computing
 infrastructure for this experiment consists of 3 machines with 4, 8 and 8 cores
 respectively. 
