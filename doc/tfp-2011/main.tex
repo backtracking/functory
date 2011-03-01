@@ -480,10 +480,10 @@ refer to the source code.
 
 \subsection{Deployment Scenarios}
 
-Actually, our library provides not just a single \ocaml{compute}
-function as above, but instead five different versions
-depending on the execution context. 
-The first two contexts are the following: 
+Actually, our library provides not just one implementation for the API above,
+but instead five different implementations
+depending on the deployment scenario. 
+The first two scenarios are the following: 
 \begin{enumerate}
 \item \textbf{Purely sequential execution:}
   this is mostly intended to be a reference implementation
@@ -493,85 +493,54 @@ The first two contexts are the following:
   this implementation is intended to distribute the computation over a
   single machine and it makes use of \unix\ processes;
 \end{enumerate}
-The next three implementations are intended for distributing the
+The next three scenarios are intended for distributing the
 computation over a network of machines.
 \begin{enumerate}
 \setcounter{enumi}{2}
 \item \textbf{Same executable run on master and worker machines:}
   this implementation makes use of the ability to marshal \Ocaml\
   closures and polymorphic values.
-  Depending on whether the program is run as a master or as a worker,
-  the relevant arguments of \ocaml{compute} are used.
+%   Depending on whether the program is run as a master or as a worker,
+%   the relevant arguments of \ocaml{compute} are used.
 
 \item \textbf{Master and workers are different programs, compiled with
     the same version of \Ocaml:} 
   we can no longer marshal closures but we can still
-  marshal polymorphic values. As a consequence, 
-  the \ocaml{compute} function is split into two
-  polymorphic functions, to implement the master and workers 
-  respectively:%
-\vspace{-1em}
-\begin{ocaml}
-val Worker.compute : ('a -> 'b) -> unit -> unit
-val Master.compute : 
-  ('a * 'c -> 'b -> ('a * 'c) list) -> 
-  ('a * 'c) list -> unit
-\end{ocaml}
+  marshal polymorphic values. API functions are split into two sets,
+  used to implement master and workers respectively.
 
 \item \textbf{Master and workers are different programs, not even
     compiled with the same version of \Ocaml:} we can no
-  longer use marshalling, so the
-  \ocaml{compute} function is split into two monomorphic functions
-  over strings:%
-\vspace{-1em}
-\begin{ocaml}
-val Worker.compute : (string -> string) -> unit -> unit
-val Master.compute : 
-  (string * 'c -> string -> (string * 'c) list) -> 
-  (string * 'c) list -> unit
-\end{ocaml}
+  longer use marshalling, so API functions are restricted to work on
+  strings instead of polymorphic values.
 \end{enumerate}
-
 Our library is organized into three modules: \of{Sequential} for the
 pure sequential implementation, \of{Cores} for multiple cores on the
 same machine and \of{Network} for a network of machines, respectively.
 The \of{Network} module itself is organized into three sub-modules,
 called \of{Same}, \of{Poly} and \of{Mono},
 corresponding to contexts 3, 4 and 5 above. 
-The next section presents more functions provided by \functory, which
-are all derived from the generic API just presented.
 
-% The different
-% API functions are summarized in the following table (their signatures
-% being given above):
-% \begin{center}
-%   \begin{tabular}{|c|c|c|c|c|}
-%     \hline
-%     \ocaml{Sequential} & \ocaml{Cores} &
-%     \multicolumn{3}{|c|}{\ocaml{Network}} 
-%     \\\cline{3-5}
-%     &       & \ocaml{Same} & \ocaml{Poly} & \ocaml{Mono} \\\hline
-%     \ocaml{compute}  & \ocaml{compute}   & \ocaml{compute}  &
-%     \ocaml{master}  & \ocaml{master}  \\
-%     & & & \ocaml{worker}  & \ocaml{worker} \\\hline
-%   \end{tabular}
-% \end{center}
-% The following section introduces other interesting APIs that we
-% derive from this generic API.
+\subsection{Functory API at a Glance} % ???
 
-
+From  the description above, it is clear that our library provides
+three different APIs, for five different deployment scenarios,
+resulting in fifteen possible ways of using it.
+This is summarized in the following matrix.
 \begin{center}
   \begin{tabular}{|l|c|c|c|c|c|}
     \hline
-    & & & \multicolumn{3}{|c|}{Network} \\
+    & & & \multicolumn{3}{c|}{Network} \\
     & Seq. & Cores & Same & Poly & Mono \\\hline\hline
     low-level API & & & & & \\\hline
     \of{compute}  & & & & & \\\hline
     high-level API& & & & & \\\hline
   \end{tabular}
 \end{center}
-
-% TODO cannot be instantiated in the monomorphic case
+From the implementation point of view, there is almost no code
+duplication. We are using \Ocaml\ functors to derive the second line
+from the first, as well as the third from the second, irrespective of
+the deployment scenario.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Implementation Details}\label{sec:implem}
@@ -1349,4 +1318,4 @@ on early versions of the library and of this paper.
 \end{document}
 
 % LocalWords:  parallelize functor parameterized indices endianness monomorphic
-% LocalWords:  genericity executables OCamlMPI MapReduce marshalling
+% LocalWords:  genericity executables OCamlMPI MapReduce marshalling functors
