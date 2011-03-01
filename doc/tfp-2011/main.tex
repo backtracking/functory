@@ -243,33 +243,31 @@ is data parallelism, which is also relevant in the functional
 programming setting~\cite{parallel-haskell}. Our work
 does not target data parallelism at all.
 
-
-
 \medskip
 The paper is organized as follows. 
-In Section~\ref{sec:API}, we
-describe the main idea behind the generic API, and introduce
-\of{master} and \of{worker} programs. 
-In Section~\ref{sec:derived}, we
-present some additional functions provided by \functory,
-which are derived from the generic
-API. 
-Section~\ref{sec:studies} illustrates the API usage with several
-case studies.
-Section~\ref{sec:implem} delves into the implementation details
-of our library, while Section~\ref{sec:experiments} illustrates the
-potential of the presented library through experimental evaluation. We
-compare our approach with relevant related work in
-Section~\ref{sec:future} and outline our future work.
+Section~\ref{sec:API} describes the API of our library.
+Section~\ref{sec:implem} gives implementation details, focusing
+on marshaling, network protocol and fault tolerance.
+Then Section~\ref{sec:experiments} illustrates the
+potential of the presented library through experimental evaluation. 
+Finally, Section~\ref{sec:future} outlines some future work.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{API}\label{sec:API}
 
-\subsection{compute}
+This section describes our API. We start from a generic distribution
+function, \of{compute}, as sketched in the introduction. Then we
+explain how this function is actually implemented in terms of
+low-level primitives, which are also provided in our API.
+The other way round, we also explain how the \of{compute} function can
+be used to implement high-level distribution functions for map and
+fold operations. Finally, we explain how these three APIs are
+implemented in five different ways, according to five different deployment
+scenarios. 
 
-In this section, we describe the
-generic API which we shall extend with several specialized
-functions in the next section. The main function in our API follows the idea
+\subsection{A Generic Distribution Function}
+
+The generic distribution function in our API follows the idea
 sketched in the introduction. It has the following signature:
 \begin{ocaml}
   val compute : 
@@ -284,14 +282,12 @@ The \ocaml{worker} function should be pure\footnote{We mean
   raised to signal failures.} 
 and is executed in parallel
 in all worker processes. The function \ocaml{master}, on the
-contrary, can be impure and is only executed in the master process.
+contrary, can be impure and is only executed sequentially in the master process.
 The \ocaml{master} function typically stores results 
 in some internal data structure.
 Additionally, it may produce new tasks, as a list of type 
 \of{('a * 'c) list}, which are then appended to the current set of
 pending tasks.
-The next section will describe the usage of this generic interface to
-perform the traditional map and fold operations.
 
 \begin{comment}
 \section{Illustrative Example}\label{sec:example}
@@ -423,29 +419,30 @@ as strings, as follows:
 \end{ocaml}
 \end{comment}
 
-\subsection{Low-level API}
+\subsection{Low-level Primitives}
 
 % TODO
 
-\subsection{Derived API}\label{sec:derived}
+\subsection{High-level API}\label{sec:derived}
 
 In most cases, the easiest way to parallelize an execution it to make
 use of operations over lists, where processing of the
 list elements are done in parallel. 
-% The previous section illustrated one such case.
 To facilitate such a processing,
-we now derive the most commonly used list operations from our generic
-API.
+our library provides most commonly used list operations, all 
+implemented using our generic \of{compute} function.
 
 The most obvious operation is the traditional map operation over
 lists, that is:
 \begin{ocaml}
-  val map : ('a -> 'b) -> 'a list -> 'b list
+  val map : f:('a -> 'b) -> 'a list -> 'b list
 \end{ocaml}
-The next natural operation is a combination of map and fold
-operations, that is a function like
+Each task consists of application of function \of{f} to a list element.
+More interesting is a combination of map and fold operations.
+For instance, we provide different flavors of function
 \begin{ocaml}
- val map_fold : f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+  val map_fold :
+    f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 \end{ocaml}
 which, given two functions, an accumulator $a$ and a list $l$, computes
 \begin{equation}\label{eq:map-fold}
@@ -455,13 +452,11 @@ which, given two functions, an accumulator $a$ and a list $l$, computes
 for some permutation $[x_1,x_2,...,x_n]$ of the list $l$.
 We assume that the \of{f} operations are always performed in parallel.
 Regarding \of{fold} operations, we distinguish two cases:
-\begin{itemize}
-\item either \of{fold} operations are computationally less expensive
-  than \of{f} and we perform them locally;
-\item or \of{fold} operations are computationally expensive and we
-  perform them in parallel.
-\end{itemize}
-We thus provide two functions \of{map_local_fold} and \of{map_remote_fold}.
+either \of{fold} operations are computationally less expensive
+than \of{f} and we perform them locally;
+or \of{fold} operations are computationally expensive and we
+perform them in parallel.
+Thus we provide two functions \of{map_local_fold} and \of{map_remote_fold}.
 
 In the case of \of{map_remote_fold}, only one \of{fold} operation can
 be performed at a time (possibly in parallel with \of{f}
@@ -473,114 +468,17 @@ implies that types \of{'b} and \of{'c} are the same).
 Whenever
 \of{fold} is also commutative, we can perform even more \of{fold}
 operations in parallel. Thus our API provides two functions
-\of{map_fold_a} and \of{map_fold_ac} for these two particular cases.
-The five operations of the derived API are summarized
-in Figure~\ref{fig:derived}.
-\begin{figure}[t]
-  \begin{ocaml}
-    val map : 
-      f:('a -> 'b) -> 'a list -> 'b list 
-    val map_local_fold : 
-      f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
-      'c -> 'a list -> 'c 
-    val map_remote_fold : 
-      f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 
-      'c -> 'a list -> 'c 
-    val map_fold_ac : 
-      f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
-      'b -> 'a list -> 'b 
-    val map_fold_a : 
-      f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 
-      'b -> 'a list -> 'b
-  \end{ocaml}
-  \caption{Derived API.}
-\label{fig:derived}
-\end{figure}
-
-These five functions are actually derived from the generic API.  The
-generality is achieved by implementing these derivations as a functor.
-This functor, \of{Derive}, is parameterized by the \of{compute}
-function, as follows:
+\of{map_fold_a} and \of{map_fold_ac} for these two particular cases,
+with types
 \begin{ocaml}
-module Derive
-  (X : sig
-     val compute : 
-       worker:('a -> 'b) -> master:('a * 'c -> 'b -> ('a * 'c) list) ->
-       ('a * 'c) list -> unit
-   end) = struct ... end
+  val map_fold_ac, map_fold_a : 
+    f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b 
 \end{ocaml}
-We now explain how each function from Figure~\ref{fig:derived} is
-implemented using \of{compute} inside the functor body.
-
-\paragraph{\of{map}.} 
-Function \of{map} is easily implemented by associating an integer
-index with each element (of type \of{'a}) of the input list. Thus the
-list of tasks passed to \of{compute} is a list of pairs of type \of{'a * int}.
-As soon as an intermediate result is available, it is passed to
-\of{master}, which stores it in a local table using the index as a key
-and generates no new task. Whenever \of{compute} returns, we easily
-recover the output list from the values stored in the table.
-
-\paragraph{\of{map_local_fold}.} 
-Function \of{map_local_fold} is implemented using a local reference
-storing the current accumulator (of type \of{'c}).  As soon as an
-intermediate result is available, the \of{master} combines it with the
-accumulator using the function \of{fold}. Whenever \of{compute}
-returns, we simply return the current accumulator.
-
-\paragraph{\of{map_remote_fold}.}
-In this case, combining the accumulator with an intermediate result is
-itself a task to be performed in parallel with \of{f} operations.
-Thus tasks are of two different kinds and we use a sum type to make
-the distinction.
-When an intermediate \of{f} result is available, the
-accumulator may be already in use in a \of{fold} operation. Hence we
-need to store the intermediate \of{f} result in a table local to the
-master, to be
-used as soon as the accumulator becomes available.
-The \of{master} function distinguishes between \of{f} and \of{fold}
-results and, accordingly, updates the table and the accumulator. For a
-\of{f} result, either we combine it with the accumulator in a new
-task or we simply store it in the local table. For a \of{fold} result,
-either we simply store it into the accumulator or we immediately
-combine it with a pending \of{f} result from the table.
-Whenever \of{compute} returns, the accumulator must be available and
-we simply return it.
-
-\paragraph{\of{map_fold_ac}.}
-The function \of{map_fold_ac} is easier than the previous one, since
-we do not need to store more than one intermediate result. Indeed, as
-soon as two intermediate results are available, we immediately combine
-them using a \of{fold} operation. Thus, whenever the \of{master}
-receives some result, it either stores it or combines it with the
-accumulator, depending on the availability/non availability of the
-accumulator.  Whenever \of{compute} returns, the accumulator must be
-available and we simply return it.
-
-\paragraph{\of{map_fold_a}.}
-Function \of{map_fold_a} is definitely the trickiest. Indeed, the
-operation being only associative, we can only combine \emph{adjacent}
-intermediate results. In order to perform this, we store intermediate
-results in a local table according to indices of the input list. More
-precisely, if we have already computed
-\begin{displaymath}
-  x_i \oplus x_{i+1} \oplus \dots \oplus x_j
-\end{displaymath}
-where $\oplus$ denotes the \of{fold} operation, then we associate this
-value with indices $i,j$. As soon as a result of indices $k,i-1$ or
-$j+1,k$ is available, it can be combined with the result of $i,j$.
-Whenever \of{compute} returns, the table should only contain a result
-corresponding to the full input list and we simply return it.
-
-\medskip
-These five functions are the most natural derivations of the
-\of{compute} functions. There are obviously other possible derivations
-(e.g. a variant of \of{map_fold} where only \of{fold} is meaningful);
-in most cases, they could be derived in a straightforward way from our
-generic API.
+This is rather straightforward to derive these five functions from the
+generic \of{compute} function; readers interested in details could
+refer to the source code.
 
 \subsection{Deployment Scenarios}
-
 
 Actually, our library provides not just a single \ocaml{compute}
 function as above, but instead five different versions
@@ -661,6 +559,17 @@ are all derived from the generic API just presented.
 % The following section introduces other interesting APIs that we
 % derive from this generic API.
 
+
+\begin{center}
+  \begin{tabular}{|l|c|c|c|c|c|}
+    \hline
+    & & & \multicolumn{3}{|c|}{Network} \\
+    & Seq. & Cores & Same & Poly & Mono \\\hline\hline
+    low-level API & & & & & \\\hline
+    \of{compute}  & & & & & \\\hline
+    high-level API& & & & & \\\hline
+  \end{tabular}
+\end{center}
 
 % TODO cannot be instantiated in the monomorphic case
 
