@@ -421,7 +421,50 @@ as strings, as follows:
 
 \subsection{Low-level Primitives}
 
-% TODO
+% motivation is finer control over task/workers/execution
+% example 1: remove *some* tasks when others are completed
+% example 2: interactive program (GUI, control, etc.)
+
+The function \of{compute} above can actually be implemented in terms
+of low-level primitives, such as adding a task, adding a worker,
+performing one step of communication between master and workers, etc.
+These primitives are provided in our API, such that the user can have
+finer control over the execution of the distributed computation.
+A type for distributed computations is introduced.
+\begin{ocaml}
+  type ('a, 'c) computation
+\end{ocaml}
+A computation is created with a function \of{create}, which accepts
+the same \of{worker} and \of{master} as \of{compute}:
+\begin{ocaml}
+  val create : 
+    worker:('a -> 'b) -> 
+    master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a, 'c) computation
+\end{ocaml}
+Contrary to \of{compute}, it takes no list of tasks and returns
+immediately. Tasks can be added later using the following function:
+\begin{ocaml}
+  val add_task : ('a, 'c) computation -> 'a * 'c -> unit
+\end{ocaml}
+A function is provided to perform \emph{one step} of a given
+computation:
+\begin{ocaml}
+  val one_step : ('a, 'c) computation -> unit
+\end{ocaml}
+Calling this function results in one exchange of messages between
+master and workers: task assignments to workers, results returned to
+the master, etc. A few other functions are provided, such as
+\of{status} to query the status of a computation, \of{clear} to remove
+all tasks, etc.
+
+Using these low-level primitives, it is straightforward to implement
+the \of{compute} function. Basically, it is as simple as the following:
+\begin{ocaml}
+let compute ~worker ~master tasks =
+  let c = create worker master in
+  List.iter (add_task c) tasks;
+  while status c = Running do one_step c done
+\end{ocaml}
 
 \subsection{High-level API}\label{sec:derived}
 

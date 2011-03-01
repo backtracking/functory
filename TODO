@@ -1,4 +1,7 @@
 
+- low-level API: remove_task
+
+
 - Cores: use pipes instead of local files (and thus select instead of wait)
   and compare performances
 
