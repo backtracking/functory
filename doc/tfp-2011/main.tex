@@ -279,18 +279,17 @@ PlasmaMR~\cite{plasma} is an implementation of Google's MapReduce on a
 distributed file system PlasmaFS. It is able to use PlasmaFS to its
 advantage - the ability of the file system to handle large files and
 query functions of the functions that implement data locality to
-optimize network traffic. % However, Plasma
-% MapReduce does not support fault tolerance.
-The Disco
-project~\cite{disco} is an implementation of Google's MapReduce in
-Erlang~\cite{erlang}. Our library is not an impementation of Google's
-MapReduce. A MapReduce implementation in \Ocaml\ is Yohann Padioleau's
-MapReduce implementation in \Ocaml~\cite{poor-man-mapreduce}.  It is
-built on top of OCamlMPI~\cite{ocamlMPI}, while our approach uses a
-homemade protocol for message passing.  Currently, we have less
-flexibility w.r.t. deployment of the user program than OCamlMPI; on
-the other hand, we provide a more generic API together with fault
-tolerance.
+optimize network traffic. However, Plasma MapReduce does not support
+fault tolerance which is indespensible in any distributed computing
+application. The Disco project~\cite{disco} is an implementation of
+Google's MapReduce in Erlang~\cite{erlang}. Our library is not an
+impementation of Google's MapReduce. A MapReduce implementation in
+\Ocaml\ is Yohann Padioleau's MapReduce implementation in
+\Ocaml~\cite{poor-man-mapreduce}.  It is built on top of
+OCamlMPI~\cite{ocamlMPI}, while our approach uses a homemade protocol
+for message passing.  Currently, we have less flexibility
+w.r.t. deployment of the user program than OCamlMPI; on the other
+hand, we provide a more generic API together with fault tolerance.
 
 
 \begin{comment}
