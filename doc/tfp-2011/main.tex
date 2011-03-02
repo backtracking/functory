@@ -228,14 +228,13 @@ operate on key/value pairs. In order to compare and distinguish
 Functory from other work with related goals and motivations, we can
 broadly classify the related work in this domain into:
 \begin{enumerate}
-\item Distributed Functional Languages (DFLs) - functional
+\item \textit{Distributed Functional Languages (DFLs)} - functional
   languages that provide built-in primitives for
   distribution. Examples include ML5, JoCaml, Glasgow Distributed
   Haskell, Erlang, etc.
-\item Libraries for existing and well-known functional programming
-  languages that could be used in order to relieve the user from
-  implementing intricate details of distribution like
-  fault-tolerance, socket programming, etc.
+\item \textit{Libraries for existing functional languages} - that
+  could be readily used in order to avoid implementing details like
+  task distribution, fault-tolerance, socket programming, etc.
 \end{enumerate}
 
 \JoCaml\ is one of the DFLs which provides communication primitives
@@ -244,30 +243,58 @@ broadly classify the related work in this domain into:
 library. It does not provide fault tolerance, which is indispensable
 in a distributed setting. The user has to include code for fault
 tolerance, as already demonstrated in some \JoCaml\
-experiments~\cite{mandel2008}.
-
-ML5~\cite{ML5}, a variant of ML, is a programming language for
-distributed computing, specialized for web programming. It provides
-primitives for transferring control between the client and the server,
-as well as low-level primitives for marshalling the data. In
-particular, it achieves type-safe marshalling. As in the case before,
-ML5 is a programming language that offers primitives for code
-mobility, rather than a user-friendly API for distribution of
-computation and fault-tolerance.
-
-Glasgow Distributed Haskell
-
-
-The above mentioned languages are programming languages themselves,
-our library, Functory, could be implemented using any of the above.
+experiments~\cite{mandel2008}. ML5~\cite{ML5}, a variant of ML, is a
+programming language for distributed computing, specialized for web
+programming. It provides primitives for transferring control between
+the client and the server, as well as low-level primitives for
+marshalling the data. In particular, it achieves type-safe
+marshalling. As in the case before, ML5 is a programming language that
+offers primitives for code mobility, rather than a user-friendly API
+for distribution of computation and fault-tolerance. Glasgow
+\textbf{Distributed Haskell: TODO} Erlang~\cite{erlang} is a
+programming language which has features for distribution and fault
+tolerance. It has features for task distribution and is more
+well-known for its rich error detection primitives and the ability to
+support hot-swapping. The error detection primitives of Erlang allow
+nodes to monitor processes in other nodes and also facilitate
+automatic migration of tasks in failed nodes to recovered or active
+nodes. CamlP3l~\cite{camlP3l} mixes the features of functional
+programming with predefined patterns for parallel computation to offer
+a parallel programming environment. Again, it is a programming
+language offering primitives for distributing computation to parallel
+processes and also to merge the results from parallel executions. The
+above mentioned languages are programming languages themselves, our
+library, Functory, could be implemented using any of the above. The
+main goal of Functory is to provide the users of an existing
+functional programming language high-level user-friendly APIs that
+hides the messy details of task distribution and fault-tolerance,
+enabling a ready-to-use library for efficient utilization of computing
+resources.
 
 We now turn to distributed computing libraries for general purpose
 functional languages and weed out the distinguishing features of
 Functory from other similar libraries.
 
-OcamlP3L
+PlasmaMR~\cite{plasma} is an implementation of Google's MapReduce on a
+distributed file system PlasmaFS. It is able to use PlasmaFS to its
+advantage - the ability of the file system to handle large files and
+query functions of the functions that implement data locality to
+optimize network traffic. % However, Plasma
+% MapReduce does not support fault tolerance.
+The Disco
+project~\cite{disco} is an implementation of Google's MapReduce in
+Erlang~\cite{erlang}. Our library is not an impementation of Google's
+MapReduce. A MapReduce implementation in \Ocaml\ is Yohann Padioleau's
+MapReduce implementation in \Ocaml~\cite{poor-man-mapreduce}.  It is
+built on top of OCamlMPI~\cite{ocamlMPI}, while our approach uses a
+homemade protocol for message passing.  Currently, we have less
+flexibility w.r.t. deployment of the user program than OCamlMPI; on
+the other hand, we provide a more generic API together with fault
+tolerance.
 
------------  BELOW THIS IS THE OLD RELATED WORK --------
+
+\begin{comment}
+  
 
 % -- BELOW HERE IS OLD RELATED-WORK
 
@@ -304,6 +331,8 @@ on marshaling, network protocol and fault tolerance.
 Then Section~\ref{sec:experiments} illustrates the
 potential of the presented library through experimental evaluation. 
 Finally, Section~\ref{sec:future} outlines some future work.
+
+\end{comment}
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{API}\label{sec:API}
