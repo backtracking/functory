@@ -217,14 +217,13 @@ of \Ocaml\ are used, we can no longer marshal values but we can still
 transmit strings between master and workers. Our library adapts to all
 these situations, by providing several APIs.
 
-
 \paragraph{Related Work.}
 
 There are several implementations of Google's Map/Reduce in functional
 programming languages. But Functory was just inspired by Google's
 Map/Reduce and is not exactly a Map/Reduce implementation. The
 simplest difference comes from the very fact that Functory does not
-operate on key/value pairs. In order to compare and distinguish
+operate on key/value pairs. In order to compare and better distinguish
 Functory from other work with related goals and motivations, we can
 broadly classify the related work in this domain into:
 \begin{enumerate}
@@ -238,38 +237,40 @@ broadly classify the related work in this domain into:
 \end{enumerate}
 
 \JoCaml\ is one of the DFLs which provides communication primitives
-(like channels) for transmitting computations. On the other hand,
-\JoCaml\ can not in a true sense be used as a distributed computing
-library. It does not provide fault tolerance, which is indispensable
-in a distributed setting. The user has to include code for fault
-tolerance, as already demonstrated in some \JoCaml\
+(like channels) for transmitting computations. However, it does not
+provide ready-made language features for fault tolerance, which is
+indispensable in a distributed setting. The user has to include code
+for fault tolerance, as already demonstrated in some \JoCaml\
 experiments~\cite{mandel2008}. ML5~\cite{ML5}, a variant of ML, is a
 programming language for distributed computing, specialized for web
 programming. It provides primitives for transferring control between
 the client and the server, as well as low-level primitives for
 marshalling the data. In particular, it achieves type-safe
 marshalling. As in the case before, ML5 is a programming language that
-offers primitives for code mobility, rather than a user-friendly API
-for distribution of computation and fault-tolerance. Glasgow
-\textbf{Distributed Haskell: TODO} Erlang~\cite{erlang} is a
-programming language which has features for distribution and fault
-tolerance. It has features for task distribution and is more
-well-known for its rich error detection primitives and the ability to
-support hot-swapping. The error detection primitives of Erlang allow
-nodes to monitor processes in other nodes and also facilitate
-automatic migration of tasks in failed nodes to recovered or active
-nodes. CamlP3l~\cite{camlP3l} mixes the features of functional
-programming with predefined patterns for parallel computation to offer
-a parallel programming environment. Again, it is a programming
-language offering primitives for distributing computation to parallel
-processes and also to merge the results from parallel executions. The
-above mentioned languages are programming languages themselves, our
-library, Functory, could be implemented using any of the above. The
-main goal of Functory is to provide the users of an existing
-functional programming language high-level user-friendly APIs that
-hides the messy details of task distribution and fault-tolerance,
-enabling a ready-to-use library for efficient utilization of computing
-resources.
+offers primitives for code mobility, and the code for distribution of
+computation and fault-tolerance has to be included by the user. It is
+worth pointing out that an existing type-safe marshalling library
+could still be used with Functory. \\ \textbf{can there exist an OCaml
+  type-safe marshalling library without changes to the
+  compiler?}. \\ \textbf{[Glasgow Distributed Haskell: TODO]}\\
+Erlang~\cite{erlang} is a programming language which has features for
+distribution and fault tolerance. In particular, it has features for
+task distribution and is more well-known for its rich error detection
+primitives and the ability to support hot-swapping. The error
+detection primitives of Erlang allow nodes to monitor processes in
+other nodes and also facilitate automatic migration of tasks in failed
+nodes to recovered or active nodes. CamlP3l~\cite{camlP3l} mixes the
+features of functional programming with predefined patterns for
+parallel computation to offer a parallel programming
+environment. Again, it is a programming language offering primitives
+for distributing computation to parallel processes and also to merge
+the results from parallel executions. The above mentioned languages
+are programming languages themselves, our library, Functory, could be
+implemented using any of the above. The main goal of Functory is to
+provide the users of an existing functional programming language
+high-level user-friendly APIs that hides the messy details of task
+distribution and fault-tolerance, enabling a ready-to-use library for
+efficient utilization of computing resources.
 
 We now turn to distributed computing libraries for general purpose
 functional languages and weed out the distinguishing features of
