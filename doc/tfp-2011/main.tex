@@ -218,20 +218,15 @@ transmit strings between master and workers. Our library adapts to all
 these situations, by providing several APIs.
 
 \paragraph{Related Work.}
-
-There are several implementations of Google's Map/Reduce in functional
-programming languages. But \of{Functory} was just inspired by Google's
-Map/Reduce and is not exactly a Map/Reduce implementation. The
-simplest difference comes from the very fact that \of{Functory} does not
-operate on key/value pairs. In order to compare and better distinguish
+In order to compare and better distinguish
 \of{Functory} from other work with related goals and motivations, we can
 broadly classify the related work in this domain into:
 \begin{enumerate}
-\item \textit{Distributed Functional Languages (DFLs)} - functional
+\item \textit{Distributed Functional Languages (DFLs)} --- functional
   languages that provide built-in primitives for
   distribution. Examples include ML5, \JoCaml\, Glasgow Distributed
   Haskell, Erlang, etc.
-\item \textit{Libraries for existing functional languages} - that
+\item \textit{Libraries for existing functional languages} --- that
   could be readily used in order to avoid implementing details like
   task distribution, fault-tolerance, socket programming, etc.
 \end{enumerate}
@@ -241,16 +236,16 @@ broadly classify the related work in this domain into:
 provide ready-made language features for fault tolerance, which is
 indispensable in a distributed setting. The user has to include code
 for fault tolerance, as already demonstrated in some \JoCaml\
-experiments~\cite{mandel2008}. ML5~\cite{ML5}, a variant of ML, is a
+library~\cite{mandel2008}. ML5~\cite{ML5}, a variant of ML, is a
 programming language for distributed computing, specialized for web
 programming. It provides primitives for transferring control between
 the client and the server, as well as low-level primitives for
-marshalling the data. In particular, it achieves type-safe
-marshalling. As in the case before, ML5 is a programming language that
+marshalling the data. As in the case before, ML5 is a programming language that
 offers primitives for code mobility, and the code for distribution of
-computation and fault-tolerance has to be included by the user. It is
-worth pointing out that an existing type-safe marshalling library
-could still be used with \of{Functory}. Basically, the task will be
+computation and fault-tolerance has to be included by the user. 
+On the contrary, ML5 implements type-safe marshalling and \functory\
+does not, though an existing type-safe marshalling library
+could be used with \functory. Basically, the task will be
 transmitted along with the corresponding type and on unmarshalling, it
 could be matched for the correct type.
 \\ \textbf{[Glasgow Distributed Haskell: TODO]}\\
@@ -265,31 +260,38 @@ features of functional programming with predefined patterns for
 parallel computation to offer a parallel programming
 environment. Again, it is a programming language offering primitives
 for distributing computation to parallel processes and also to merge
-the results from parallel executions. The above mentioned languages
-are programming languages themselves, our library, \of{Functory},
-could be implemented using any of the above. The main goal of
-\of{Functory} is to provide the users of an existing functional
-programming language high-level user-friendly APIs that hides the
-messy details of task distribution and fault-tolerance, enabling a
-ready-to-use library for efficient utilization of computing resources.
+the results from parallel executions. 
 
+All the above mentioned languages could be used to implement our
+library.  The main goal of \of{Functory}, though, is to provide the
+users of an \emph{existing} functional programming language high-level
+user-friendly APIs that hide the messy details of task distribution
+and fault-tolerance, enabling a ready-to-use library for efficient
+utilization of computing resources.
 We now turn to distributed computing libraries for general purpose
 functional languages and weed out the distinguishing features of
 \of{Functory} from other similar libraries.
 
-PlasmaMR~\cite{plasma} is an implementation of Google's MapReduce on a
+There are several implementations of Google's Map/Reduce in functional
+programming languages. But \of{Functory} was just inspired by Google's
+Map/Reduce and is not exactly a Map/Reduce implementation. The
+simplest difference comes from the very fact that \of{Functory} does not
+operate on key/value pairs. 
+% TODO other difference = absence of data locality
+PlasmaMR~\cite{plasma} is an \Ocaml\ implementation of Google's Map/Reduce on a
 distributed file system PlasmaFS. It is able to use PlasmaFS to its
-advantage - the ability of the file system to handle large files and
+advantage --- the ability of the file system to handle large files and
 query functions of the functions that implement data locality to
-optimize network traffic. However, Plasma MapReduce does not support
+optimize network traffic. However, PlasmaMR does not support
 fault tolerance which is indespensible in any distributed computing
-application. The Disco project~\cite{disco} is an implementation of
-Google's MapReduce in Erlang~\cite{erlang}. Another MapReduce
-implementation in \Ocaml\ is Yohann Padioleau's MapReduce
-implementation in \Ocaml~\cite{poor-man-mapreduce}.  It is built on
+application. 
+% The Disco project~\cite{disco} is an implementation of
+% Google's MapReduce in Erlang~\cite{erlang}.
+Another Map/Reduce
+implementation in \Ocaml\ is Yohann
+Padioleau's~\cite{poor-man-mapreduce}.  It is built on
 top of OCamlMPI~\cite{ocamlMPI}, while our approach uses a homemade
-protocol for message passing. Our library is not an impementation of
-Google's MapReduce. Currently, we have less flexibility
+protocol for message passing. Currently, we have less flexibility
 w.r.t. deployment of the user program than OCamlMPI; on the other
 hand, we provide a more generic API together with fault tolerance.
 
@@ -739,8 +741,9 @@ module is straightforward and does not require any explanation.
   getting into the user code.  As explained in Section~\ref{sec:API},
   the master function has the following signature.
   \begin{ocaml}
-    val compute : worker:('a -> 'b) -> master:('a * 'c -> 'b -> ('a *
-    'c) list) -> ('a * 'c) list -> unit
+  val compute : 
+    worker:('a -> 'b) -> master:('a * 'c -> 'b -> ('a * 'c) list) -> 
+    ('a * 'c) list -> unit
   \end{ocaml}
   The master uses marshalling to send both a closure of type \of{'a ->
     'b} and a task of type \of{'a} to the worker. The resulting
@@ -757,8 +760,9 @@ module is straightforward and does not require any explanation.
   these global variables is never reached on the worker side. For
   instance, the Mandelbrot set example could be written as follows:
   \begin{ocaml}
-    let max_iterations = 200 let worker (xmi, xma, ymi, yma, w, h) =
-    ... draw sub-image using max_iterations ...
+    let max_iterations = 200 
+    let worker (xmi, xma, ymi, yma, w, h) = 
+      ... draw sub-image using max_iterations ...
   \end{ocaml}
   That is, the global function \of{worker} makes use of the global
   variable \of{max_iterations}. The worker gets the function to
@@ -801,8 +805,8 @@ module is straightforward and does not require any explanation.
   previous case, as it has one argument less, and thus has the
   following signature.
   \begin{ocaml}
-    Master.compute : master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a *
-    'c) list -> unit
+    Master.compute : 
+      master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
   \end{ocaml}
   For realistic applications, where master and workers are completely
   different programs, possibly written by different teams, this is the
@@ -816,8 +820,8 @@ module is straightforward and does not require any explanation.
   another for the workers. For example, \of{map_fold_ac} takes the
   following forms.
   \begin{ocaml}
-    Worker.map_fold_ac : f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> unit
-    -> unit Master.map_fold_ac : 'b -> 'a list -> 'b
+  Worker.map_fold_ac : f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> unit 
+  Master.map_fold_ac : 'b -> 'a list -> 'b
   \end{ocaml}
   It is the responsibility of the user to ensure type consistency
   between master and workers.
@@ -829,9 +833,10 @@ module is straightforward and does not require any explanation.
   the network can only be strings. The signature thus takes the
   following form.
   \begin{ocaml}
-    Worker.compute : (string -> string) -> unit -> unit Master.compute
-    : master:(string * 'c -> string -> (string * 'c) list) -> (string
-    * 'c) list -> unit
+  Worker.compute : (string -> string) -> unit 
+  Master.compute : 
+    master:(string * 'c -> string -> (string * 'c) list) -> 
+    (string * 'c) list -> unit
   \end{ocaml}
   Any other datatype for tasks should be encoded to/from strings. This
   conversion is left to the user.  Note that the second component of
