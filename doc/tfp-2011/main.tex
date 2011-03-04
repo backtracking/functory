@@ -220,16 +220,16 @@ these situations, by providing several APIs.
 \paragraph{Related Work.}
 
 There are several implementations of Google's Map/Reduce in functional
-programming languages. But Functory was just inspired by Google's
+programming languages. But \of{Functory} was just inspired by Google's
 Map/Reduce and is not exactly a Map/Reduce implementation. The
-simplest difference comes from the very fact that Functory does not
+simplest difference comes from the very fact that \of{Functory} does not
 operate on key/value pairs. In order to compare and better distinguish
-Functory from other work with related goals and motivations, we can
+\of{Functory} from other work with related goals and motivations, we can
 broadly classify the related work in this domain into:
 \begin{enumerate}
 \item \textit{Distributed Functional Languages (DFLs)} - functional
   languages that provide built-in primitives for
-  distribution. Examples include ML5, JoCaml, Glasgow Distributed
+  distribution. Examples include ML5, \JoCaml\, Glasgow Distributed
   Haskell, Erlang, etc.
 \item \textit{Libraries for existing functional languages} - that
   could be readily used in order to avoid implementing details like
@@ -250,9 +250,10 @@ marshalling. As in the case before, ML5 is a programming language that
 offers primitives for code mobility, and the code for distribution of
 computation and fault-tolerance has to be included by the user. It is
 worth pointing out that an existing type-safe marshalling library
-could still be used with Functory. \\ \textbf{can there exist an OCaml
-  type-safe marshalling library without changes to the
-  compiler?}. \\ \textbf{[Glasgow Distributed Haskell: TODO]}\\
+could still be used with \of{Functory}. Basically, the task will be
+transmitted along with the corresponding type and on unmarshalling, it
+could be matched for the correct type.
+\\ \textbf{[Glasgow Distributed Haskell: TODO]}\\
 Erlang~\cite{erlang} is a programming language which has features for
 distribution and fault tolerance. In particular, it has features for
 task distribution and is more well-known for its rich error detection
@@ -265,16 +266,16 @@ parallel computation to offer a parallel programming
 environment. Again, it is a programming language offering primitives
 for distributing computation to parallel processes and also to merge
 the results from parallel executions. The above mentioned languages
-are programming languages themselves, our library, Functory, could be
-implemented using any of the above. The main goal of Functory is to
-provide the users of an existing functional programming language
-high-level user-friendly APIs that hides the messy details of task
-distribution and fault-tolerance, enabling a ready-to-use library for
-efficient utilization of computing resources.
+are programming languages themselves, our library, \of{Functory},
+could be implemented using any of the above. The main goal of
+\of{Functory} is to provide the users of an existing functional
+programming language high-level user-friendly APIs that hides the
+messy details of task distribution and fault-tolerance, enabling a
+ready-to-use library for efficient utilization of computing resources.
 
 We now turn to distributed computing libraries for general purpose
 functional languages and weed out the distinguishing features of
-Functory from other similar libraries.
+\of{Functory} from other similar libraries.
 
 PlasmaMR~\cite{plasma} is an implementation of Google's MapReduce on a
 distributed file system PlasmaFS. It is able to use PlasmaFS to its
