@@ -17,7 +17,8 @@
 %-----------------------------------------------------------------------------
 
 
-\documentclass[tfpsymp,pagenumbers]{tfp07symp}
+% \documentclass[tfpsymp,pagenumbers]{tfp07symp}
+\documentclass{llncs}
 
 % The following \documentclass options may be useful:
 %
@@ -78,21 +79,21 @@
 % Our library, \functory, is implemented in \Ocaml\ and is available
 % from \url{http://www.lri.fr/~filliatr/functory/}.
 
-This paper introduces a generic library for distributed computing, for
-a widely used functional programming language - OCaml. This work was
-initially motivated by the computing needs that exist in our own
-research team. Our applications include large-scale deductive program
-verification, which amounts to checking the validity of a large number
-of logical formulas using a variety of automated theorem
-provers~\cite{filliatre07cav}. Our computing infrastructure consists
-of a few powerful multi-core machines (typically 8 to 16 cores) and
-several desktop PCs (typically dual-core). However, for our
+This paper introduces \functory, a generic library for distributed
+computing for a widely used functional programming language -
+OCaml. This work was initially motivated by the computing needs that
+exist in our own research team. Our applications include large-scale
+deductive program verification, which amounts to checking the validity
+of a large number of logical formulas using a variety of automated
+theorem provers~\cite{filliatre07cav}. Our computing infrastructure
+consists of a few powerful multi-core machines (typically 8 to 16
+cores) and several desktop PCs (typically dual-core). However, for our
 application needs, there is no library that helps in exploiting such a
 computing infrastructure in our favorite functional programming
 language.  Hence we designed and implemented such a library, which is
 the subject of this paper.  This library is implemented in \Ocaml, but
 the implementation should be straightforward in any functional
-programming language. 
+programming language.
 
 The distributed computing library presented in this paper is not a
 library that helps in parallelizing computations. Rather, it provides
