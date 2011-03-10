@@ -78,32 +78,32 @@
 % Our library, \functory, is implemented in \Ocaml\ and is available
 % from \url{http://www.lri.fr/~filliatr/functory/}.
 
-This paper introduces a generic library for distributed computing,
-targeted at functional programming. 
-This work was initially motivated by the computing needs that exist in our
-own research team. Our applications include large-scale deductive
-program verification, which amounts to checking the validity of a
-large number of logical formulas using a variety of automated theorem
+This paper introduces a generic library for distributed computing, for
+a widely used functional programming language - OCaml. This work was
+initially motivated by the computing needs that exist in our own
+research team. Our applications include large-scale deductive program
+verification, which amounts to checking the validity of a large number
+of logical formulas using a variety of automated theorem
 provers~\cite{filliatre07cav}. Our computing infrastructure consists
 of a few powerful multi-core machines (typically 8 to 16 cores) and
 several desktop PCs (typically dual-core). However, for our
 application needs, there is no library that helps in exploiting such a
 computing infrastructure in our favorite functional programming
-language.  Hence we designed and implemented such a
-library, which is the subject of this paper.
-This library is implemented in \Ocaml, but the
-implementation should be straightforward in any functional
-programming language.
+language.  Hence we designed and implemented such a library, which is
+the subject of this paper.  This library is implemented in \Ocaml, but
+the implementation should be straightforward in any functional
+programming language. 
 
 The distributed computing library presented in this paper is not a
 library that helps in parallelizing computations. Rather, it provides
 facilities for reliable, distributed execution of parallelizable
-computations. In particular, it provides a set of APIs that allows the
-execution of large-scale parallelizable computations, very relevant to
-our application needs (and actually relevant to a variety of
-real-world applications), over multiple cores in the same machine or
-over a network of machines. 
-The most important features of our library are the following:
+computations. In particular, it provides a set of user-friendly APIs
+that allows distributed execution of large-scale parallelizable
+computations, very relevant to our application needs (and also
+relevant to a variety of real-world applications). Further, the
+distributed execution could be over multiple cores in the same machine
+or over a network of machines. The most important features of our
+library are the following:
 \begin{itemize}
 \item \emph{Genericity}: 
   it allows various patterns of polymorphic computations;
@@ -116,18 +116,18 @@ The most important features of our library are the following:
   relieving the user from implementing such routines.
 \end{itemize}
 The application domain of such a distributed computing library is manyfold. 
-It is worth noting that the library is not targeted at applications
-running on server farms, crunching enormous amounts of data, mostly
-due to the lack of data locality. 
-It is rather more relevant for research labs, to make use of available
-computing resources efficiently. It serves a variety of users and a wide
-spectrum of needs, from desktop PCs to networks of machines, and hence
-the title.
-Typical applications would involve a large number
-of computation expensive tasks.
-This is the case in our
-research endeavours, that is validating thousands of verification
-conditions using automated theorem provers. 
+% It is worth noting that the library is not targeted at applications
+% running on server farms, crunching enormous amounts of data, mostly
+% due to the lack of data locality. 
+The library is very relevant for research labs, to make use of
+available computing resources efficiently. It serves a variety of
+users and a wide spectrum of needs, from desktop PCs to networks of
+machines.  Typical applications would involve executing a large number
+of computation expensive tasks in a resource-optimal and
+time-efficient manner. This is also the case in our research
+endeavours, that is validating thousands of verification conditions
+using automated theorem provers, utilizing the computing
+infrastructure to the maximum.
 
 % what it is and what it is not
 % \begin{itemize}
@@ -157,9 +157,9 @@ The remainder of this section introduces our approach to distributed
 computing in a functional programming setting.
 
 \paragraph{Distributed Computing.}
-A typical distributed computing library, as \functory,
-provides the following (we
-borrow some terminology from Google's MapReduce~\cite{mapreduce}):
+A typical distributed computing library, as \functory, provides the
+following (we borrow some terminology from Google's
+MapReduce~\cite{mapreduce}):
 \begin{itemize}
 \item A notion of \emph{tasks} which denote atomic computations
   to be performed in a distributed manner; 
