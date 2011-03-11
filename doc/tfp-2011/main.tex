@@ -81,7 +81,7 @@
 
 This paper introduces \functory, a generic library for distributed
 computing for a widely used functional programming language -
-OCaml. This work was initially motivated by the computing needs that
+\Ocaml. This work was initially motivated by the computing needs that
 exist in our own research team. Our applications include large-scale
 deductive program verification, which amounts to checking the validity
 of a large number of logical formulas using a variety of automated
@@ -91,8 +91,8 @@ cores) and several desktop PCs (typically dual-core). However, for our
 application needs, there is no library that helps in exploiting such a
 computing infrastructure in our favorite functional programming
 language.  Hence we designed and implemented such a library, which is
-the subject of this paper.  This library is implemented in \Ocaml, but
-the implementation should be straightforward in any functional
+the subject of this paper.  Although this library is implemented in
+\Ocaml, the implementation should be straightforward in any functional
 programming language.
 
 The distributed computing library presented in this paper is not a
@@ -113,22 +113,22 @@ library are the following:
   of lines of code;
 \item \emph{Task distribution and fault-tolerance}: 
   it provides automatic task distribution and
-  a robust fault-tolerance mechanism, thereby
+  a robust fault-tolerance mechanisms, thereby
   relieving the user from implementing such routines.
 \end{itemize}
 The application domain of such a distributed computing library is manyfold. 
-% It is worth noting that the library is not targeted at applications
-% running on server farms, crunching enormous amounts of data, mostly
-% due to the lack of data locality. 
-The library is very relevant for research labs, to make use of
-available computing resources efficiently. It serves a variety of
-users and a wide spectrum of needs, from desktop PCs to networks of
-machines.  Typical applications would involve executing a large number
-of computation expensive tasks in a resource-optimal and
-time-efficient manner. This is also the case in our research
-endeavours, that is validating thousands of verification conditions
-using automated theorem provers, utilizing the computing
-infrastructure to the maximum.
+% It is worth noting that the library is not targeted 
+\functory\ is not targeted at applications running on server farms,
+crunching enormous amounts of data and hence it does not implement
+techniques for data locality.  The library is very relevant for
+research labs, to make use of available computing resources
+efficiently. It serves a variety of users and a wide spectrum of
+needs, from desktop PCs to networks of machines.  Typical applications
+would involve executing a large number of computation expensive tasks
+in a resource-optimal and time-efficient manner. This is also the case
+in our research endeavours, that is validating thousands of
+verification conditions using automated theorem provers, utilizing the
+computing infrastructure to the maximum.
 
 % what it is and what it is not
 % \begin{itemize}
@@ -218,9 +218,14 @@ of \Ocaml\ are used, we can no longer marshal values but we can still
 transmit strings between master and workers. Our library adapts to all
 these situations, by providing several APIs.
 
+\medskip 
+
+In the following, we discuss some related work in this domain and
+elucidate how \functory\ differs from the other approaches.
+
 \paragraph{Related Work.}
 In order to compare and better distinguish
-\of{Functory} from other work with related goals and motivations, we can
+\of{Functory} from others work with related goals and motivations, we can
 broadly classify the related work in this domain into:
 \begin{enumerate}
 \item \textit{Distributed Functional Languages (DFLs)} --- functional
@@ -233,39 +238,40 @@ broadly classify the related work in this domain into:
 \end{enumerate}
 
 \JoCaml\ is one of the DFLs which provides communication primitives
-(like channels) for transmitting computations. However, it does not
-provide ready-made language features for fault tolerance, which is
-indispensable in a distributed setting. The user has to include code
-for fault tolerance, as already demonstrated in some \JoCaml\
+(like channels) for facilitating transmission of
+computations. However, it does not provide ready-made language
+features for fault tolerance, which is indispensable in a distributed
+setting. The user has to include code for fault tolerance, as already
+demonstrated in some \JoCaml\
 library~\cite{mandel2008}. ML5~\cite{ML5}, a variant of ML, is a
 programming language for distributed computing, specialized for web
 programming. It provides primitives for transferring control between
 the client and the server, as well as low-level primitives for
-marshalling the data. As in the case before, ML5 is a programming language that
-offers primitives for code mobility, and the code for distribution of
-computation and fault-tolerance has to be included by the user. 
-On the contrary, ML5 implements type-safe marshalling and \functory\
-does not, though an existing type-safe marshalling library
-could be used with \functory. Basically, the task will be
-transmitted along with the corresponding type and on unmarshalling, it
-could be matched for the correct type.
+marshalling the data. As in the case before, ML5 is a programming
+language that offers primitives for code mobility, and the code for
+distribution of computation and fault-tolerance has to be included by
+the user.  On the contrary, ML5 implements type-safe marshalling and
+\functory\ does not, though an existing type-safe marshalling library
+could be used with \functory. Basically, the task will be transmitted
+along with the corresponding type and on unmarshalling, it could be
+matched for the correct type.
 \\ \textbf{[Glasgow Distributed Haskell: TODO]}\\
-Erlang~\cite{erlang} is a programming language which has features for
-distribution and fault tolerance. In particular, it has features for
-task distribution and is more well-known for its rich error detection
-primitives and the ability to support hot-swapping. The error
-detection primitives of Erlang allow nodes to monitor processes in
-other nodes and also facilitate automatic migration of tasks in failed
-nodes to recovered or active nodes. CamlP3l~\cite{camlP3l} mixes the
-features of functional programming with predefined patterns for
-parallel computation to offer a parallel programming
-environment. Again, it is a programming language offering primitives
-for distributing computation to parallel processes and also to merge
-the results from parallel executions. 
+CamlP3l~\cite{camlP3l} mixes the features of functional programming
+with predefined patterns for parallel computation to offer a parallel
+programming environment. Again, it is a programming language offering
+primitives for distributing computation to parallel processes and also
+to merge the results from parallel executions. Erlang~\cite{erlang}
+is a programming language which has features for distribution and
+fault tolerance. In particular, it has features for task distribution
+and is more well-known for its rich error detection primitives and the
+ability to support hot-swapping. The error detection primitives of
+Erlang allow nodes to monitor processes in other nodes and also
+facilitate automatic migration of tasks in failed nodes to recovered
+or active nodes.
 
 All the above mentioned languages could be used to implement our
 library.  The main goal of \of{Functory}, though, is to provide the
-users of an \emph{existing} functional programming language high-level
+users of an \emph{existing} functional programming language, high-level
 user-friendly APIs that hide the messy details of task distribution
 and fault-tolerance, enabling a ready-to-use library for efficient
 utilization of computing resources.
@@ -279,13 +285,13 @@ Map/Reduce and is not exactly a Map/Reduce implementation. The
 simplest difference comes from the very fact that \of{Functory} does not
 operate on key/value pairs. 
 % TODO other difference = absence of data locality
-PlasmaMR~\cite{plasma} is an \Ocaml\ implementation of Google's Map/Reduce on a
-distributed file system PlasmaFS. It is able to use PlasmaFS to its
-advantage --- the ability of the file system to handle large files and
-query functions of the functions that implement data locality to
-optimize network traffic. However, PlasmaMR does not support
-fault tolerance which is indespensible in any distributed computing
-application. 
+PlasmaMR~\cite{plasma} is an \Ocaml\ implementation of Google's
+Map/Reduce on a distributed file system PlasmaFS. It is able to use
+PlasmaFS to its advantage --- the ability of the file system to handle
+large files and query functions that implement data locality to
+optimize network traffic. However, PlasmaMR does not support fault
+tolerance which is indespensible in any distributed computing
+application.
 % The Disco project~\cite{disco} is an implementation of
 % Google's MapReduce in Erlang~\cite{erlang}.
 Another Map/Reduce
