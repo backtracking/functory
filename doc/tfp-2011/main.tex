@@ -1389,20 +1389,24 @@ experiments.
 
 \section{Conclusion and Future Work}\label{sec:future}
 
-We presented a distributed programming environment for functional
-programming. The main features are the genericity of the interface,
-which makes use of polymorphic higher-order functions, and the ability
-to easily switch between sequential, multi-core, and network
-implementations. In particular, \functory\ allows to use the same
-executable for master and workers, which makes the deployment of small programs
-immediate --- master and workers being only distinguished by an
-environment variable. \functory\ also allows master and workers to be
-completely different programs, which is ideal for large scale deployment.
-Another distinguishing feature of our library is a
-robust fault-tolerance mechanism which relieves
-the user of cumbersome implementation details.
-Finally, \functory\ also allows to cascade several distributed
-computations inside the same program.
+In this paper, we presented a distributed programming library for the
+functional programming language \Ocaml. The main features are the
+genericity of the interface, which makes use of polymorphic
+higher-order functions, and the ability to easily switch between
+sequential, multi-core, and network implementations. In particular,
+\functory\ allows to use the same executable for master and workers,
+which makes the deployment of small programs immediate --- master and
+workers being only distinguished by an environment
+variable. \functory\ also allows master and workers to be completely
+different programs, which is ideal for large scale deployment.
+Another distinguishing feature of our library is a robust
+fault-tolerance mechanism which relieves the user of cumbersome
+implementation details.  Yet another interesting feature of the
+library is the ability to add workers dynamically. Finally, \functory\
+also allows to cascade several distributed computations inside the
+same program.  \functory also implements two levels of API with
+different granularities which enables the user to write interactive
+programs.
 
 \paragraph{Future Work.}
 There are still some interesting features that could be added to our
@@ -1421,12 +1425,12 @@ library.
   particular, new tasks produced by the master are appended at the end
   of the queue.
 
-\item 
-  Another interesting feature could be the ability
-  to add or remove machines dynamically. Currently, our library assumes
-  that the list of machines to be used is given \emph{a priori}, as
-  part of the code. An alternative would be to read machine names from
-  a file, watched periodically by the master.
+% \item 
+%   Another interesting feature could be the ability
+%   to add or remove machines dynamically. Currently, our library assumes
+%   that the list of machines to be used is given \emph{a priori}, as
+%   part of the code. An alternative would be to read machine names from
+%   a file, watched periodically by the master.
 \item
   Our library provides limited support for displaying real-time
   information about computations and communications. Processing and storing
