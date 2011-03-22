@@ -40,8 +40,8 @@ let state =
 
 let () = Metapost.emit "state" state
 
-let master_workers ?(padding=bp 20.) w =
-  let master  = round_rect ~fill:lightblue (tex "master") in
+let master_workers ?(master="master") ?(padding=bp 20.) w =
+  let master  = round_rect ~fill:lightblue (tex master) in
   let w = Array.map (fun s -> round_rect ~fill:lightred  (tex s)) w in
   let wl = Array.to_list w @ [tex "etc."] in
   master, w,
@@ -71,6 +71,18 @@ let red_arrow ?tex ?pos x y =
 let blue_arrow ?tex ?pos x y =
   Arrow.point_to_point ?tex ?pos ~kind:blue_kind (segment 0.02 x y) 
     (segment 0.98 x y) 
+
+let master_workers_fr =
+  let m, w, b = master_workers
+    ~master:"patron" [| "ouvrier 1"; "ouvrier 2"; "ouvrier 3"|] 
+  in
+  draw b ++ 
+  iter 0 2 
+    (fun i -> arrow (out (sub m b) (2. -. 2. *. float i)) 
+                    (west (sub w.(i) b))) ++
+  nop
+
+let () = Metapost.emit "master_workers_fr" master_workers_fr
 
 let master_workers_1 =
   let m, w, b = master_workers [| "worker 1"; "worker 2"; "worker 3"|] in
