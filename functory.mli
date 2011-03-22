@@ -283,6 +283,7 @@ module Network : sig
 	val kill : ('a, 'c) t -> unit
 	val clear : ('a, 'c) t -> unit
 	val add_task : ('a, 'c) t -> 'a * 'c -> unit
+	val nb_tasks : ('a, 'c) t -> int
       end
 
       val compute : 

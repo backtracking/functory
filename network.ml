@@ -697,6 +697,8 @@ let one_step ?timeout c = match c.status with
 
 let status c = c.status
 
+let nb_tasks c = Queue.length c.todo
+
 let clear c =
   let killed = Hashtbl.create 17 in
   let kill (jid, w) = 
@@ -983,6 +985,7 @@ module Poly = struct
       let add_task = add_task
       let kill = kill
       let clear = clear
+      let nb_tasks = nb_tasks
 
     end
 

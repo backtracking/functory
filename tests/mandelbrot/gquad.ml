@@ -101,6 +101,7 @@ let clist =
     ~packing:h#add ~vadjustment:sb#adjustment () 
 let remove_button = 
   GButton.button ~label:"Remove" ~packing:(vbox#pack ~padding:5) ()
+let nb_tasks = GMisc.label ~packing:vbox#pack ()
 
 (* right panel is canvas *)
 let canvas = GnoCanvas.canvas ~width ~height ~packing:hbox#pack ()
@@ -144,7 +145,9 @@ module C = Master.Computation
 
 let c = C.create ~master
 
-let callback () = C.one_step c; C.status c = Running
+let callback () = 
+  nb_tasks#set_text (string_of_int (C.nb_tasks c));
+  C.one_step c; C.status c = Running
 
 let clear_graph () = 
   let rect = GnoCanvas.rect group
