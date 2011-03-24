@@ -259,15 +259,23 @@ could be used with \functory.
 % Basically, the task will be transmitted
 % along with the corresponding type and on unmarshalling, it could be
 % matched for the correct type.
-\\ \textbf{[Glasgow Distributed Haskell: TODO]}\\
+Glasgow Distributed Haskell (GdH)~\cite{GdH} is a pure distributed
+functional language that is built on top of Glasgow Haskell and
+provides features for distributed computing. It is an extension of
+both Glasgow Parallel Haskell, that supports only one process and
+multiple threads and Concurrent Haskell that supports multiple
+processes. It also offers features for fault-tolerance - error
+detection and error recovery primitives in the
+language. 
+
 CamlP3l~\cite{camlP3l} mixes the features of functional programming
 with predefined patterns for parallel computation to offer a parallel
 programming environment. Again, it is a programming language offering
 primitives for distributing computation to parallel processes and also
-to merge the results from parallel executions. Erlang~\cite{erlang}
-is a programming language which has features for distribution and
-fault tolerance. In particular, it has features for task distribution
-and is more well-known for its rich error detection primitives and the
+to merge the results from parallel executions. Erlang~\cite{erlang} is
+a programming language which has features for distribution and fault
+tolerance. In particular, it has features for task distribution and is
+more well-known for its rich error detection primitives and the
 ability to support hot-swapping. The error detection primitives of
 Erlang allow nodes to monitor processes in other nodes and also
 facilitate automatic migration of tasks in failed nodes to recovered
@@ -306,13 +314,15 @@ protocol for message passing. Currently, we have less flexibility
 w.r.t. deployment of the user program than OCamlMPI; on the other
 hand, we provide a more generic API together with fault tolerance.
 
+The iTask system~\cite{iTask} is a library for the functional language
+`Clean' targeted at distributed workflow management. The library
+provides a set of combinator functions (some of which perform map/fold
+operations) that facilitate applications running in different nodes
+of a distributed system to communicate, exchange information and
+coordinate their computations.
+
 
 \begin{comment}
-  
-
-% -- BELOW HERE IS OLD RELATED-WORK
-
-
 Closest to the approach in this paper is Yohann Padioleau's MapReduce
 implementation in \Ocaml~\cite{poor-man-mapreduce}.  It is built on
 top of OCamlMPI~\cite{ocamlMPI}, while our approach uses a homemade
