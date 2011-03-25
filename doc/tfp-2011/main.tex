@@ -239,6 +239,9 @@ broadly classify the related work in this domain into:
   could be readily used in order to avoid implementing details like
   task distribution, fault-tolerance, socket programming, etc.
 \end{enumerate}
+\functory\ belongs to the second category.
+For reasons of completeness, though, we first describe some existing DFLs
+related to functional programming.
 
 \JoCaml\ is one of the DFLs which provides communication primitives
 (like channels) for facilitating transmission of
@@ -281,15 +284,17 @@ Erlang allow nodes to monitor processes in other nodes and also
 facilitate automatic migration of tasks in failed nodes to recovered
 or active nodes.
 
-All the above mentioned languages could be used to implement our
-library.  The main goal of \of{Functory}, though, is to provide the
-users of an \emph{existing} functional programming language, high-level
+Any DFL above could have been used to implement our library. 
+Our motivation, though, was neither to implement our system using any
+existing DFL nor to come up with a new DFL.
+The goal of \of{Functory} is rather to provide the
+users of an \emph{existing} general-purpose functional programming
+language, namely \Ocaml, high-level 
 user-friendly APIs that hide the messy details of task distribution
-and fault-tolerance, enabling a ready-to-use library for efficient
-utilization of computing resources.
+and fault-tolerance.
 We now turn to distributed computing libraries for general purpose
 functional languages and weed out the distinguishing features of
-\of{Functory} from other similar libraries.
+\of{Functory}.
 
 There are several implementations of Google's MapReduce in functional
 programming languages. But \of{Functory} was just inspired by Google's
@@ -989,7 +994,7 @@ respectively. There are four possible statuses for a worker:
 Whenever we receive a message from a worker, its status changes to
 \of{alive} and its timeout value is reset.
 \begin{center}
-  \includegraphics{state.mps}
+  \includegraphics[scale=0.7]{state.mps}
 \end{center}
 
 Fault tolerance is achieved by exploiting the status of workers as
