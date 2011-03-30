@@ -16,7 +16,6 @@
 %
 %-----------------------------------------------------------------------------
 
-
 % \documentclass[tfpsymp,pagenumbers]{tfp07symp}
 \documentclass{llncs}
 
@@ -26,7 +25,7 @@
 % 11pt          To set in 11-point type instead of 9-point.
 % authoryear    To obtain author/year citation style instead of numeric.
 
-\usepackage{comment,amsmath,graphicx,color,url}
+\usepackage{comment,amsmath,graphicx,color,url,hyperref}
 
 \newcommand{\Ocaml}{OCaml}
 \newcommand{\functory}{\textsf{Functory}}
@@ -89,13 +88,14 @@ of a large number of logical formulas using a variety of automated
 theorem provers~\cite{filliatre07cav}. Our computing infrastructure
 consists of a few powerful multi-core machines (typically 8 to 16
 cores) and several desktop PCs (typically dual-core). However, for our
-application needs, there is no library that helps in exploiting such a
-computing infrastructure in our favorite functional programming
-language.  Hence we designed and implemented such a library, which is
+application needs, no existing library provides a polymorphic API with
+usual map/fold higher-order operations, built-in fault-tolerance, and
+the ability to easily switch between multi-core and network
+infrastructures.
+Hence we designed and implemented such a library, which is
 the subject of this paper.  
-% Although this library is implemented in
-% \Ocaml, the implementation should be straightforward in any functional
-% programming language.
+The library is available at 
+\href{http://functory.lri.fr/}{\url{http://functory.lri.fr/}}.
 
 The distributed computing library presented in this paper is not a
 library that helps in parallelizing computations. Rather, it provides
@@ -119,18 +119,17 @@ library are the following:
   relieving the user from implementing such routines.
 \end{itemize}
 The application domain of such a distributed computing library is manyfold. 
-% It is worth noting that the library is not targeted 
-\functory\ is not targeted at applications running on server farms,
-crunching enormous amounts of data, such as Google's
-MapReduce~\cite{mapreduce}.  The library is very relevant for
-research labs, to make use of available computing resources
-efficiently. It serves a variety of users and a wide spectrum of
+It serves a variety of users and a wide spectrum of
 needs, from desktop PCs to networks of machines.  Typical applications
 would involve executing a large number of computation expensive tasks
 in a resource-optimal and time-efficient manner. This is also the case
 in our research endeavours, that is validating thousands of
 verification conditions using automated theorem provers, utilizing the
 computing infrastructure to the maximum.
+It is worth noting that 
+\functory\ is not targeted at applications running on server farms,
+crunching enormous amounts of data, such as Google's
+MapReduce~\cite{mapreduce}.  
 
 % what it is and what it is not
 % \begin{itemize}
@@ -175,7 +174,7 @@ MapReduce):
   produced by the workers.
 \end{itemize}
 In addition to the above, distributed computing environments also
-implement mechanisms for fault tolerance, efficient storage, and
+implement mechanisms for fault-tolerance, efficient storage, and
 distribution of tasks. This is required to handle network failures
 that may occur, as well as to optimize the usage of machines in the
 network. Another concern of importance is the transmission of messages
@@ -206,9 +205,11 @@ a list of initial tasks:
   master: ('a -> 'b -> 'a list) -> 'a list -> unit
 \end{ocaml}
 The function passed to the master is applied whenever a result is
-available and may in turn generate new tasks (hence the return type
-\of{'a list}).  The master is executed as long as there are pending
-tasks.
+available. The first argument is the task (of type \of{'a}) and the
+second one its result (of type \of{'b}). 
+It may in turn generate new tasks, hence the return type
+\of{'a list}.  
+The master is executed as long as there are pending tasks.
 
 Our library makes use of \Ocaml's marshalling capabilities as much as
 possible. Whenever master and worker executables are exactly the same,
@@ -246,8 +247,8 @@ related to functional programming.
 \JoCaml\ is one of the DFLs which provides communication primitives
 (like channels) for facilitating transmission of
 computations. However, it does not provide ready-made language
-features for fault tolerance, which is indispensable in a distributed
-setting. The user has to include code for fault tolerance, as already
+features for fault-tolerance, which is indispensable in a distributed
+setting. The user has to include code for fault-tolerance, as already
 demonstrated in some \JoCaml\
 library~\cite{mandel2008}. ML5~\cite{ML5}, a variant of ML, is a
 programming language for distributed computing, specialized for web
@@ -276,8 +277,8 @@ with predefined patterns for parallel computation to offer a parallel
 programming environment. Again, it is a programming language offering
 primitives for distributing computation to parallel processes and also
 to merge the results from parallel executions. Erlang~\cite{erlang} is
-a programming language which has features for distribution and fault
-tolerance. In particular, it has features for task distribution and is
+a programming language which has features for distribution and 
+fault-tolerance. In particular, it has features for task distribution and is
 more well-known for its rich error detection primitives and the
 ability to support hot-swapping. The error detection primitives of
 Erlang allow nodes to monitor processes in other nodes and also
@@ -306,8 +307,8 @@ PlasmaMR~\cite{plasma} is an \Ocaml\ implementation of Google's
 MapReduce on a distributed file system PlasmaFS. It is able to use
 PlasmaFS to its advantage --- the ability of the file system to handle
 large files and query functions that implement data locality to
-optimize network traffic. However, PlasmaMR does not support fault
-tolerance which is indespensible in any distributed computing
+optimize network traffic. However, PlasmaMR does not support 
+fault-tolerance which is indespensible in any distributed computing
 application.
 % The Disco project~\cite{disco} is an implementation of
 % Google's MapReduce in Erlang~\cite{erlang}.
@@ -317,7 +318,7 @@ Padioleau's~\cite{poor-man-mapreduce}.  It is built on
 top of OCamlMPI~\cite{ocamlMPI}, while our approach uses a homemade
 protocol for message passing. Currently, we have less flexibility
 w.r.t. deployment of the user program than OCamlMPI; on the other
-hand, we provide a more generic API together with fault tolerance.
+hand, we provide a more generic API together with fault-tolerance.
 
 The iTask system~\cite{iTask} is a library for the functional language
 `Clean' targeted at distributed workflow management. The library
@@ -326,7 +327,6 @@ operations) that facilitate applications running in different nodes
 of a distributed system to communicate, exchange information and
 coordinate their computations.
 
-
 \begin{comment}
 Closest to the approach in this paper is Yohann Padioleau's MapReduce
 implementation in \Ocaml~\cite{poor-man-mapreduce}.  It is built on
@@ -334,12 +334,12 @@ top of OCamlMPI~\cite{ocamlMPI}, while our approach uses a homemade
 protocol for message passing.  Currently, we have less flexibility
 w.r.t. deployment of the user program than OCamlMPI; on the other
 hand, we provide a 
-more generic API together with fault tolerance.  There are other
+more generic API together with fault-tolerance.  There are other
 distributed computing libraries on top of which one could implement
 the library discussed in this paper. \JoCaml~\cite{jocaml} is one of
-them. However, \JoCaml\ does not provide fault tolerance, which is
+them. However, \JoCaml\ does not provide fault-tolerance, which is
 indispensable in a distributed setting. The user has to include code
-for fault tolerance, as already demonstrated in some \JoCaml\
+for fault-tolerance, as already demonstrated in some \JoCaml\
 experiments~\cite{mandel2008}. 
 
 There are other implementations of distributed computing in the
@@ -356,7 +356,7 @@ does not target data parallelism at all.
 The paper is organized as follows. 
 Section~\ref{sec:API} describes the API of our library.
 Section~\ref{sec:implem} gives implementation details, focusing
-on marshaling, network protocol and fault tolerance.
+on marshaling, network protocol and fault-tolerance.
 Then Section~\ref{sec:experiments} illustrates the
 potential of the presented library through experimental evaluation. 
 Finally, Section~\ref{sec:future} outlines some future work.
@@ -371,7 +371,7 @@ We start from a simple API which is reduced to a single higher-order
 polymorphic function.
 Then we explain how this function is actually implemented in terms of
 low-level primitives, which are also provided in our API.
-The other way round, we also explain how the same function can
+Conversely, we also explain how the same function can
 be used to implement high-level distribution functions for map and
 fold operations. Finally, we explain how our API is
 implemented in five different ways, according to five different deployment
@@ -382,10 +382,9 @@ scenarios.
 The generic distribution function in our API follows the idea
 sketched in the introduction. It has the following signature:
 \begin{ocaml}
-  val compute : 
+  val compute: 
     worker:('a -> 'b) -> 
-    master:('a * 'c -> 'b -> ('a * 'c) list) -> 
-    ('a * 'c) list -> unit
+    master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
 \end{ocaml}
 Tasks are pairs, of type \of{'a * 'c}, where the first component is
 passed to the worker and the second component is local to the master.
@@ -482,7 +481,7 @@ Here, \of{Same} is a module which is to be used when master and worker
 are running the same executable. It provides a \of{compute} function
 which has the same signature as in modules \of{Sequential} and
 \of{Cores}, so that the rest of the code remains unchanged. Master and
-worker processes are distinguished at run-time using an environment
+worker processes are distinguished at runtime using an environment
 variable \texttt{WORKER} which is set/unset.
 
 If we need to write two different programs for master and worker, for
@@ -549,13 +548,12 @@ as strings, as follows:
 
 The function \of{compute} above can actually be implemented in terms
 of low-level primitives, such as adding a task, adding a worker,
-performing one step of communication between master and workers, etc.
+performing some communication between master and workers, etc.
 These primitives are provided in our API, such that the user can
 interact with the execution of the distributed computation.  For
 instance, a monitoring-like application can use these primitives to
 allow observation and modification of resources (tasks, workers)
 during the course of a computation.
-
 A type for distributed computations is introduced:
 \begin{ocaml}
   type ('a, 'c) computation
@@ -563,19 +561,18 @@ A type for distributed computations is introduced:
 A computation is created with a function \of{create}, which accepts
 the same \of{worker} and \of{master} as \of{compute}:
 \begin{ocaml}
-  val create : 
-    worker:('a -> 'b) -> 
+  val create: worker:('a -> 'b) -> 
     master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a, 'c) computation
 \end{ocaml}
 Contrary to \of{compute}, it takes no list of tasks and returns
 immediately. Tasks can be added later using the following function:
 \begin{ocaml}
-  val add_task : ('a, 'c) computation -> 'a * 'c -> unit
+  val add_task: ('a, 'c) computation -> 'a * 'c -> unit
 \end{ocaml}
 A function is provided to perform \emph{one step} of a given
 computation:
 \begin{ocaml}
-  val one_step : ('a, 'c) computation -> unit
+  val one_step: ('a, 'c) computation -> unit
 \end{ocaml}
 Calling this function results in one exchange of messages between
 master and workers: task assignments to workers, results returned to
@@ -592,7 +589,6 @@ let compute ~worker ~master tasks =
   while status c = Running do one_step c done
 \end{ocaml}
 
-
 \subsection{High-level API}\label{sec:derived}
 
 In most cases, the easiest way to parallelize an execution it to make
@@ -603,16 +599,12 @@ our library provides most commonly used list operations, all
 implemented using our generic \of{compute} function.
 
 The most obvious operation is the traditional map operation over
-lists, that is:
-\begin{ocaml}
-  val map : f:('a -> 'b) -> 'a list -> 'b list
-\end{ocaml}
-Each task consists of application of function \of{f} to a list element.
+lists, that is \of{val map: f:('a -> 'b) -> 'a list -> 'b list}.
+Each task consists of the application of function \of{f} to a list element.
 More interesting is a combination of map and fold operations.
 For instance, we provide different flavors of function
 \begin{ocaml}
-  val map_fold :
-    f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+  val map_fold: f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 \end{ocaml}
 which, given two functions, an accumulator $a$ and a list $l$, computes
 \begin{equation}\label{eq:map-fold}
@@ -641,10 +633,10 @@ operations in parallel. Thus our API provides two functions
 \of{map_fold_a} and \of{map_fold_ac} for these two particular cases,
 with types
 \begin{ocaml}
-  val map_fold_ac, map_fold_a : 
+  val map_fold_ac, map_fold_a: 
     f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b 
 \end{ocaml}
-This is rather straightforward to derive these five functions from the
+It is rather straightforward to derive these five functions from the
 generic \of{compute} function; readers interested in details could
 refer to the source code.
 
@@ -691,24 +683,16 @@ The \of{Network} module itself is organized into three sub-modules,
 called \of{Same}, \of{Poly} and \of{Mono},
 corresponding to contexts 3, 4 and 5 above. 
 
-\subsection{Several APIs in One}
+\subsection{Several Libraries in One}
 
 From  the description above, it is clear that our library provides
-several APIs of different granularities and different
-deployment scenarios. 
+several APIs of different granularities, as well as several
+implementations for various deployment scenarios. 
 Most combinations are meaningful, resulting in
 thirteen possible different ways of using our library.
-% This is summarized in the following matrix.
-% \begin{center}
-%   \begin{tabular}{|l|c|c|c|c|c|}
-%     \hline
-%     & & & \multicolumn{3}{c|}{Network} \\
-%     & Seq. & Cores & Same & Poly & Mono \\\hline\hline
-%     low-level API & & & & & \\\hline
-%     \of{compute}  & & & & & \\\hline
-%     high-level API& & & & & \\\hline
-%   \end{tabular}
-% \end{center}
+For instance, one may use the low-level API on a single multi-core
+machine, or use the high-level API on a network of machines all
+running the same executable, etc.
 From the implementation point of view, there is almost no code
 duplication. We are using \Ocaml\ functors to derive specific
 implementations from generic ones.
@@ -716,9 +700,12 @@ implementations from generic ones.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Implementation Details}\label{sec:implem}
 
-We now describe the implementations of the various modules introduced
-in Section~\ref{sec:API}. The implementation of the \of{Sequential}
+The implementation of the \of{Sequential}
 module is straightforward and does not require any explanation.
+The \of{Cores} module is implemented with \unix\ processes, using
+the \of{fork} and \of{wait} system calls provided by the \of{Unix}
+library of \Ocaml. We do not describe this implementation but
+rather focus on the more interesting module \of{Network}.
 
 \begin{comment}
   \subsection{Multiple Cores}
@@ -779,14 +766,13 @@ module is straightforward and does not require any explanation.
   are running the same executable. The master and workers have to be
   differentiated in some manner. We use an environment variable
   \texttt{WORKER} for this purpose. When set, it indicates that the
-  executable acts as a worker. At run-time, a worker immediately
+  executable acts as a worker. At runtime, a worker immediately
   enters a loop waiting for tasks from the master, without even
   getting into the user code.  As explained in Section~\ref{sec:API},
   the master function has the following signature.
   \begin{ocaml}
-  val compute : 
-    worker:('a -> 'b) -> master:('a * 'c -> 'b -> ('a * 'c) list) -> 
-    ('a * 'c) list -> unit
+  val compute: worker:('a -> 'b) -> 
+    master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
   \end{ocaml}
   The master uses marshalling to send both a closure of type \of{'a ->
     'b} and a task of type \of{'a} to the worker. The resulting
@@ -801,11 +787,11 @@ module is straightforward and does not require any explanation.
   which are transmitted from the master cannot refer to global
   variables in the user code. Indeed, the initialization code for
   these global variables is never reached on the worker side. For
-  instance, the Mandelbrot set example could be written as follows:
+  instance, some code for drawing Mandelbrot's set
+  could be written as follows:
   \begin{ocaml}
     let max_iterations = 200 
-    let worker (xmi, xma, ymi, yma, w, h) = 
-      ... draw sub-image using max_iterations ...
+    let worker si = ... draw sub-image si using max_iterations ...
   \end{ocaml}
   That is, the global function \of{worker} makes use of the global
   variable \of{max_iterations}. The worker gets the function to
@@ -822,7 +808,7 @@ module is straightforward and does not require any explanation.
   the same executable, but are distinguished using a user-defined way
   (command-line argument, environment variable, etc.).
 
-  \bigskip There are situations where it is not possible to run the
+  There are situations where it is not possible to run the
   same executable for master and workers.  For instance, architectures
   or operating systems could be different across the network.  For
   that reason, the \of{Network} module provides two other
@@ -836,26 +822,26 @@ module is straightforward and does not require any explanation.
   out that absence of marshaled closures now enables the use of two
   different programs for master and workers. This is not mandatory,
   though, since master and workers could still be distinguished at
-  run-time as in the previous case.
+  runtime as in the previous case.
 
   On the worker side, the main loop is started manually using
   \of{Worker.compute}. The computation to be performed on each task is
   given as an argument to this function. It thus looks as follows:
   \begin{ocaml}
-    Worker.compute : ('a -> 'b) -> unit -> unit
+    Worker.compute: ('a -> 'b) -> unit -> unit
   \end{ocaml}
   On the master side, the \of{compute} function is simpler than in the
   previous case, as it has one argument less, and thus has the
   following signature.
   \begin{ocaml}
-    Master.compute : 
+    Master.compute: 
       master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
   \end{ocaml}
   For realistic applications, where master and workers are completely
   different programs, possibly written by different teams, this is the
   module of choice in our library, since it can still pass polymorphic
   values over the network. The issues of marshalling are automatically
-  taken care of by \Ocaml\ run-time.
+  taken care of by the \Ocaml\ runtime.
 
   The derived API presented in Section~\ref{sec:derived} is adapted to
   deal with the absence of closures. Exactly as the \of{compute}
@@ -863,10 +849,10 @@ module is straightforward and does not require any explanation.
   another for the workers. For example, \of{map_fold_ac} takes the
   following forms.
   \begin{ocaml}
-  Worker.map_fold_ac : f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> unit 
-  Master.map_fold_ac : 'b -> 'a list -> 'b
+  Worker.map_fold_ac: f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> unit 
+  Master.map_fold_ac: 'b -> 'a list -> 'b
   \end{ocaml}
-  It is the responsibility of the user to ensure type consistency
+  It is the responsibility of the user to ensure consistency
   between master and workers.
 
   \paragraph{\of{Mono}.} When master and workers are compiled using
@@ -876,16 +862,14 @@ module is straightforward and does not require any explanation.
   the network can only be strings. The signature thus takes the
   following form.
   \begin{ocaml}
-  Worker.compute : (string -> string) -> unit 
-  Master.compute : 
-    master:(string * 'c -> string -> (string * 'c) list) -> 
+  Worker.compute: (string -> string) -> unit 
+  Master.compute: master:(string * 'c -> string -> (string * 'c) list) -> 
     (string * 'c) list -> unit
   \end{ocaml}
   Any other datatype for tasks should be encoded to/from strings. This
   conversion is left to the user.  Note that the second component of
   each task is still polymorphic (of type \of{'c} here), since it is
   local to the master.
-
 
   % There is actually a single, generic implementation, which is then
   % instantiated in three different ways, corresponding to the three
@@ -928,7 +912,7 @@ function not to be time-consuming.
 The worker, on the other hand, forks a new process to execute the task
 and hence can communicate with the master during its computation.
 We subsequently describe issues of message
-transfer and fault tolerance.
+transfer and fault-tolerance.
 
 %\subsubsection{Protocol}
 
@@ -965,17 +949,17 @@ architectures, so that master and workers could be run on completely
 different platforms w.r.t. endianness, version of \Ocaml\ and
 operating system.
 
-\subsection{Fault Tolerance}\label{sec:fault}
+\subsection{Fault-Tolerance}\label{sec:fault}
 
 The main issue in any distributed computing environment is the ability
 to handle faults, which is also a distinguishing feature of our
 library.  
-The fault tolerance mechanism of \functory\ is limited to workers;
+The fault-tolerance mechanism of \functory\ is limited to workers;
 handling master failures is the responsibility of the user, for
 instance by periodically logging the master's state.
 Worker faults are mainly of two kinds: either a worker is stopped,
 and possibly later restarted; or a worker is temporarily or
-permanently unreachable on the network. To provide fault tolerance,
+permanently unreachable on the network. To provide fault-tolerance,
 our master implementation is keeping track of the status of each
 worker.  This status is controlled by two timeout parameters $T_1$ and
 $T_2$ and \of{Ping} and \of{Pong} messages sent by master and workers,
@@ -1045,11 +1029,12 @@ distribution, in sub-directory \texttt{tests/}.
 The purpose of the following experiments is to compare the various
 deployments, namely sequential, cores and network.
 For this comparison to be fair, all
-computations are performed on the same machine, a 8 cores Intel Xeon
+computations are performed on the same machine, a 8 core Intel Xeon
 3.2 GHz running Debian Linux. The sequential implementation uses a
 single core. The multi-core implementation uses up to 8 cores of
 the machine. The network implementation uses 8 workers running locally and
-a master running on a remote machine (which incurs communication cost).
+a master running on a remote machine over a LAN 
+(which incurs communication cost).
 
 \subsection{N-queens}\label{sec:n-queens}
 
@@ -1061,8 +1046,9 @@ places the queens one by one starting from the first row.
 Distributing the computation is thus quite easy: we consider all
 possible ways to place queens on the first $D$ rows and then perform
 the subsequent search in parallel. Choosing $D=1$ will result in
-exactly $N$ tasks; choosing $D=2$ will result in $N^2-3N+2$ tasks; and
-so on.
+exactly $N$ tasks; choosing $D=2$ will result in $N^2-3N+2$ tasks; 
+greater values for $D$ would result in two many tasks.
+
 % TODO: make a picture to illustrate positioning of 2 queens on the
 % first 2 rows
 
@@ -1155,6 +1141,8 @@ The experimental results (in seconds) are tabulated below.
  \hline
   \end{tabular}
 \end{center}
+The difference in the number of tasks explains the differences in the
+speedup ratios above.
 We do not include results for the network configuration, as they do
 not achieve any benefit with respect to the sequential
 implementation. The reason is that the communication cost dominates the
@@ -1186,7 +1174,6 @@ $10,000$ integers only.
 % cores 4     87     33.7
 % cores 6     92     33.5
 % cores 8     88     32.5
-
 
 \begin{comment}
   As a first example, let us consider matrix multiplication.  We
@@ -1258,7 +1245,7 @@ $10,000$ integers only.
   worker are running the same executable. It provides a \of{compute}
   function which has the same signature as in modules \of{Sequential}
   and \of{Cores}, so that the rest of the code remains
-  unchanged. Master and worker processes are distinguished at run-time
+  unchanged. Master and worker processes are distinguished at runtime
   using an environment variable \texttt{WORKER} which is set/unset.
 
   If we need to write two different programs for master and worker,
@@ -1369,7 +1356,6 @@ n-queens. Consequently, communication costs are much greater.
 In this particular experiment, the total size of the results
 transmitted is more than 200 Mb.
 
-
 \subsection{SMT Solvers}\label{sec:SMT}
 
 Here we demonstrate the potential of our library for our application
@@ -1395,7 +1381,7 @@ sums up the timings for each prover and each possible status.
 
 Our computing
 infrastructure for this experiment consists of 3 machines with 4, 8 and 8 cores
-respectively. 
+respectively, the master being run on a fourth machine. 
 The figure below shows the total time in minutes spent by each prover
 for each possible outcome.
 \begin{center}
@@ -1476,13 +1462,12 @@ library.
   One very nice feature of Google's MapReduce is the possibility to
   use redundantly several idle workers on the same tasks
   for speedup when reaching the end of computation.
-  Since we already have the fault tolerance implemented, this
+  Since we already have the fault-tolerance implemented, this
   optimization should be straightforward to add to our library.
 \end{itemize}
 We intend to enrich our library with all above features.
 
 %\appendix
-
 
 \paragraph{Acknowledgements.}
 The authors are grateful to the ProVal team for support and comments
