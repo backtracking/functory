@@ -1,0 +1,16 @@
+
+slides.pdf: slides.tex 
+	pdflatex slides
+	grep -iw frametitle slides.tex | wc -l	
+
+slides-pp.pdf: slides-pp.tex
+	pdflatex slides-pp
+
+%.pdf: %.dia
+	dia -e ./figs/$@ -t pdf ./figs/$<
+
+clean: 
+	rm -f *.dvi *.aux *.log *.pdf
+
+%-pp.tex: %.tex
+	latexpp $^ -o $@

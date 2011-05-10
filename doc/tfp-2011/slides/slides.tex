@@ -1,0 +1,999 @@
+% \documentclass[xcolor=dvipsnames]{beamer}
+% % \documentclass[handout]{beamer}
+% \usecolortheme[named=Maroon]{structure} 
+% \usetheme{Boadilla}
+% \setbeamertemplate{beaver}
+\documentclass[xcolor=dvipsnames,8pt]{beamer} 
+\usecolortheme[named=MidnightBlue]{structure} 
+\usetheme[height=7mm]{Rochester} 
+\usepackage{fontenc}
+\renewcommand*\familydefault{\sfdefault}
+\usepackage{times}
+% \usepackage[latin1]{inputenc}
+\usepackage{alltt}
+\renewcommand{\iff}{\leftrightarrow}
+\newcommand{\tr}{\textcolor{red}}
+\newcommand{\tb}{\textcolor{MidnightBlue}}
+\newcommand{\intt}{\textcolor{blue}{\textbf{int }}}
+\newcommand{\while}{\textcolor{blue}{\textbf{while }}}
+\newcommand{\ret}{\textcolor{blue}{\textbf{return }}}
+\newcommand{\asrt}{\textcolor{blue}{\textbf{//@assert }}}
+\newcommand{\ts}[1]{\scriptsize{#1}}
+\newcommand{\hl}[1]{\colorbox{yellow}{#1}}
+%\usepackage[french]{babel}
+
+\beamertemplatenavigationsymbolsempty
+
+
+\definecolor{MyGray}{rgb}{0.86,0.87,0.98}
+\makeatletter\newenvironment{bbox}{%
+   \begin{lrbox}
+     {\@tempboxa}\begin{minipage}
+       {\columnwidth}}
+     {\end{minipage}
+   \end{lrbox}%
+   \colorbox{MyGray}{\usebox{\@tempboxa}}
+}\makeatother
+% \definecolor{MyGray}{rgb}{0.96,0.97,0.98}
+
+
+\definecolor{kwblue}{rgb}{0.67,0.12,0.92}
+\definecolor{ceruleanblue}{rgb}{0, 0.48, 0.65}
+\definecolor{lightpink}{rgb}{1., 0.71, 0.75}
+\definecolor{lightblue}{rgb}{0.8,0.8,1}
+\definecolor{lightred}{rgb}{1,0.8,0.8}
+
+\let\emph\alert
+\newcommand{\coeurs}{c\oe urs}
+
+\begin{document}
+
+%% -------------------------------------------------------------------- %%
+
+\title{FUNCTORY \\ A Distributed Computing Library for Objective Caml}
+
+\author[Kalyan]{Jean-Christophe Filli\^{a}tre \& Kalyan Krishnamani\\
+  \- \\ 
+  INRIA-Saclay \^{I}le-de-France}
+\date {}
+
+
+\begin{frame}
+  \titlepage
+  \begin{center}
+    \includegraphics[scale=0.11]{cnrs-logo2.jpg}
+    \hspace{4mm}
+    \includegraphics[scale=0.09]{lrilogo.jpg}
+    \hspace{4mm}
+    \includegraphics[scale=0.09]{upsudlogo.jpg}
+    \hspace{4mm}
+    \includegraphics[scale=0.4]{inria-saclay.jpeg}
+    % \pgfimage[height=6mm]{saclay}
+  \end{center}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Outline}
+  \begin{itemize}
+  \item Motivation
+  \item The Basics
+  \item API
+  \item Implementation Details
+  \item Experiments
+  \item Related Work
+  \item Conclusions
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Motivation}
+  \begin{itemize}
+  \item Why Platform - A set of tools for deductive program verification
+  \item Generates numerous verification conditions (VCs)
+  \item VCs discharged by various automated provers
+  \item Typically takes hours to complete
+  \end{itemize}
+  \vspace{1cm}
+  \begin{itemize}
+  \item Some multi-core machines at our disposal
+  \item How to make the best possible use of them?
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {A Distributed Computing Library}
+  Requirements
+  \begin{itemize}
+  \item Ideally in a functional language (OCaml)
+  \item Robust fault-tolerance
+  \item User-friendly API
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Basic Design}
+
+Inspired by Google's Map/Reduce (OSDI 2004)
+
+\begin{itemize}
+\item Workers in parallel
+\item Master
+\end{itemize}
+
+\begin{center}
+  \includegraphics{master_workers_1.mps}  
+\end{center}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {API}
+A generic distribution function \texttt{compute}:\\
+  \begin{ocaml}
+    val compute : 
+    worker:('a -> 'b) -> 
+    master:('a * 'c -> 'b -> ('a * 'c) list) -> 
+    ('a * 'c) list -> 
+    unit
+  \end{ocaml}
+  \begin{itemize}
+  \item A task is of type \ocaml{'a * 'c}, its result of type
+    \ocaml{'b}
+  \item A completed task may in turn generate new tasks
+  \item \texttt{compute} returns when there is no more task
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Low-level Primitives}
+How to implement \texttt{compute} using low-level primitives?
+\begin{itemize}
+\item \ocaml{type ('a, 'c) computation}
+\item Computation is created using \texttt{create}:
+\end{itemize}
+  \begin{ocaml}
+val create: worker: ('a -> 'b) -> 
+              master:('a * 'c -> 'b -> ('a * 'c)list) ->
+              ('a * 'c) computation
+  \end{ocaml}
+  \begin{itemize}
+  \item \texttt{create} does not add tasks. However, tasks could be added using
+  \end{itemize}
+  \begin{ocaml}
+val add_task: ('a * 'c) computation -> 'a * 'c -> unit
+  \end{ocaml}
+  \begin{itemize}
+  \item One step of the computation can be performed using
+  \end{itemize}
+\begin{ocaml}
+val one_step: ('a * 'c) computation -> unit
+\end{ocaml}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Low-level Primitives}
+  \begin{itemize}
+  \item \texttt{compute} could be implemented using low-level primitives:
+  \end{itemize}
+  \begin{ocaml}
+let ~compute ~worker ~master tasks = 
+  let c = create worker master in
+  List.iter (add_task c) tasks
+  while status c = Running do 
+     one_step c 
+  done    
+  \end{ocaml}
+  \begin{itemize}
+  \item User can interact with the execution of the distributed
+    computation
+  \item Monitoring applications: observation of consumption of
+  resources, etc
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {High-level API}
+  \begin{itemize}
+  \item Implementation of the most common map/fold operations over lists
+  \end{itemize}
+  \begin{ocaml}
+val map: f:('a -> 'b) -> 'a list -> 'b list
+val map_fold: f:('a -> 'b) -> 
+                fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+  \end{ocaml}
+  \begin{itemize}
+  \item \texttt{f} operations are always in parallel.
+  \item Two flavours: \texttt{map\_local\_fold} and
+    \texttt{map\_remote\_fold}
+  \item More parallelism in \texttt{map\_remote\_fold} when fold is
+    associative and commutative
+  \end{itemize}
+  \begin{ocaml}
+val map_fold_ac, map_fold_a:
+f: ('a -> 'b) -> 
+fold: ('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+  \end{ocaml}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Deployment Scenarios}
+  \begin{itemize}
+  \item Purely sequential execution: for debugging and comparison
+    purposes
+  \item Several cores on the same machine
+  \item Computation distributed over a network of machines
+  \end{itemize}
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Cores Implementation: \texttt{Functory.Cores}}
+  Uses \texttt{Unix.fork} (no control over scheduling)
+
+  \begin{ocaml}
+  open Cores
+  let () = set_number_of_cores 4
+  \end{ocaml}
+
+  \begin{center}
+    \includegraphics{master_workers_cores.mps}
+  \end{center}
+
+  master maintains a queue of pending tasks
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+
+\begin{frame}\frametitle {Network Implementation: \texttt{Functory.Network}}
+  based on
+  \begin{itemize}
+  \item TCP/IP client/server architecture
+  \item Ocaml's marshaling capabilities
+  \end{itemize}
+  
+  \vfill
+  marshaling considerations
+  \begin{enumerate}
+  \item \emph{same binary}: we can marshal closures
+  \item \emph{same version of Ocaml}: we can only marshal values
+  \item \emph{otherwise}: we can only marshal strings
+  \end{enumerate}
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {\texttt{Functory.Network}: Three Scenarios}
+  
+\emph{Same binary}
+\begin{ocaml}
+val compute : (* same as before *) ...
+\end{ocaml}
+
+
+
+\emph{Same version of Caml}
+    \begin{ocaml}
+val Worker.compute : ('a -> 'b) -> unit
+val Master.compute : 
+  ('a * 'c -> 'b -> ('a * 'c) list) ->
+  ('a * 'c) list -> unit
+\end{ocaml}
+
+
+
+\emph{Otherwise}
+    \begin{ocaml}
+val Worker.compute : (string -> string) -> unit
+val Master.compute : 
+  (string * 'c -> string -> (string * 'c) list) ->
+  (string * 'c) list -> unit
+\end{ocaml}
+
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Details: \texttt{Functory.Network}}
+  \begin{ocaml}
+  open Network
+  let () = declare_workers ~n:3 "moloch"
+  let () = declare_workers ~n:2 "orcus"
+  \end{ocaml}
+
+  \begin{center}
+    \includegraphics{master_workers_network.mps}
+  \end{center}
+  Each worker behaves as a server, the master being the client
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Underneath: Protocol}
+  \only<1>{Master sends a task to a worker}
+  \only<2>{Worker computes and sends back a result}
+  \only<3-4>{Master and workers exchange \emph{ping}/\emph{pong} messages}
+  \only<5>{Master sends another task to a worker}
+  \only<6>{In case of a disconnection...}
+  \only<7>{The task is \emph{rescheduled} to another worker}
+  \only<8>{Whenever one completes...}
+  \only<9>{The other one is stopped}
+  \only<10>{The master is notified when a computation fails}
+  \only<11>{At the very end, the master may ask the workers to stop}
+  \vfill
+  \begin{center}
+    \only<1,5>{\includegraphics{master_workers_assign.mps}}
+    \only<2>{\includegraphics{master_workers_completed.mps}}
+    \only<3>{\includegraphics{master_workers_ping.mps}}
+    \only<4>{\includegraphics{master_workers_pong.mps}}
+    \only<6>{\includegraphics{master_workers_disconnection.mps}}
+    \only<7>{\includegraphics{master_workers_assign_2.mps}}
+    \only<8>{\includegraphics{master_workers_completed_2.mps}}
+    \only<9>{\includegraphics{master_workers_kill.mps}}
+    \only<10>{\includegraphics{master_workers_aborted.mps}}
+    \only<11>{\includegraphics{master_workers_stop.mps}}
+  \end{center}
+  \begin{center}
+    \only<1>{\ocaml{Assign(42, f, a)}}
+    \only<2>{\ocaml{Completed (42, b)}}
+    \only<3>{\ocaml{Ping}}
+    \only<4>{\ocaml{Pong}}
+    \only<5>{\ocaml{Assign(43, f, a)}}
+    \only<6>{\ocaml{}} % disconnection
+    \only<7>{\ocaml{Assign(43, f, a)}}
+    \only<8>{\ocaml{Completed (43, b)}}
+    \only<9>{\ocaml{Kill 43}}
+    \only<10>{\ocaml{Aborted 44}}
+    \only<11>{\ocaml{Stop}}
+  \end{center}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+
+\begin{frame}\frametitle {Feature: Fault Tolerance}
+
+Master knows the state of each worker through ping/pong messages
+
+  \begin{center}
+    \includegraphics[scale=0.7]{state.mps}
+  \end{center}
+
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+
+\begin{frame}\frametitle {Potential: Experimental Results}
+  Motivating example
+  \begin{itemize}
+  \item 80 verification conditions
+  \item 4 provers
+  \item one minute timeout per VC
+  \item network of 3 machines (4, 8 and 8 cores)
+  \end{itemize}
+
+
+  \begin{itemize}
+  \item sequential computation: \emph{$>$ 6 hours}
+  \item with Functory: \emph{22.5 minutes}
+  \item speedup ratio = \emph{16} (optimal is 20)
+  \end{itemize}
+  \begin{center}
+  More results in the paper !!    
+  \end{center}
+
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Related Work}
+  Distributed Functional Languages (DFL)
+  \begin{itemize}
+  \item Jo\&Caml - rich communication primitives, no easy features
+    for fault-tolerance
+  \item ML5 - code mobility, marshalling, etc, but no
+    easy features for fault-tolerance
+  \item Glasgow Distributed Haskell - features for fault-tolerance,
+    error detection/recovery
+  \end{itemize}
+  Libraries for existing functional languages
+  \begin{itemize}
+  \item Plasma MR - OCaml implementation of Google's Map/Reduce on
+    Plasma FS
+  \item iTask - a library for 'Clean' language for distributed workflow management
+  \end{itemize}
+
+Our library could be implemented using any of the DFLs, but our goals
+are:
+\begin{itemize}
+\item Provide users of an existing language, user-friendly APIs
+\item Provide robust fault-tolerance mechanism 
+\end{itemize}
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {What's next}
+  \begin{itemize}
+  \item Better Scheduling
+  \item Real-time visualization - OcamlViz?
+  \item Any gains from Plasma-FS - data locality?
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Thanks}
+
+
+Check out:
+\begin{center}
+ \textcolor{blue}{\url{http://functory.lri.fr/}}  
+\end{center}
+
+Feedback, comments welcome!
+
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+\begin{frame}\frametitle{The Talk}
+
+
+\begin{bbox}
+\begin{alltt}
+\intt main ()\\
+\{\\
+  \- \- \intt x = 0;\\
+  \- \- \intt y = 1;\\
+  \- \- \while (x < 100) \{\\
+  \- \- \- \- x = x + y;\\
+  \- \- \- \- y = x;\\
+  \- \- \}\\
+  \- \- \asrt (x < 200);\\
+  \- \- \ret 0;\\
+\}
+\end{alltt}
+\end{bbox}
+\pause
+
+Can we automatically: \\ 
+\begin{itemize}
+  \itemsep=0.3cm
+\item Generate a loop invariant ?
+\item Generate a loop invariant that helps in proving the assertion ?
+
+\end{itemize}
+
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Abstraction - Intuition}
+  \centering
+  \includegraphics[scale=0.3]{Diagram1_new1.png}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Abstraction - Intuition}
+  \centering
+  \includegraphics[scale=0.3]{Diagram2_new1.png}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Predicate Abstraction}
+The Problem: \\ \- \\ Given a concrete program and a set of predicates, track
+the behaviour of the predicates corresponding to the behaviour of the
+concrete program \\ \- \\
+\pause
+Ingredients:
+  \begin{itemize}
+    \itemsep=0.3cm
+  \item Concrete program: $R(\vec{x}, \vec{x}')$
+  \item A set of predicates: \{$\vec{P} \iff \alpha (\vec{x})$, $\vec{P}' \iff
+    \alpha (\vec{x'})$ \} 
+  \item Behaviour of the predicates w.r.t the concrete program:
+    $$
+    \exists. \vec{x}, \vec{x}'.\ R(\vec{x}, \vec{x}') \land \vec{P} =
+    \alpha (\vec{x}) \land \vec{P}' = \alpha (\vec{x'})
+    $$
+  \item Existential quantification - solved using a SMT solver
+  \item Abstract interpretation with Abstract domain =
+      vector of Booleans
+  \end{itemize}
+
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Predicate Abstraction - Example}
+  \begin{columns}
+    \begin{column}{0.65\textwidth}
+      \begin{itemize}
+        \itemsep=0.3cm
+      \item Concrete initial states : \\ $I_c(x, y) = (x=0 \land y=1)$
+      \item Concrete transitions : \\ $R_c(x, x', y, y') = \newline (x<100) \implies
+        (x'=x+y \land y'=x)$
+      \item Predicate : $\vec{P} = \{(b_0: (x<200))\}$
+      \item<2-> Abstract initial states: \\
+        $I_a(b_0) = \exists x,y. (x=0 \land y=1) \land (b_0 \iff x<200) $
+      \item<2-> Abstract transitions: \\
+        $R_a(b_0, b_0') = \exists x,y,x',y'. \newline ((x<100) \implies (x'=x+y
+        \land y'=x) \land \newline
+        (b_0 \iff x<200) \land (b_0' \iff x'<200)$
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.35\textwidth}
+      \uncover<1->{
+      \begin{bbox}
+        \begin{alltt}
+          \intt x = 0;\\
+          \intt y = 1;\\
+          \while (x < 100) \{\\
+          \- \- x = x + y;\\
+          \- \- y = x;\\
+          \}\\
+        \end{alltt}
+      \end{bbox}}
+      \newline
+      \uncover<2->{
+      \ts{abstract initial state:} \\
+      \includegraphics[scale=0.25]{init.png} \\
+      \ts{abstract transitions:} \\
+      \includegraphics[scale=0.25]{trans.png}
+    }
+    \end{column}
+  \end{columns}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Abstraction at Program Points}
+  \begin{itemize}
+    \itemsep=0.4cm
+  \item Compute CFG of the concrete program
+  \item Choose a set of predicates
+  \item Compute abstractions at each program point in the CFG
+    \pause
+  \item Intuitively,
+    \pause
+    \begin{itemize}
+      \itemsep=0.3cm
+    \item The predicate values at each program point is an invariant
+      at the program point 
+      \pause
+    \item Concretization of the predicates correspond to
+      the invariant of the concrete program
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Let's begin}
+  \begin{columns}
+    \begin{column}{0.5\textwidth}
+      \begin{bbox}
+        \begin{alltt}
+          \intt main ()\\
+          \{\\
+          \- \- \intt x = 0;\\
+          \- \- \intt y = 1;\\
+          \- \- \while (x < 100) \{\\
+          \- \- \- \- x = x + y;\\
+          \- \- \- \- y = x;\\
+          \- \- \}\\
+          \- \- \ret 0;\\
+          \}
+        \end{alltt}
+      \end{bbox}
+      \begin{itemize}
+        \itemsep=0.3cm
+      \item compute the CFG
+      \item abstract it at program points
+      \end{itemize}
+    \end{column}
+    
+    \begin{column}{0.5\textwidth}
+      \includegraphics[scale=0.3]{c.pdf}  
+    \end{column}
+  \end{columns}
+
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Abstract Transitions}
+\begin{minipage}{6.5cm}
+  \begin{itemize}
+\itemsep=0.4cm
+  \item Consider the first concrete transition
+  \item Assume predicates: \\ 
+    \begin{bbox}
+      {\scriptsize{
+          $b_0: (x < 200), b_1: (x < 100), b_2: (x + y < 200)$      
+        }}
+    \end{bbox}
+  \item<2-> Compute abstraction w.r.t the predicates:
+
+    \begin{bbox}
+      {\scriptsize{
+          $
+          \exists x_0, x_1, y_0, y_1.\ \newline  
+          (x_1=0 \land y_1=1)\ \land \newline
+          (b_0 \iff (x_0 < 200) \ \land \ (b_0' \iff (x_1 < 200) \ \land \newline 
+          (b_1 \iff (x_0 < 100) \ \land \ (b_1' \iff (x_1 < 100) \ \land  \newline
+          (b_2 \iff (x_0 + y_0 < 200) \ \land \ (b_2' \iff (x_1 + y_1 < 200)
+          $
+        }}
+    \end{bbox}
+    
+  \item<3-> solve the above using alt-ergo
+  \item<3-> solutions: \\ 
+    \begin{bbox}
+      {\scriptsize{
+        $(b_0' = true), (b_1' = true), (b_2' = true)$      
+      }}
+    \end{bbox}
+  \end{itemize}
+
+\end{minipage}
+\hspace{1cm}
+\begin{minipage}{3cm}
+\alt<3->
+  { \includegraphics[scale=0.3]{abs-ex-1.pdf} }
+  { \includegraphics[scale=0.3]{conc-1.pdf} }
+\end{minipage}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Abstract Program - Loop Invariant?}
+\begin{columns}
+  \begin{column}{0.65\textwidth}
+    \begin{itemize}
+      \itemsep=0.3cm
+    \item<1-> Final abstract system
+      \item<2-> Collect the predicates at the loop head (here, 2)
+      \item<3-> $(b_0 \land b_1 \land b_2)\  \lor\ (\lnot b_0 \land b_1
+        \land \lnot b_2)$ \\ is a loop invariant
+      \item<4-> which is: \\
+        $ 
+        ((x<100) \land (x<200) \land (x+y<200)) \ \lor \newline
+        (\lnot (x<100) \land (x<200) \land \lnot (x+y<200))
+        $
+      \end{itemize}
+  \end{column}
+\begin{column}{0.35\textwidth}
+
+  \alt<2->{\includegraphics[scale=0.3]{abs-final2.png}}{\includegraphics[scale=0.3]{abs-final.png}}
+\end{column}
+\end{columns}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Demo}
+
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Part - II}
+  \begin{itemize}
+    \itemsep=0.4cm
+  \item What predicates are interesting?
+  \item How to discover new predicates?
+  \item How did we collect predicates?
+  \end{itemize}
+
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Predicate Discovery}
+  When proving properties about programs, we need \\ \- \\
+  \begin{itemize}
+    \itemsep=0.4cm
+  \item Loop invariants that will help in proving the property
+  \item Predicates (interesting) to generate such an invariant
+  \item Interesting predicates = useful information about the program
+    w.r.t property
+  \item To be able to construct abstractions incrementally
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Abstraction - Recap}
+  \centering
+  \includegraphics[scale=0.3]{Diagram2_new1.png}
+\end{frame}
+
+\begin{frame}{Refinement - Intuition}
+  \centering
+  \includegraphics[scale=0.3]{Diagram3.png}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Predicate Discovery: WP Computation}
+  Weakest Precondition Computation \\
+  \begin{itemize}
+    \itemsep=0.3cm
+  \item Given a property P and a loop body $B$
+  \item Compute $P_{new} = WP(P, B)$ 
+  \item Add the atomic predicates in $P_{new}$ as new predicates
+  \item Intuitively, $P_{new}$ is some information relevant to the property
+    and driven by the statements in $B$
+  \end{itemize}
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Predicate Discovery: Other Techniques}
+  Craig Interpolants\\ 
+  \begin{itemize}
+    \itemsep=0.3cm
+  \item Given a pair of mutually inconsistent formulas $\phi_1$ and
+    $\phi_2$, there is an interpolant $\psi$, with the property
+    \begin{itemize}
+      \itemsep=0.2cm
+    \item $\phi_1 \rightarrow \psi$
+    \item $\psi \land \phi_2$ is unsatisfiable
+    \item $\psi$ refers only to the variables common to both $\phi_1$
+      and $\phi_2$
+  \end{itemize}
+\item Intuitively, the interpolant $\psi$ extracts the relevant parts
+  of $\phi_1$.
+\item If a set of first-order formulas is inconsistent, an interpolant
+  always exists and can be computed from the proof of unsatisfiability
+  of the candidate formulas.
+  
+\end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Predicate Discovery}
+  \begin{columns}
+    \begin{column}{0.6\textwidth}
+      In our example, \\ \- \\
+      Suppose we want to prove the assertion $(x < 200)$ \\ \-
+      \newline
+      \uncover<2->{
+      Predicates:}
+      \begin{itemize}
+      \item<2-> Guards
+      \item<2-> The property to be proved
+      \item<3-> WP of the property w.r.t loop body $B$
+        $$
+        WP (x<200, B) =\hl{$x+y < 200$} 
+        $$
+      \end{itemize}
+    \end{column}
+    \begin{column}{0.4\textwidth}
+      \alt<2->{
+      \begin{bbox}
+        \begin{alltt}
+          \intt main ()\\
+          \{\\
+          \- \- \intt x = 0;\\
+          \- \- \intt y = 1;\\
+          \- \- \while \hl{(x < 100)} \{\\
+          \- \- \- \- x = x + y;\\
+          \- \- \- \- y = x;\\
+          \- \- \}\\
+          \- \- \asrt \hl{(x < 200)};\\
+          \- \- \ret 0;\\
+          \}
+        \end{alltt}
+      \end{bbox}}
+    {
+      \begin{bbox}
+        \begin{alltt}
+          \intt main ()\\
+          \{\\
+          \- \- \intt x = 0;\\
+          \- \- \intt y = 1;\\
+          \- \- \while (x < 100) \{\\
+          \- \- \- \- x = x + y;\\
+          \- \- \- \- y = x;\\
+          \- \- \}\\
+          \- \- \asrt (x < 200);\\
+          \- \- \ret 0;\\
+          \}
+        \end{alltt}
+      \end{bbox}
+    }
+    \end{column}
+  \end{columns}
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Other Tools/Techniques}
+  \begin{itemize}
+    \itemsep=0.3cm
+  \item Most abstraction techniques abstract the whole program
+  \item SLAM abstracts at each program statement but does not
+    infer invariants
+  \item Most abstraction techniques also implement refinement
+    framework \\ (BLAST, CBMC, NuSMT)
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{BLAST - Lazy Abstraction}
+  BLAST - Lazy Abstraction
+  \begin{itemize}
+  \item Most generic predicate is used to start with
+  \item Iteratively refined 
+  \item Abstraction is coarse - so more iterations
+  \end{itemize}
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{NuSMT: SMT + BDD}
+  NuSMT - SMT + BDD-based Abstraction
+  \begin{itemize}
+  \item Tight integration of BDD enumeration and SMT reasoning
+  \item CEGAR loop with predicate discovery techniques
+  \item Computes precise abstraction - less iterations
+  \item No invariant generation
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{SAT-based Abstraction}
+CBMC - SAT-based Abstraction
+  \begin{itemize}
+  \item SAT based abstraction
+    \item Encoding in SAT an issue 
+    \item Imprecise abstractions - more iterations of CEGAR loop
+    \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Directions for Future Work}
+  \begin{itemize}
+    \itemsep=0.4cm
+  \item Use WP computations to discover predicates
+  \item Generating quantified invariants automatically
+  \item Iterative abstraction techniques - model-checker?
+  \item Use information from abstract interpretation techniques
+    in Frama-C \\(APRON library?)
+  \end{itemize}
+  
+\end{frame}
+
+
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{\begin{center} Merci! \end{center}}
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+
+
+\end{document}
+
+
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 
+
