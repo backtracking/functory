@@ -3,7 +3,7 @@
 % \usecolortheme[named=Maroon]{structure} 
 % \usetheme{Boadilla}
 % \setbeamertemplate{beaver}
-\documentclass[xcolor=dvipsnames,8pt]{beamer} 
+\documentclass[xcolor=dvipsnames]{beamer} 
 \usecolortheme[named=MidnightBlue]{structure} 
 \usetheme[height=7mm]{Rochester} 
 \usepackage{fontenc}
@@ -50,11 +50,11 @@
 
 %% -------------------------------------------------------------------- %%
 
-\title{FUNCTORY \\ A Distributed Computing Library for Objective Caml}
+\title{FUNCTORY \\ A Distributed Computing Library \\ for Objective Caml}
 
-\author[Kalyan]{Jean-Christophe Filli\^{a}tre \& Kalyan Krishnamani\\
+\author[Kalyan]{Jean-Christophe Filli\^{a}tre \& K. Kalyanasundaram\\
   \- \\ 
-  INRIA-Saclay \^{I}le-de-France}
+  CNRS / INRIA Saclay -- \^{I}le-de-France}
 \date {}
 
 
@@ -74,26 +74,12 @@
 
 %% -------------------------------------------------------------------- %%
 
-\begin{frame}\frametitle{Outline}
-  \begin{itemize}
-  \item Motivation
-  \item The Basics
-  \item API
-  \item Implementation Details
-  \item Experiments
-  \item Related Work
-  \item Conclusions
-  \end{itemize}
-\end{frame}
-
-%% -------------------------------------------------------------------- %%
-
 \begin{frame}\frametitle{Motivation}
   \begin{itemize}
-  \item Why Platform - A set of tools for deductive program verification
-  \item Generates numerous verification conditions (VCs)
-  \item VCs discharged by various automated provers
-  \item Typically takes hours to complete
+  \item In our team, we do deductive program verification
+  \item Generates numerous verification conditions
+  \item Discharged by various automated provers
+  \item Typically takes \emph{hours} to complete
   \end{itemize}
   \vspace{1cm}
   \begin{itemize}
@@ -107,9 +93,9 @@
 \begin{frame}\frametitle {A Distributed Computing Library}
   Requirements
   \begin{itemize}
-  \item Ideally in a functional language (OCaml)
-  \item Robust fault-tolerance
+  \item Fault-tolerance
   \item User-friendly API
+  \item In our favorite programming language (OCaml)
   \end{itemize}
 \end{frame}
 
@@ -131,8 +117,39 @@ Inspired by Google's Map/Reduce (OSDI 2004)
 
 %% -------------------------------------------------------------------- %%
 
-\begin{frame}\frametitle {API}
-A generic distribution function \texttt{compute}:\\
+\begin{frame}\frametitle{Outline}
+  \begin{columns}
+    \column{0.8\textwidth}
+    \begin{itemize}
+    \item API
+      \begin{itemize}
+      \item general-purpose \texttt{compute} function
+      \item high-level: map/fold operations
+      \item low-level: micro-step computations
+      \end{itemize}
+
+
+    \item Deployment Scenarios
+      \begin{itemize}
+      \item Sequential
+      \item Cores
+      \item Network
+      \end{itemize}
+    \end{itemize}
+
+    \column{0.2\textwidth}
+  \begin{tabular}{|p{0.2em}|p{0.2em}|p{0.2em}|}
+    \hline
+    && \\\hline
+    && \\\hline
+    && \\\hline
+  \end{tabular}
+\end{columns}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{A General-Purpose \texttt{compute} Function}
   \begin{ocaml}
     val compute : 
     worker:('a -> 'b) -> 
@@ -150,11 +167,51 @@ A generic distribution function \texttt{compute}:\\
 
 %% -------------------------------------------------------------------- %%
 
-\begin{frame}\frametitle {Low-level Primitives}
-How to implement \texttt{compute} using low-level primitives?
+\begin{frame}\frametitle {High-Level API}
+  \begin{itemize}
+  \item most common map/fold operations over lists
+  \end{itemize}
+  \begin{ocaml}
+val map: f:('a -> 'b) -> 'a list -> 'b list
+val map_fold: f:('a -> 'b) -> 
+              fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
+  \end{ocaml}
+  \begin{itemize}
+  \item \texttt{f} operations always in parallel
+  \item Two flavours: \texttt{map\_local\_fold} and
+    \texttt{map\_remote\_fold}
+  \item More parallelism when fold is associative and commutative
+  \end{itemize}
+  \begin{ocaml}
+val map_fold_ac, map_fold_a:
+  f: ('a -> 'b) -> 
+  fold: ('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
+  \end{ocaml}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Low-Level API}
+  \begin{itemize}
+  \item User can interact with the execution of the distributed
+    computation
+
+
+  \item Examples:
+    \begin{itemize}
+    \item Monitoring applications: observation of consumption of
+      resources, etc
+    \item Interactive programs
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Low-Level API}
 \begin{itemize}
 \item \ocaml{type ('a, 'c) computation}
-\item Computation is created using \texttt{create}:
+\item creation
 \end{itemize}
   \begin{ocaml}
 val create: worker: ('a -> 'b) -> 
@@ -162,81 +219,56 @@ val create: worker: ('a -> 'b) ->
               ('a * 'c) computation
   \end{ocaml}
   \begin{itemize}
-  \item \texttt{create} does not add tasks. However, tasks could be added using
+  \item adding new tasks
   \end{itemize}
   \begin{ocaml}
 val add_task: ('a * 'c) computation -> 'a * 'c -> unit
   \end{ocaml}
   \begin{itemize}
-  \item One step of the computation can be performed using
+  \item performing one step of the computation
   \end{itemize}
 \begin{ocaml}
 val one_step: ('a * 'c) computation -> unit
 \end{ocaml}
+\begin{itemize}
+\item etc.
+\end{itemize}
 \end{frame}
 
 %% -------------------------------------------------------------------- %%
 
-\begin{frame}\frametitle {Low-level Primitives}
-  \begin{itemize}
-  \item \texttt{compute} could be implemented using low-level primitives:
-  \end{itemize}
-  \begin{ocaml}
-let ~compute ~worker ~master tasks = 
-  let c = create worker master in
-  List.iter (add_task c) tasks
-  while status c = Running do 
-     one_step c 
-  done    
-  \end{ocaml}
-  \begin{itemize}
-  \item User can interact with the execution of the distributed
-    computation
-  \item Monitoring applications: observation of consumption of
-  resources, etc
-  \end{itemize}
+\begin{frame}\frametitle{Outline}
+    \begin{itemize}
+    \item API
+      \begin{itemize}
+      \item general-purpose \texttt{compute} function
+      \item high-level: map/fold operations
+      \item low-level: micro-step computations
+      \end{itemize}
+
+
+    \item \emph{Deployment Scenarios}
+      \begin{itemize}
+      \item Sequential
+      \item Cores
+      \item Network
+      \end{itemize}
+    \end{itemize}
+
 \end{frame}
-
-%% -------------------------------------------------------------------- %%
-
-\begin{frame}\frametitle {High-level API}
-  \begin{itemize}
-  \item Implementation of the most common map/fold operations over lists
-  \end{itemize}
-  \begin{ocaml}
-val map: f:('a -> 'b) -> 'a list -> 'b list
-val map_fold: f:('a -> 'b) -> 
-                fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
-  \end{ocaml}
-  \begin{itemize}
-  \item \texttt{f} operations are always in parallel.
-  \item Two flavours: \texttt{map\_local\_fold} and
-    \texttt{map\_remote\_fold}
-  \item More parallelism in \texttt{map\_remote\_fold} when fold is
-    associative and commutative
-  \end{itemize}
-  \begin{ocaml}
-val map_fold_ac, map_fold_a:
-f: ('a -> 'b) -> 
-fold: ('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
-  \end{ocaml}
-\end{frame}
-
-%% -------------------------------------------------------------------- %%
-
-\begin{frame}\frametitle {Deployment Scenarios}
-  \begin{itemize}
-  \item Purely sequential execution: for debugging and comparison
-    purposes
-  \item Several cores on the same machine
-  \item Computation distributed over a network of machines
-  \end{itemize}
+% \begin{frame}\frametitle {Deployment Scenarios}
+%   \begin{itemize}
+%   \item Purely sequential execution: for debugging and comparison
+%     purposes
+%   \item Several cores on the same machine
+%   \item Computation distributed over a network of machines
+%   \end{itemize}
   
-\end{frame}
+% \end{frame}
 
 %% -------------------------------------------------------------------- %%
 
-\begin{frame}\frametitle {Cores Implementation: \texttt{Functory.Cores}}
+\begin{frame}\frametitle {Cores Implementation}
   Uses \texttt{Unix.fork} (no control over scheduling)
 
   \begin{ocaml}
@@ -255,7 +287,7 @@ fold: ('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 %% -------------------------------------------------------------------- %%
 
 
-\begin{frame}\frametitle {Network Implementation: \texttt{Functory.Network}}
+\begin{frame}\frametitle {Network Implementation}
   based on
   \begin{itemize}
   \item TCP/IP client/server architecture
@@ -274,7 +306,7 @@ fold: ('b -> 'b -> 'b) -> 'b -> 'a list -> 'b
 
 %% -------------------------------------------------------------------- %%
 
-\begin{frame}\frametitle {\texttt{Functory.Network}: Three Scenarios}
+\begin{frame}\frametitle {Three Implementations of Network}
   
 \emph{Same binary}
 \begin{ocaml}
@@ -305,7 +337,7 @@ val Master.compute :
 
 %% -------------------------------------------------------------------- %%
 
-\begin{frame}\frametitle {Details: \texttt{Functory.Network}}
+\begin{frame}\frametitle {Network Implementation Details}
   \begin{ocaml}
   open Network
   let () = declare_workers ~n:3 "moloch"
@@ -363,12 +395,12 @@ val Master.compute :
 %% -------------------------------------------------------------------- %%
 
 
-\begin{frame}\frametitle {Feature: Fault Tolerance}
+\begin{frame}\frametitle {Fault Tolerance}
 
 Master knows the state of each worker through ping/pong messages
 
   \begin{center}
-    \includegraphics[scale=0.7]{state.mps}
+    \includegraphics{state.mps}
   \end{center}
 
   
@@ -377,25 +409,22 @@ Master knows the state of each worker through ping/pong messages
 %% -------------------------------------------------------------------- %%
 
 
-\begin{frame}\frametitle {Potential: Experimental Results}
+\begin{frame}\frametitle {Experimental Results}
   Motivating example
   \begin{itemize}
-  \item 80 verification conditions
-  \item 4 provers
-  \item one minute timeout per VC
+  \item 80 verification conditions / 4 provers = 320 tasks
   \item network of 3 machines (4, 8 and 8 cores)
   \end{itemize}
-
 
   \begin{itemize}
   \item sequential computation: \emph{$>$ 6 hours}
   \item with Functory: \emph{22.5 minutes}
   \item speedup ratio = \emph{16} (optimal is 20)
   \end{itemize}
-  \begin{center}
-  More results in the paper !!    
-  \end{center}
 
+
+  More experimental results in the paper: \par N-queens, Mandelbrot set,
+  matrix multiplication
 \end{frame}
 
 %% -------------------------------------------------------------------- %%

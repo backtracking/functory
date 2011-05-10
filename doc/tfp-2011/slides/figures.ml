@@ -16,14 +16,14 @@ let state =
     let s = "\\sf{" ^ s ^ "}" in
     round_rect ~dx:zero ~fill (tex s)
   in
-  let nc = node "déconnecté" in
-  let alive = node "vivant" in
-  let pinged = node "contacté" in
-  let error = node "inatteignable" in
+  let nc = node "not connected" in
+  let alive = node "alive" in
+  let pinged = node "pinged" in
+  let error = node "unreachable" in
   let b =
     hbox ~padding:(bp 40.)
       [nc; 
-       hbox ~padding:(bp 60.)
+       hbox ~padding:(bp 50.)
 	 [alive; vbox ~padding:(bp 30.) [pinged; error]]
       ]
   in
@@ -31,12 +31,12 @@ let state =
     Helpers.box_label_arrow ?pos ?outd ?ind ~sep:(bp 3.) 
       (Picture.tex lab) (sub x b) (sub y b) in
   draw b ++ 
-  arrow ~outd:(vec (dir (-40.))) ~pos:`Bottom "connection" nc alive ++ 
+  arrow ~outd:(vec (dir (-40.))) ~pos:`Bottom "connect" nc alive ++ 
   arrow ~pos:`Top "\\sf ping" alive pinged ++ 
   arrow ~pos:`Right "" pinged error ++
-  arrow ~pos:`Bottom "tout message~~~~~~~" error alive ++
-  arrow ~outd:(vec (dir 140.)) ~pos:`Top "{\\sf pong}/tout message" pinged alive ++
-  arrow ~outd:(vec (dir 140.)) ~pos:`Top "connection perdue" alive nc
+  arrow ~pos:`Bottom "any msg.~~~~~" error alive ++
+  arrow ~outd:(vec (dir 140.)) ~pos:`Top "{\\sf pong}/any msg." pinged alive ++
+  arrow ~outd:(vec (dir 140.)) ~pos:`Top "lost connection" alive nc
 
 let () = Metapost.emit "state" state
 
@@ -71,18 +71,6 @@ let red_arrow ?tex ?pos x y =
 let blue_arrow ?tex ?pos x y =
   Arrow.point_to_point ?tex ?pos ~kind:blue_kind (segment 0.02 x y) 
     (segment 0.98 x y) 
-
-let master_workers_fr =
-  let m, w, b = master_workers
-    ~master:"patron" [| "ouvrier 1"; "ouvrier 2"; "ouvrier 3"|] 
-  in
-  draw b ++ 
-  iter 0 2 
-    (fun i -> arrow (out (sub m b) (2. -. 2. *. float i)) 
-                    (west (sub w.(i) b))) ++
-  nop
-
-let () = Metapost.emit "master_workers_fr" master_workers_fr
 
 let master_workers_1 =
   let m, w, b = master_workers [| "worker 1"; "worker 2"; "worker 3"|] in
