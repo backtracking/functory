@@ -273,7 +273,7 @@ val one_step: ('a * 'c) computation -> unit
 
   \begin{ocaml}
   open Cores
-  let () = set_number_of_cores 4
+  let () = set_number_of_cores 3
   \end{ocaml}
 
   \begin{center}
@@ -353,7 +353,7 @@ val Master.compute :
 
 %% -------------------------------------------------------------------- %%
 
-\begin{frame}\frametitle {Underneath: Protocol}
+\begin{frame}\frametitle {Protocol}
   \only<1>{Master sends a task to a worker}
   \only<2>{Worker computes and sends back a result}
   \only<3-4>{Master and workers exchange \emph{ping}/\emph{pong} messages}
@@ -459,7 +459,7 @@ Master knows the state of each worker through ping/pong messages
 
 %% -------------------------------------------------------------------- %%
 
-\begin{frame}\frametitle {What's next}
+\begin{frame}\frametitle {Future Work}
   \begin{itemize}
   \item User-controlled scheduling
   \item Real-time visualization 
