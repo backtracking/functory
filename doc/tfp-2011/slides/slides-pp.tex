@@ -55,7 +55,14 @@
 
 \author[Kalyan]{Jean-Christophe Filli\^{a}tre \& K. Kalyanasundaram\\
   \- \\ 
-  CNRS / INRIA Saclay -- \^{I}le-de-France}
+  CNRS / INRIA Saclay -- \^{I}le-de-France
+\\
+\vspace{0.5cm}
+TFP 2011, Madrid, Spain
+}
+
+
+\bigskip
 \date {}
 
 
@@ -99,6 +106,14 @@
   \item User-friendly API
   \item In our favorite programming language (OCaml)
   \end{itemize}
+
+
+\bigskip
+Also
+  \begin{itemize}
+  \item General purpose library
+  \item Portability
+  \end{itemize}
 \end{frame}
 
 %% -------------------------------------------------------------------- %%
@@ -120,8 +135,6 @@ Inspired by Google's Map/Reduce (OSDI 2004)
 %% -------------------------------------------------------------------- %%
 
 \begin{frame}\frametitle{Outline}
-  \begin{columns}
-    \column{0.8\textwidth}
     \begin{itemize}
     \item API
       \begin{itemize}
@@ -136,18 +149,15 @@ Inspired by Google's Map/Reduce (OSDI 2004)
       \begin{itemize}
       \item Sequential
       \item Cores
-      \item Network
+      \item Network (3 flavours)
       \end{itemize}
+
+
+\bigskip
+    \item Many libraries in one
+
     \end{itemize}
 
-    \column{0.2\textwidth}
-  \begin{tabular}{|p{0.2em}|p{0.2em}|p{0.2em}|}
-    \hline
-    && \\\hline
-    && \\\hline
-    && \\\hline
-  \end{tabular}
-\end{columns}
 \end{frame}
 
 %% -------------------------------------------------------------------- %%
@@ -324,7 +334,7 @@ Inspired by Google's Map/Reduce (OSDI 2004)
 {\definecolor{tmpcolor}{rgb}{0.80,0.80,1.00}\colorbox{tmpcolor}{\begin{minipage}{\textwidth}\ttfamily\parindent 0pt
 
 \noindent\hspace*{1.00em}{\color{blue}open}\hspace*{1.22ex}Cores~\linebreak
-\noindent\hspace*{1.00em}{\color{blue}let}\hspace*{1.22ex}()\hspace*{1.22ex}=\hspace*{1.22ex}set\_{}number\_{}of\_{}cores\hspace*{1.22ex}4
+\noindent\hspace*{1.00em}{\color{blue}let}\hspace*{1.22ex}()\hspace*{1.22ex}=\hspace*{1.22ex}set\_{}number\_{}of\_{}cores\hspace*{1.22ex}3
 \end{minipage}}}
 
 
@@ -437,7 +447,7 @@ Inspired by Google's Map/Reduce (OSDI 2004)
 
 %% -------------------------------------------------------------------- %%
 
-\begin{frame}\frametitle {Underneath: Protocol}
+\begin{frame}\frametitle {Protocol}
   \only<1>{Master sends a task to a worker}
   \only<2>{Worker computes and sends back a result}
   \only<3-4>{Master and workers exchange \emph{ping}/\emph{pong} messages}
@@ -470,8 +480,8 @@ Inspired by Google's Map/Reduce (OSDI 2004)
     \only<6>{\textsf{}} % disconnection
     \only<7>{\textsf{Assign(43,\hspace*{1.22ex}f,\hspace*{1.22ex}a)}}
     \only<8>{\textsf{Completed\hspace*{1.22ex}(43,\hspace*{1.22ex}b)}}
-    \only<9>{\textsf{Kill\hspace*{1.22ex}43}}
-    \only<10>{\textsf{Aborted\hspace*{1.22ex}44}}
+    \only<9>{\textsf{Kill\hspace*{1.22ex}42}}
+    \only<10>{\textsf{Aborted\hspace*{1.22ex}42}}
     \only<11>{\textsf{Stop}}
   \end{center}
 \end{frame}
@@ -487,6 +497,9 @@ Master knows the state of each worker through ping/pong messages
     \includegraphics{state.mps}
   \end{center}
 
+  \begin{itemize}
+  \item Time-out values for deciding the status of the worker
+  \end{itemize}
   
 \end{frame}
 
@@ -517,10 +530,10 @@ Master knows the state of each worker through ping/pong messages
 \begin{frame}\frametitle {Related Work}
   Distributed Functional Languages (DFL)
   \begin{itemize}
-  \item Jo\&Caml - rich communication primitives, no easy features
+  \item Jo\&Caml - rich communication primitives, no primitive features
     for fault-tolerance
-  \item ML5 - code mobility, marshalling, etc, but no
-    easy features for fault-tolerance
+  \item ML5 - code mobility, type-safe marshalling, etc, but no
+    primitive features for fault-tolerance
   \item Glasgow Distributed Haskell - features for fault-tolerance,
     error detection/recovery
   \end{itemize}
@@ -545,11 +558,23 @@ Master knows the state of each worker through ping/pong messages
 
 %% -------------------------------------------------------------------- %%
 
-\begin{frame}\frametitle {What's next}
+\begin{frame}\frametitle {Future Work}
   \begin{itemize}
-  \item User-controlled scheduling
-  \item Real-time visualization --- OcamlViz?
-  \item Any gains from Plasma-FS --- data locality?
+  \item More user control
+    \begin{itemize}
+    \item Scheduling of tasks, etc
+    \end{itemize}
+
+
+\bigskip
+  \item Real-time visualization 
+    \begin{itemize}
+    \item Resource consumption, task distribution patterns, etc.
+    \end{itemize}
+
+
+\bigskip
+  \item Speeding up using idle workers
   \end{itemize}
 \end{frame}
 
