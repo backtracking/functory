@@ -25,6 +25,10 @@ Installation
 
 	sudo make install
 
+If you are using ocamlfind, you can also want to run
+
+        sudo make ocamlfind-install
+
 
 Usage
 =====
