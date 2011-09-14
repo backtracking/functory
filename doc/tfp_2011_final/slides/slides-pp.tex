@@ -1,0 +1,606 @@
+% \documentclass[xcolor=dvipsnames]{beamer}
+% % \documentclass[handout]{beamer}
+% \usecolortheme[named=Maroon]{structure} 
+% \usetheme{Boadilla}
+% \setbeamertemplate{beaver}
+\documentclass[xcolor=dvipsnames]{beamer} 
+\usecolortheme[named=MidnightBlue]{structure} 
+\usetheme[height=7mm]{Rochester} 
+\usepackage{fontenc}
+\renewcommand*\familydefault{\sfdefault}
+\usepackage{times}
+% \usepackage[latin1]{inputenc}
+\usepackage{alltt}
+\renewcommand{\iff}{\leftrightarrow}
+\newcommand{\tr}{\textcolor{red}}
+\newcommand{\tb}{\textcolor{MidnightBlue}}
+\newcommand{\intt}{\textcolor{blue}{\textbf{int }}}
+\newcommand{\while}{\textcolor{blue}{\textbf{while }}}
+\newcommand{\ret}{\textcolor{blue}{\textbf{return }}}
+\newcommand{\asrt}{\textcolor{blue}{\textbf{//@assert }}}
+\newcommand{\ts}[1]{\scriptsize{#1}}
+\newcommand{\hl}[1]{\colorbox{yellow}{#1}}
+%\usepackage[french]{babel}
+
+\beamertemplatenavigationsymbolsempty
+
+
+\bigskip
+\definecolor{MyGray}{rgb}{0.86,0.87,0.98}
+\makeatletter\newenvironment{bbox}{%
+   \begin{lrbox}
+     {\@tempboxa}\begin{minipage}
+       {\columnwidth}}
+     {\end{minipage}
+   \end{lrbox}%
+   \colorbox{MyGray}{\usebox{\@tempboxa}}
+}\makeatother
+% \definecolor{MyGray}{rgb}{0.96,0.97,0.98}
+
+
+\definecolor{kwblue}{rgb}{0.67,0.12,0.92}
+\definecolor{ceruleanblue}{rgb}{0, 0.48, 0.65}
+\definecolor{lightpink}{rgb}{1., 0.71, 0.75}
+\definecolor{lightblue}{rgb}{0.8,0.8,1}
+\definecolor{lightred}{rgb}{1,0.8,0.8}
+
+\let\emph\alert
+\newcommand{\coeurs}{c\oe urs}
+
+\begin{document}
+
+%% -------------------------------------------------------------------- %%
+
+\title{FUNCTORY \\ A Distributed Computing Library \\ for Objective Caml}
+
+\author[Kalyan]{Jean-Christophe Filli\^{a}tre \& K. Kalyanasundaram\\
+  \- \\ 
+  CNRS / INRIA Saclay -- \^{I}le-de-France
+\\
+\vspace{0.5cm}
+TFP 2011, Madrid, Spain
+}
+
+
+\bigskip
+\date {}
+
+
+\bigskip
+\begin{frame}
+  \titlepage
+  \begin{center}
+    \includegraphics[scale=0.11]{cnrs-logo2.jpg}
+    \hspace{4mm}
+    \includegraphics[scale=0.09]{lrilogo.jpg}
+    \hspace{4mm}
+    \includegraphics[scale=0.09]{upsudlogo.jpg}
+    \hspace{4mm}
+    \includegraphics[scale=0.4]{inria-saclay.jpeg}
+    % \pgfimage[height=6mm]{saclay}
+  \end{center}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Motivation}
+  \begin{itemize}
+  \item In our team, we do deductive program verification
+  \item Generates numerous verification conditions
+  \item Discharged by various automated provers
+  \item Typically takes \emph{hours} to complete
+  \end{itemize}
+  \vspace{1cm}
+  \begin{itemize}
+  \item Some multi-core machines at our disposal
+  \item How to make the best possible use of them?
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {A Distributed Computing Library}
+  Requirements
+  \begin{itemize}
+  \item Fault-tolerance
+  \item User-friendly API
+  \item In our favorite programming language (OCaml)
+  \end{itemize}
+
+
+\bigskip
+Also
+  \begin{itemize}
+  \item General purpose library
+  \item Portability
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Basic Design}
+
+Inspired by Google's Map/Reduce (OSDI 2004)
+
+\begin{itemize}
+\item Workers in parallel
+\item Master
+\end{itemize}
+
+\begin{center}
+  \includegraphics{master_workers_1.mps}  
+\end{center}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Outline}
+    \begin{itemize}
+    \item API
+      \begin{itemize}
+      \item general-purpose \texttt{compute} function
+      \item high-level: map/fold operations
+      \item low-level: micro-step computations
+      \end{itemize}
+
+
+\bigskip
+    \item Deployment Scenarios
+      \begin{itemize}
+      \item Sequential
+      \item Cores
+      \item Network (3 flavours)
+      \end{itemize}
+
+
+\bigskip
+    \item Many libraries in one
+
+    \end{itemize}
+
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{A General-Purpose \texttt{compute} Function}
+  
+
+\medskip\noindent
+{\definecolor{tmpcolor}{rgb}{0.80,0.80,1.00}\colorbox{tmpcolor}{\begin{minipage}{\textwidth}\ttfamily\parindent 0pt
+
+\noindent\hspace*{2.00em}{\color{blue}val}\hspace*{1.22ex}compute\hspace*{1.22ex}\symbol{58}\hspace*{1.22ex}~\linebreak
+\noindent\hspace*{2.00em}worker\symbol{58}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta})\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}~\linebreak
+\noindent\hspace*{2.00em}master\symbol{58}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma})\hspace*{1.22ex}list)\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}~\linebreak
+\noindent\hspace*{2.00em}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma})\hspace*{1.22ex}list\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}~\linebreak
+\noindent\hspace*{2.00em}unit
+\end{minipage}}}
+
+
+\medskip\noindent
+  \begin{itemize}
+  \item A task is of type \textsf{\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma}}, its result of type
+    \textsf{\ensuremath{\beta}}
+  \item A completed task may in turn generate new tasks
+  \item \texttt{compute} returns when there is no more task
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {High-Level API}
+  \begin{itemize}
+  \item most common map/fold operations over lists
+  \end{itemize}
+  
+
+\medskip\noindent
+{\definecolor{tmpcolor}{rgb}{0.80,0.80,1.00}\colorbox{tmpcolor}{\begin{minipage}{\textwidth}\ttfamily\parindent 0pt
+
+\noindent\hspace*{0.00em}{\color{blue}val}\hspace*{1.22ex}map\symbol{58}\hspace*{1.22ex}f\symbol{58}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta})\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\alpha}\hspace*{1.22ex}list\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta}\hspace*{1.22ex}list~\linebreak
+\noindent\hspace*{0.00em}{\color{blue}val}\hspace*{1.22ex}map\_{}fold\symbol{58}\hspace*{1.22ex}f\symbol{58}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta})\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}~\linebreak
+\noindent\hspace*{7.00em}fold\symbol{58}(\ensuremath{\gamma}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\gamma})\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\gamma}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\alpha}\hspace*{1.22ex}list\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\gamma}
+\end{minipage}}}
+
+
+\medskip\noindent
+  \begin{itemize}
+  \item \texttt{f} operations always in parallel
+  \item Two flavours: \texttt{map\_local\_fold} and
+    \texttt{map\_remote\_fold}
+  \item More parallelism when fold is associative and commutative
+  \end{itemize}
+  
+
+\medskip\noindent
+{\definecolor{tmpcolor}{rgb}{0.80,0.80,1.00}\colorbox{tmpcolor}{\begin{minipage}{\textwidth}\ttfamily\parindent 0pt
+
+\noindent\hspace*{0.00em}{\color{blue}val}\hspace*{1.22ex}map\_{}fold\_{}ac,\hspace*{1.22ex}map\_{}fold\_{}a\symbol{58}~\linebreak
+\noindent\hspace*{1.00em}f\symbol{58}\hspace*{1.22ex}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta})\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}~\linebreak
+\noindent\hspace*{1.00em}fold\symbol{58}\hspace*{1.22ex}(\ensuremath{\beta}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta})\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\alpha}\hspace*{1.22ex}list\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta}
+\end{minipage}}}
+
+
+\medskip\noindent
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Low-Level API}
+  \begin{itemize}
+  \item User can interact with the execution of the distributed
+    computation
+
+
+\bigskip
+  \item Examples:
+    \begin{itemize}
+    \item Monitoring applications: observation of consumption of
+      resources, etc
+    \item Interactive programs
+    \end{itemize}
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Low-Level API}
+\begin{itemize}
+\item \textsf{{\color{blue}type}\hspace*{1.22ex}(\ensuremath{\alpha},\hspace*{1.22ex}\ensuremath{\gamma})\hspace*{1.22ex}computation}
+\item creation
+\end{itemize}
+  
+
+\medskip\noindent
+{\definecolor{tmpcolor}{rgb}{0.80,0.80,1.00}\colorbox{tmpcolor}{\begin{minipage}{\textwidth}\ttfamily\parindent 0pt
+
+\noindent\hspace*{0.00em}{\color{blue}val}\hspace*{1.22ex}create\symbol{58}\hspace*{1.22ex}worker\symbol{58}\hspace*{1.22ex}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta})\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}~\linebreak
+\noindent\hspace*{7.00em}master\symbol{58}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma})list)\hspace*{1.22ex}\ensuremath{\rightarrow}~\linebreak
+\noindent\hspace*{7.00em}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma})\hspace*{1.22ex}computation
+\end{minipage}}}
+
+
+\medskip\noindent
+  \begin{itemize}
+  \item adding new tasks
+  \end{itemize}
+  
+
+\medskip\noindent
+{\definecolor{tmpcolor}{rgb}{0.80,0.80,1.00}\colorbox{tmpcolor}{\begin{minipage}{\textwidth}\ttfamily\parindent 0pt
+
+\noindent\hspace*{0.00em}{\color{blue}val}\hspace*{1.22ex}add\_{}task\symbol{58}\hspace*{1.22ex}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma})\hspace*{1.22ex}computation\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}unit
+\end{minipage}}}
+
+
+\medskip\noindent
+  \begin{itemize}
+  \item performing one step of the computation
+  \end{itemize}
+
+
+\medskip\noindent
+{\definecolor{tmpcolor}{rgb}{0.80,0.80,1.00}\colorbox{tmpcolor}{\begin{minipage}{\textwidth}\ttfamily\parindent 0pt
+
+\noindent\hspace*{0.00em}{\color{blue}val}\hspace*{1.22ex}one\_{}step\symbol{58}\hspace*{1.22ex}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma})\hspace*{1.22ex}computation\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}unit
+\end{minipage}}}
+
+
+\medskip\noindent
+\begin{itemize}
+\item etc.
+\end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle{Outline}
+    \begin{itemize}
+    \item API
+      \begin{itemize}
+      \item general-purpose \texttt{compute} function
+      \item high-level: map/fold operations
+      \item low-level: micro-step computations
+      \end{itemize}
+
+
+\bigskip
+    \item \emph{Deployment Scenarios}
+      \begin{itemize}
+      \item Sequential
+      \item Cores
+      \item Network
+      \end{itemize}
+    \end{itemize}
+
+\end{frame}
+% \begin{frame}\frametitle {Deployment Scenarios}
+%   \begin{itemize}
+%   \item Purely sequential execution: for debugging and comparison
+%     purposes
+%   \item Several cores on the same machine
+%   \item Computation distributed over a network of machines
+%   \end{itemize}
+  
+% \end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Cores Implementation}
+  Uses \texttt{Unix.fork} (no control over scheduling)
+
+  
+
+\medskip\noindent
+{\definecolor{tmpcolor}{rgb}{0.80,0.80,1.00}\colorbox{tmpcolor}{\begin{minipage}{\textwidth}\ttfamily\parindent 0pt
+
+\noindent\hspace*{1.00em}{\color{blue}open}\hspace*{1.22ex}Cores~\linebreak
+\noindent\hspace*{1.00em}{\color{blue}let}\hspace*{1.22ex}()\hspace*{1.22ex}=\hspace*{1.22ex}set\_{}number\_{}of\_{}cores\hspace*{1.22ex}3
+\end{minipage}}}
+
+
+\medskip\noindent
+
+  \begin{center}
+    \includegraphics{master_workers_cores.mps}
+  \end{center}
+
+  master maintains a queue of pending tasks
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+
+\begin{frame}\frametitle {Network Implementation}
+  based on
+  \begin{itemize}
+  \item TCP/IP client/server architecture
+  \item Ocaml's marshaling capabilities
+  \end{itemize}
+  
+  \vfill
+  marshaling considerations
+  \begin{enumerate}
+  \item \emph{same binary}: we can marshal closures
+  \item \emph{same version of Ocaml}: we can only marshal values
+  \item \emph{otherwise}: we can only marshal strings
+  \end{enumerate}
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Three Implementations of Network}
+  
+\emph{Same binary}
+
+
+\medskip\noindent
+{\definecolor{tmpcolor}{rgb}{0.80,0.80,1.00}\colorbox{tmpcolor}{\begin{minipage}{\textwidth}\ttfamily\parindent 0pt
+
+\noindent\hspace*{0.00em}{\color{blue}val}\hspace*{1.22ex}compute\hspace*{1.22ex}\symbol{58}\hspace*{1.22ex}{\color{red}(*\hspace*{1.22ex}same\hspace*{1.22ex}as\hspace*{1.22ex}before\hspace*{1.22ex}*)}\hspace*{1.22ex}...
+\end{minipage}}}
+
+
+\medskip\noindent
+
+
+
+\bigskip
+\emph{Same version of Caml}
+    
+
+\medskip\noindent
+{\definecolor{tmpcolor}{rgb}{0.80,0.80,1.00}\colorbox{tmpcolor}{\begin{minipage}{\textwidth}\ttfamily\parindent 0pt
+
+\noindent\hspace*{0.00em}{\color{blue}val}\hspace*{1.22ex}Worker.compute\hspace*{1.22ex}\symbol{58}\hspace*{1.22ex}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta})\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}unit~\linebreak
+\noindent\hspace*{0.00em}{\color{blue}val}\hspace*{1.22ex}Master.compute\hspace*{1.22ex}\symbol{58}\hspace*{1.22ex}~\linebreak
+\noindent\hspace*{1.00em}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}\ensuremath{\beta}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma})\hspace*{1.22ex}list)\hspace*{1.22ex}\ensuremath{\rightarrow}~\linebreak
+\noindent\hspace*{1.00em}(\ensuremath{\alpha}\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma})\hspace*{1.22ex}list\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}unit
+\end{minipage}}}
+
+
+\medskip\noindent
+
+
+
+\bigskip
+\emph{Otherwise}
+    
+
+\medskip\noindent
+{\definecolor{tmpcolor}{rgb}{0.80,0.80,1.00}\colorbox{tmpcolor}{\begin{minipage}{\textwidth}\ttfamily\parindent 0pt
+
+\noindent\hspace*{0.00em}{\color{blue}val}\hspace*{1.22ex}Worker.compute\hspace*{1.22ex}\symbol{58}\hspace*{1.22ex}(string\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}string)\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}unit~\linebreak
+\noindent\hspace*{0.00em}{\color{blue}val}\hspace*{1.22ex}Master.compute\hspace*{1.22ex}\symbol{58}\hspace*{1.22ex}~\linebreak
+\noindent\hspace*{1.00em}(string\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma}\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}string\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}(string\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma})\hspace*{1.22ex}list)\hspace*{1.22ex}\ensuremath{\rightarrow}~\linebreak
+\noindent\hspace*{1.00em}(string\hspace*{1.22ex}\ensuremath{\times}\hspace*{1.22ex}\ensuremath{\gamma})\hspace*{1.22ex}list\hspace*{1.22ex}\ensuremath{\rightarrow}\hspace*{1.22ex}unit
+\end{minipage}}}
+
+
+\medskip\noindent
+
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Network Implementation Details}
+  
+
+\medskip\noindent
+{\definecolor{tmpcolor}{rgb}{0.80,0.80,1.00}\colorbox{tmpcolor}{\begin{minipage}{\textwidth}\ttfamily\parindent 0pt
+
+\noindent\hspace*{1.00em}{\color{blue}open}\hspace*{1.22ex}Network~\linebreak
+\noindent\hspace*{1.00em}{\color{blue}let}\hspace*{1.22ex}()\hspace*{1.22ex}=\hspace*{1.22ex}declare\_{}workers\hspace*{1.22ex}\symbol{126}n\symbol{58}3\hspace*{1.22ex}"moloch"~\linebreak
+\noindent\hspace*{1.00em}{\color{blue}let}\hspace*{1.22ex}()\hspace*{1.22ex}=\hspace*{1.22ex}declare\_{}workers\hspace*{1.22ex}\symbol{126}n\symbol{58}2\hspace*{1.22ex}"orcus"
+\end{minipage}}}
+
+
+\medskip\noindent
+
+  \begin{center}
+    \includegraphics{master_workers_network.mps}
+  \end{center}
+  Each worker behaves as a server, the master being the client
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Protocol}
+  \only<1>{Master sends a task to a worker}
+  \only<2>{Worker computes and sends back a result}
+  \only<3-4>{Master and workers exchange \emph{ping}/\emph{pong} messages}
+  \only<5>{Master sends another task to a worker}
+  \only<6>{In case of a disconnection...}
+  \only<7>{The task is \emph{rescheduled} to another worker}
+  \only<8>{Whenever one completes...}
+  \only<9>{The other one is stopped}
+  \only<10>{The master is notified when a computation fails}
+  \only<11>{At the very end, the master may ask the workers to stop}
+  \vfill
+  \begin{center}
+    \only<1,5>{\includegraphics{master_workers_assign.mps}}
+    \only<2>{\includegraphics{master_workers_completed.mps}}
+    \only<3>{\includegraphics{master_workers_ping.mps}}
+    \only<4>{\includegraphics{master_workers_pong.mps}}
+    \only<6>{\includegraphics{master_workers_disconnection.mps}}
+    \only<7>{\includegraphics{master_workers_assign_2.mps}}
+    \only<8>{\includegraphics{master_workers_completed_2.mps}}
+    \only<9>{\includegraphics{master_workers_kill.mps}}
+    \only<10>{\includegraphics{master_workers_aborted.mps}}
+    \only<11>{\includegraphics{master_workers_stop.mps}}
+  \end{center}
+  \begin{center}
+    \only<1>{\textsf{Assign(42,\hspace*{1.22ex}f,\hspace*{1.22ex}a)}}
+    \only<2>{\textsf{Completed\hspace*{1.22ex}(42,\hspace*{1.22ex}b)}}
+    \only<3>{\textsf{Ping}}
+    \only<4>{\textsf{Pong}}
+    \only<5>{\textsf{Assign(43,\hspace*{1.22ex}f,\hspace*{1.22ex}a)}}
+    \only<6>{\textsf{}} % disconnection
+    \only<7>{\textsf{Assign(43,\hspace*{1.22ex}f,\hspace*{1.22ex}a)}}
+    \only<8>{\textsf{Completed\hspace*{1.22ex}(43,\hspace*{1.22ex}b)}}
+    \only<9>{\textsf{Kill\hspace*{1.22ex}42}}
+    \only<10>{\textsf{Aborted\hspace*{1.22ex}42}}
+    \only<11>{\textsf{Stop}}
+  \end{center}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+
+\begin{frame}\frametitle {Fault Tolerance}
+
+Master knows the state of each worker through ping/pong messages
+
+  \begin{center}
+    \includegraphics{state.mps}
+  \end{center}
+
+  \begin{itemize}
+  \item Time-out values for deciding the status of the worker
+  \end{itemize}
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+
+\begin{frame}\frametitle {Experimental Results}
+  Motivating example
+  \begin{itemize}
+  \item 80 verification conditions / 4 provers = 320 tasks
+  \item network of 3 machines (4, 8 and 8 cores)
+  \end{itemize}
+
+  \begin{itemize}
+  \item sequential computation: \emph{$>$ 6 hours}
+  \item with Functory: \emph{22.5 minutes}
+  \item speedup ratio = \emph{16} (optimal is 20)
+  \end{itemize}
+
+
+\bigskip
+  More experimental results in the paper: \par N-queens, Mandelbrot set,
+  matrix multiplication
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Related Work}
+  Distributed Functional Languages (DFL)
+  \begin{itemize}
+  \item Jo\&Caml - rich communication primitives, no primitive features
+    for fault-tolerance
+  \item ML5 - code mobility, type-safe marshalling, etc, but no
+    primitive features for fault-tolerance
+  \item Glasgow Distributed Haskell - features for fault-tolerance,
+    error detection/recovery
+  \end{itemize}
+
+
+\bigskip
+  Libraries for existing functional languages --- like Functory
+  \begin{itemize}
+  \item Plasma MR - OCaml implementation of Map/Reduce
+  \item iTask - Clean library for distributed workflow management
+  \end{itemize}
+
+% Our library could be implemented using any of the DFLs, but our goals
+% are:
+% \begin{itemize}
+% \item Provide users of an existing language, user-friendly APIs
+% \item Provide robust fault-tolerance mechanism 
+% \item Relieve the users from coding messy details
+% \end{itemize}
+  
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Future Work}
+  \begin{itemize}
+  \item More user control
+    \begin{itemize}
+    \item Scheduling of tasks, etc
+    \end{itemize}
+
+
+\bigskip
+  \item Real-time visualization 
+    \begin{itemize}
+    \item Resource consumption, task distribution patterns, etc.
+    \end{itemize}
+
+
+\bigskip
+  \item Speeding up using idle workers
+  \end{itemize}
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+
+\begin{frame}\frametitle {Thanks}
+
+
+\bigskip
+Check out:
+\begin{center}
+ \textcolor{blue}{\url{http://functory.lri.fr/}}  
+\end{center}
+
+Feedback, comments welcome!
+
+\end{frame}
+
+%% -------------------------------------------------------------------- %%
+\end{document}
+
+
+
+\bigskip\bigskip
+%%% Local Variables: 
+%%% mode: latex
+%%% TeX-master: t
+%%% End: 
+
