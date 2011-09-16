@@ -17,6 +17,7 @@
 %-----------------------------------------------------------------------------
 
 % \documentclass[tfpsymp,pagenumbers]{tfp07symp}
+
 \documentclass{llncs}
 
 % The following \documentclass options may be useful:
@@ -29,7 +30,7 @@
 
 \newcommand{\Ocaml}{OCaml}
 \newcommand{\functory}{\textsf{Functory}}
-\newcommand{\JoCaml}{Jo{\&\!}Caml}
+%\newcommand{\JoCaml}{Jo{\&\!}Caml}
 \newcommand{\unix}{\textsc{Unix}}
 
 \begin{document}
@@ -234,7 +235,7 @@ broadly classify the related work in this domain into:
 \begin{enumerate}
 \item \textit{Distributed Functional Languages (DFLs)} --- functional
   languages that provide built-in primitives for
-  distribution. Examples include ML5, \JoCaml\, Glasgow Distributed
+  distribution. Examples include ML5, JoCaml, Glasgow Distributed
   Haskell, Erlang, etc.
 \item \textit{Libraries for existing functional languages} --- that
   could be readily used in order to avoid implementing details like
@@ -244,12 +245,12 @@ broadly classify the related work in this domain into:
 For reasons of completeness, though, we first describe some existing DFLs
 related to functional programming.
 
-\JoCaml\ is one of the DFLs which provides communication primitives
+JoCaml is one of the DFLs which provides communication primitives
 (like channels) for facilitating transmission of
 computations. However, it does not provide ready-made language
 features for fault-tolerance, which is indispensable in a distributed
 setting. The user has to include code for fault-tolerance, as already
-demonstrated in some \JoCaml\
+demonstrated in some JoCaml
 library~\cite{mandel2008}. ML5~\cite{ML5}, a variant of ML, is a
 programming language for distributed computing, specialized for web
 programming. It provides primitives for transferring control between
@@ -325,7 +326,7 @@ The iTask system~\cite{iTask} is a library for the functional language
 provides a set of combinators (some of which perform map/fold
 operations) that facilitate applications running in different nodes
 of a distributed system to communicate, exchange information and
-coordinate their computations.
+coordinate their computations in a type-safe manner.
 
 \begin{comment}
 Closest to the approach in this paper is Yohann Padioleau's MapReduce
@@ -336,10 +337,10 @@ w.r.t. deployment of the user program than OCamlMPI; on the other
 hand, we provide a 
 more generic API together with fault-tolerance.  There are other
 distributed computing libraries on top of which one could implement
-the library discussed in this paper. \JoCaml~\cite{jocaml} is one of
-them. However, \JoCaml\ does not provide fault-tolerance, which is
+the library discussed in this paper. JoCaml~\cite{jocaml} is one of
+them. However, JoCaml does not provide fault-tolerance, which is
 indispensable in a distributed setting. The user has to include code
-for fault-tolerance, as already demonstrated in some \JoCaml\
+for fault-tolerance, as already demonstrated in some JoCaml
 experiments~\cite{mandel2008}. 
 
 There are other implementations of distributed computing in the
@@ -591,7 +592,7 @@ let compute ~worker ~master tasks =
 
 \subsection{High-level API}\label{sec:derived}
 
-In most cases, the easiest way to parallelize an execution it to make
+In most cases, the easiest way to parallelize an execution is to make
 use of operations over lists, where processing of the
 list elements are done in parallel. 
 To facilitate such a processing,
@@ -637,7 +638,7 @@ with types
     f:('a -> 'b) -> fold:('b -> 'b -> 'b) -> 'b -> 'a list -> 'b 
 \end{ocaml}
 It is rather straightforward to derive these five functions from the
-generic \of{compute} function; readers interested in details could
+generic \of{compute} function; we invite readers interested in details to
 refer to the source code.
 
 \subsection{Deployment Scenarios}
@@ -758,9 +759,9 @@ rather focus on the more interesting module \of{Network}.
 \subsection{Marshaling}
 
   As mentioned in Section~\ref{sec:API}, the \of{Network} module
-  actually provides three different implementations, according to
-  three different execution scenarios. There are provided in three
-  sub-modules, as described below.
+  actually provides three different implementations as sub-modules, according to
+  three different execution scenarios, the details of which are
+  presented below:
 
   \paragraph{\of{Same}.} This module is used when master and workers
   are running the same executable. The master and workers have to be
@@ -774,8 +775,7 @@ rather focus on the more interesting module \of{Network}.
   val compute: worker:('a -> 'b) -> 
     master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
   \end{ocaml}
-  The master uses marshalling to send both a closure of type \of{'a ->
-    'b} and a task of type \of{'a} to the worker. The resulting
+  The master uses marshalling to send both a closure of type \of{'a -> 'b} and a task of type \of{'a} to the worker. The resulting
   strings are passed as argument \of{f} and \of{x} in message
   \of{Assign}. Similarly, the worker uses marshalling to send back the
   result of the computation of type \of{'b}, which is the argument
@@ -1029,7 +1029,7 @@ distribution, in sub-directory \texttt{tests/}.
 The purpose of the following experiments is to compare the various
 deployments, namely sequential, cores and network.
 For this comparison to be fair, all
-computations are performed on the same machine, a 8 core Intel Xeon
+computations are performed on the same machine, an 8 core Intel Xeon
 3.2 GHz running Debian Linux. The sequential implementation uses a
 single core. The multi-core implementation uses up to 8 cores of
 the machine. The network implementation uses 8 workers running locally and
@@ -1047,7 +1047,7 @@ Distributing the computation is thus quite easy: we consider all
 possible ways to place queens on the first $D$ rows and then perform
 the subsequent search in parallel. Choosing $D=1$ will result in
 exactly $N$ tasks; choosing $D=2$ will result in $N^2-3N+2$ tasks; 
-greater values for $D$ would result in two many tasks.
+greater values for $D$ would result in too many tasks.
 
 % TODO: make a picture to illustrate positioning of 2 queens on the
 % first 2 rows
@@ -1119,7 +1119,7 @@ first one, called \of{mm1}, each task consists of the computation of a single
 coefficient of the resultant matrix. 
 In the second one, called \of{mm2}, each task consists of the
 computation of a whole row of the resultant matrix.
-As a consequence, the total number of tasks in
+As a consequence, the total number of tasks is
 $10,000$ for \of{mm1} and only $100$ for \of{mm2}.
 On the contrary, each task result for \of{mm1} is a single integer,
 while for \of{mm2} it is a row of 100 integers.
@@ -1307,7 +1307,7 @@ with lower left corner $(-1.1, 0.2)$ and upper right corner $(-0.8,
 0.4)$, as a $9,000\times6,000$ image. 
 %
 If the total number of tasks $\of{t} \ge 1$ is given as a
-parameter,  it is immediate to split the image into \of{t} sub-images,
+parameter,  it is straight forward to split the image into \of{t} sub-images,
 each of which is computed in parallel with and independently of the
 others. In our case, the image is split into horizontal slices.
 Each task is thus four floating-point numbers denoting the region
@@ -1350,7 +1350,7 @@ communications happen within the same machine and are thus cheaper.
 There are two significant differences with respect to the n-queens
 benchmark.  On one hand, the number of tasks can be controlled more
 easily than in the case of n-queens. We experimentally figured out the
-optimal number of tasks to be 30. One the other hand, each computation
+optimal number of tasks to be 30. On the other hand, each computation
 result is an image, rather than just an integer as in the case of
 n-queens. Consequently, communication costs are much greater. 
 In this particular experiment, the total size of the results
