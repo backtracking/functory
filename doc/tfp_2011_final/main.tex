@@ -68,7 +68,7 @@
 %    2.1 low level, compute, derived APIs
 %    2.2 five different implementations
 % 3. implementation
-%    3.1 marshalling
+%    3.1 marshaling
 %    3.2 protocol
 %    3.3 fault tolerance
 % 4. experiments
@@ -180,7 +180,7 @@ distribution of tasks. This is required to handle network failures
 that may occur, as well as to optimize the usage of machines in the
 network. Another concern of importance is the transmission of messages
 over the network. This requires efficient 
-\emph{marshalling} of data, that is encoding and decoding of data 
+\emph{marshaling} of data, that is encoding and decoding of data 
 for transmission over different computing environments.  It is desirable to
 maintain architecture independence while transmitting marshalled data,
 as machines in a distributed computing environment often run on
@@ -212,7 +212,7 @@ It may in turn generate new tasks, hence the return type
 \of{'a list}.  
 The master is executed as long as there are pending tasks.
 
-Our library makes use of \Ocaml's marshalling capabilities as much as
+Our library makes use of \Ocaml's marshaling capabilities as much as
 possible. Whenever master and worker executables are exactly the same,
 we can marshal polymorphic values and closures. However, it is not
 always possible to have master and workers running the same
@@ -255,14 +255,14 @@ library~\cite{mandel2008}. ML5~\cite{ML5}, a variant of ML, is a
 programming language for distributed computing, specialized for web
 programming. It provides primitives for transferring control between
 the client and the server, as well as low-level primitives for
-marshalling the data. As in the case before, ML5 is a programming
+marshaling the data. As in the case before, ML5 is a programming
 language that offers primitives for code mobility, and the code for
 distribution of computation and fault-tolerance has to be included by
-the user.  ML5 implements type-safe marshalling and
-\functory\ does not, though an existing type-safe marshalling library
+the user.  ML5 implements type-safe marshaling and
+\functory\ does not, though an existing type-safe marshaling library
 could be used with \functory. 
 % Basically, the task will be transmitted
-% along with the corresponding type and on unmarshalling, it could be
+% along with the corresponding type and on unmarshaling, it could be
 % matched for the correct type.
 Glasgow Distributed Haskell (GdH)~\cite{GdH} is a pure distributed
 functional language that is built on top of Glasgow Haskell and
@@ -674,7 +674,7 @@ computation over a network of machines.
 
 \item \textbf{Master and workers are different programs, not even
     compiled with the same version of \Ocaml:} we can no
-  longer use marshalling, so API functions are restricted to work on
+  longer use marshaling, so API functions are restricted to work on
   strings instead of polymorphic values.
 \end{enumerate}
 Our library is organized into three modules: \of{Sequential} for the
@@ -775,11 +775,12 @@ rather focus on the more interesting module \of{Network}.
   val compute: worker:('a -> 'b) -> 
     master:('a * 'c -> 'b -> ('a * 'c) list) -> ('a * 'c) list -> unit
   \end{ocaml}
-  The master uses marshalling to send both a closure of type \of{'a -> 'b} and a task of type \of{'a} to the worker. The resulting
+  The master uses marshaling to send both a closure of type \of{'a -> 'b} and a task of type \of{'a} to the worker. The resulting
   strings are passed as argument \of{f} and \of{x} in message
-  \of{Assign}. Similarly, the worker uses marshalling to send back the
+  \of{Assign}. Similarly, the worker uses marshaling to send back the
   result of the computation of type \of{'b}, which is the argument
-  \of{s} in message \of{Completed}.
+  \of{s} in message \of{Completed}. These messages are described in
+  detail in Section~\ref{sec:protocol}.
 
   Though the ability to run the same executable helps a lot in
   deploying the program in different machines, it comes at a small
@@ -817,7 +818,7 @@ rather focus on the more interesting module \of{Network}.
   \paragraph{\of{Poly}.} When master and workers are compiled with the
   same version of \Ocaml, we can no longer marshal closures but we can
   still marshal polymorphic values. Indeed, an interesting property of
-  marshalling in \Ocaml\ is to be fully architecture-independent, as
+  marshaling in \Ocaml\ is to be fully architecture-independent, as
   long as a single version of \Ocaml\ is used. It is worth pointing
   out that absence of marshaled closures now enables the use of two
   different programs for master and workers. This is not mandatory,
@@ -840,7 +841,7 @@ rather focus on the more interesting module \of{Network}.
   For realistic applications, where master and workers are completely
   different programs, possibly written by different teams, this is the
   module of choice in our library, since it can still pass polymorphic
-  values over the network. The issues of marshalling are automatically
+  values over the network. The issues of marshaling are automatically
   taken care of by the \Ocaml\ runtime.
 
   The derived API presented in Section~\ref{sec:derived} is adapted to
@@ -856,7 +857,7 @@ rather focus on the more interesting module \of{Network}.
   between master and workers.
 
   \paragraph{\of{Mono}.} When master and workers are compiled using
-  different versions of \Ocaml, we can no longer use marshalling.  As
+  different versions of \Ocaml, we can no longer use marshaling.  As
   in the previous case, we split \of{compute} into two functions, one
   for master and one for workers. In addition, values transmitted over
   the network can only be strings. The signature thus takes the
@@ -1407,7 +1408,10 @@ ratio of 20$\times$ (we are using 20 cores), since some provers are
 allocating a lot of memory and time spent in system calls is not
 accounted for in the total observed time. However, a ratio of
 16$\times$ is already a significant improvement for our day-to-day
-experiments. 
+experiments. Further a large parallelizable computation could be
+distributed by just adding 3-4 lines of code (to just specify the module
+to be used and the tasks) which is an important user-friendly feature
+of the library.
 
 \section{Conclusions and Future Work}\label{sec:future}
 
@@ -1427,7 +1431,9 @@ implementation details.  Yet another interesting feature of the
 library is the ability to add workers dynamically. \functory\
 also allows to cascade several distributed computations inside the
 same program.  Finally, the low-level API of \functory\ 
-can be used to write interactive programs.
+can be used to write interactive programs where one can adjust certain
+parameters in a GUI, like increasing or decreasing the number of
+workers, to observe the progress in computation, resource consumption, etc.
 
 \paragraph{Future Work.}
 There are still some interesting features that could be added to our
@@ -1480,5 +1486,5 @@ on early versions of the library and of this paper.
 \end{document}
 
 % LocalWords:  parallelize functor parameterized indices endianness monomorphic
-% LocalWords:  genericity executables OCamlMPI MapReduce marshalling functors
+% LocalWords:  genericity executables OCamlMPI MapReduce marshaling functors
 % LocalWords:  workflow combinators granularities
