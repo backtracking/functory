@@ -319,7 +319,10 @@ Padioleau's~\cite{poor-man-mapreduce}.  It is built on
 top of OCamlMPI~\cite{ocamlMPI}, while our approach uses a homemade
 protocol for message passing. Currently, we have less flexibility
 w.r.t. deployment of the user program than OCamlMPI; on the other
-hand, we provide a more generic API together with fault-tolerance.
+hand, we provide a more generic API together with fault-tolerance. We
+feel that an indispensible need for any distributed computing library
+is fault-tolerance, and using a homemade protocol enables us to
+tune our implementation to our needs of fault-tolerance.
 
 The iTask system~\cite{iTask} is a library for the functional language
 `Clean' targeted at distributed workflow management. The library
@@ -1400,6 +1403,7 @@ for each possible outcome.
     \\\hline
   \end{tabular}
 \end{center}
+
 These figures sum up to more than 6 hours if provers were executed
 sequentially. However, using our library and our 3-machine
 infrastructure, it completes in 22 minutes and 37 seconds, giving us a
@@ -1409,9 +1413,11 @@ allocating a lot of memory and time spent in system calls is not
 accounted for in the total observed time. However, a ratio of
 16$\times$ is already a significant improvement for our day-to-day
 experiments. Further a large parallelizable computation could be
-distributed by just adding 3-4 lines of code (to just specify the module
-to be used and the tasks) which is an important user-friendly feature
-of the library.
+distributed by just adding 3-4 lines of code (to just specify the
+module to be used and the tasks) which is an important user-friendly
+feature of the library. Further we assume files available over
+NFS. Intelligent distribution of data over a network is in itself an
+area of research which is beyond the scope of our work.
 
 \section{Conclusions and Future Work}\label{sec:future}
 
