@@ -1067,34 +1067,42 @@ The following table shows execution times for various values of $N$
 and our three different implementations: \of{Sequential}, \of{Cores}, and
 \of{Network}. The purpose of this experiment is to measure the speedup
 w.r.t. the sequential implementation.
-
 The first column shows the value of $N$.  The number of tasks is shown in
 second column.  Then the last three columns show execution times in
 seconds for the three implementations. The figures within brackets
 show the speedup w.r.t. sequential implementation.
-\begin{center}
-  \begin{tabular}{|r|r|r|r|r|r|}
-    \hline
-    N & D & \#tasks  & \of{Sequential}& \of{Cores}              & \of{Network} 
-    \\\hline\hline
-    16 &1&   16    &  15.2     &   2.04 (7.45$\times$) &  2.35  (6.47$\times$) 
-    \\\hline
-       &2&  210    &  15.2     &   2.01 (7.56$\times$) & 21.80  (0.69$\times$)
-    \\\hline
-    17 &1&   17    & 107.0     &  17.20 (6.22$\times$) & 16.20  (6.60$\times$)
-    \\\hline
-       &2&  240    & 107.0     &  14.00 (7.64$\times$) & 24.90  (4.30$\times$)
-    \\\hline
-    18 &1&   18    & 787.0     & 123.00 (6.40$\times$) & 125.00 (6.30$\times$)  
-    \\\hline
-       &2&  272    & 787.0     & 103.00 (7.64$\times$) & 124.00 (6.34$\times$)  
-    \\\hline
-    19 &1&   19    &6120.0     & 937.00 (6.53$\times$) & 940.00 (6.51$\times$)  
-    \\\hline
-       &2&  306    &6130.0     & 796.00 (7.70$\times$) & 819.00 (7.48$\times$)
-    \\\hline
-  \end{tabular}
-\end{center}
+  \begin{center}
+    \begin{tabular}{|r|r|r|r|r|r|}
+      \hline
+      N & D & \#tasks  & \of{Sequential}& \of{Cores}              & \of{Network} 
+      \\\hline\hline
+      16 &1&   16    &  15.2     &   2.04 (7.45$\times$) &  2.35  (6.47$\times$) 
+      \\\hline
+      &2&  210    &  15.2     &   2.01 (7.56$\times$) & 21.80  (0.69$\times$)
+      \\\hline
+      17 &1&   17    & 107.0     &  17.20 (6.22$\times$) & 16.20  (6.60$\times$)
+      \\\hline
+      &2&  240    & 107.0     &  14.00 (7.64$\times$) & 24.90  (4.30$\times$)
+      \\\hline
+      18 &1&   18    & 787.0     & 123.00 (6.40$\times$) & 125.00 (6.30$\times$)  
+      \\\hline
+      &2&  272    & 787.0     & 103.00 (7.64$\times$) & 124.00 (6.34$\times$)  
+      \\\hline
+      19 &1&   19    &6120.0     & 937.00 (6.53$\times$) & 940.00 (6.51$\times$)  
+      \\\hline
+      &2&  306    &6130.0     & 796.00 (7.70$\times$) & 819.00 (7.48$\times$)
+      \\\hline
+    \end{tabular}
+  \end{center}
+\begin{figure}[t]
+  \vspace*{-4em}
+  \begin{center}
+    \includegraphics[width=\textwidth]{chart1.pdf}
+  \end{center}
+  \vspace*{-5em}
+  \caption{Speedup ratios for the $N$-queens experiment.}
+\label{fig:queens}
+\end{figure}
 From the table above, it is clear that the \of{Cores} and \of{Network}
 implementations provide a significant speedup. As evident from the
 last row, the speedup is almost 8, which is also the number of
@@ -1481,8 +1489,10 @@ We intend to enrich our library with all above features.
 %\appendix
 
 \paragraph{Acknowledgments.}
-The authors are grateful to the ProVal team for support and comments
+We are grateful to the ProVal team for support and comments
 on early versions of the library and of this paper.
+We thank the anonymous reviewers for their helpful comments and
+suggestions.
 
 %\vfill\pagebreak
 %\bibliographystyle{plain}
