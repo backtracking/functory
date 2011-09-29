@@ -12,3 +12,10 @@ state.mps: figures.ml
 
 export: main-pp.pdf
 	cp main-pp.pdf ~/WWW/publis/tfp11.pdf
+
+paper5.zip: main-pp.tex state.mps
+	rm -rf paper5/
+	mkdir paper5/
+	cp main-pp.tex paper5/paper5.tex
+	cp state.mps signed-copyright-form.pdf paper5/
+	tar zcf $@ paper5/
