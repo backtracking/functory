@@ -1070,7 +1070,8 @@ w.r.t. the sequential implementation.
 The first column shows the value of $N$.  The number of tasks is shown in
 second column.  Then the last three columns show execution times in
 seconds for the three implementations. The figures within brackets
-show the speedup w.r.t. sequential implementation.
+show the speedup w.r.t. sequential implementation. Speedup ratios are
+also displayed in Fig.~\ref{fig:queens} (note the logarithmic scale).
   \begin{center}
     \begin{tabular}{|r|r|r|r|r|r|}
       \hline
@@ -1103,7 +1104,8 @@ show the speedup w.r.t. sequential implementation.
   \caption{Speedup ratios for the $N$-queens experiment.}
 \label{fig:queens}
 \end{figure}
-From the table above, it is clear that the \of{Cores} and \of{Network}
+From the table above and Fig.~\ref{fig:queens},
+it is clear that the \of{Cores} and \of{Network}
 implementations provide a significant speedup. As evident from the
 last row, the speedup is almost 8, which is also the number of
 cores we use.  It is also evident from the last column that the
