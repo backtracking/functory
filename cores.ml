@@ -25,16 +25,16 @@ let run
     (workers : 'worker list)
     (tasks : 'task list)
     = 
-  let todo = Stack.create () in
-  List.iter (fun t -> Stack.push t todo) tasks;
+  let todo = Queue.create () in
+  List.iter (fun t -> Queue.push t todo) tasks;
   let towait = ref 0 in
-  let idle = Stack.create () in
-  List.iter (fun w -> Stack.push w idle) workers;
-  while not (Stack.is_empty todo) || !towait > 0 do
+  let idle = Queue.create () in
+  List.iter (fun w -> Queue.push w idle) workers;
+  while not (Queue.is_empty todo) || !towait > 0 do
     (* if possible, start new workers *)
-    while not (Stack.is_empty idle) && not (Stack.is_empty todo) do
-      let t = Stack.pop todo in
-      let w = Stack.pop idle in
+    while not (Queue.is_empty idle) && not (Queue.is_empty todo) do
+      let t = Queue.pop todo in
+      let w = Queue.pop idle in
       create_job w t;
       incr towait
     done;
@@ -42,10 +42,10 @@ let run
     (* otherwise, wait for results *)
     let w, tl = wait () in
     decr towait;
-    Stack.push w idle;
-    List.iter (fun t -> Stack.push t todo) tl
+    Queue.push w idle;
+    List.iter (fun t -> Queue.push t todo) tl
   done;
-  assert (Stack.is_empty todo && !towait = 0)
+  assert (Queue.is_empty todo && !towait = 0)
 
 let ncores = ref 1
 let set_number_of_cores n = ncores := n
@@ -102,12 +102,16 @@ let compute
         Format.eprintf "master: ** PID %d killed or stopped! **@." p;
         exit 1
   in
-  run
-    ~create_job:(fun w t ->
-		   let j = create_worker w worker t in
-		   dprintf "master: started worker %d (PID %d)@." w j.pid;
-		   Hashtbl.add jobs j.pid j)
-    ~wait (workers ()) tasks
+  try
+    run
+      ~create_job:(fun w t ->
+	let j = create_worker w worker t in
+	dprintf "master: started worker %d (PID %d)@." w j.pid;
+	Hashtbl.add jobs j.pid j)
+      ~wait (workers ()) tasks
+  with e ->
+    Hashtbl.iter (fun p _ -> try Unix.kill p Sys.sigkill with _ -> ()) jobs;
+    raise e
 
 (*** using pipes***** ***************************************************)
 

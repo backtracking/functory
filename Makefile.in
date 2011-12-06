@@ -117,7 +117,7 @@ test.byte: $(CMA) $(TCMO)
 test.opt: $(CMXA) $(TCMX)
 	$(OCAMLOPT) $(INCLUDES) -o $@ unix.cmxa $^
 
-VERSION=0.4
+VERSION=0.5
 
 version.ml: Makefile
 	echo "let version = \""$(VERSION)"\"" > version.ml

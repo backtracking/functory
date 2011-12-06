@@ -1,4 +1,6 @@
 
+ o Cores: if master raises an exception e, then compute kills the
+   unterminated jobs and raises the same exception e
  o META file contributed by François Berenger (berenger@riken.jp)
 
 version 0.4, April 4, 2011
