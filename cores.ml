@@ -100,7 +100,7 @@ let compute
 	end
     | p, _ ->
         Format.eprintf "master: ** PID %d killed or stopped! **@." p;
-        exit 1
+        wait ()
   in
   try
     run
