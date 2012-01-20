@@ -1,4 +1,6 @@
 
+version 0.5, January 20, 2012
+-----------------------------
  o Cores: if master raises an exception e, then compute kills the
    unterminated jobs and raises the same exception e
  o META file contributed by François Berenger (berenger@riken.jp)
