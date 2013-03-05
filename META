@@ -1,6 +1,6 @@
 name="functory"
-version="0.3"
-description="http://www.lri.fr/~kalyan/functory/About.html"
+version="0.5"
+description="http://functory.lri.fr/About.html"
 requires="unix"
 requires(mt)="unix"
 archive(toploop)="functory.cma"
