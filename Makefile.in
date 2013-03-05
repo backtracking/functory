@@ -207,7 +207,7 @@ WWW = $$HOME/WWW/$(NAME)
 
 FILES = *.mli *.ml tests/*/*.ml \
 	Makefile.in configure configure.in   \
-	.depend README.txt LICENSE CHANGES
+	.depend README.txt LICENSE CHANGES META
 
 export: source export-www export-doc
 	cp README.txt LICENSE CHANGES $(WWW)
