@@ -58,22 +58,22 @@
                 <p class="paragraph_style"><br /></p>
                 <p class="paragraph_style">            <span class="style_1">let () = Printf.printf “%d@.” (map_local_fold ~map ~fold 0 [1;2;3;4;5])<br /></span></p>
                 <p class="paragraph_style"><br /></p>
-                <p class="paragraph_style">The Factory library allows you to perform this computation in three different ways: either sequentially, or using<br /></p>
+                <p class="paragraph_style">The Functory library allows you to perform this computation in three different ways: either sequentially, or using<br /></p>
                 <p class="paragraph_style">several cores on the same machine, or using a network of different machines.<br /></p>
                 <p class="paragraph_style"><br /></p>
                 <p class="paragraph_style">To use the sequential implementation, you simply use the following line of code<br /></p>
                 <p class="paragraph_style"><br /></p>
-                <p class="paragraph_style">            <span class="style_1">open Factory.Sequential</span><br /></p>
+                <p class="paragraph_style">            <span class="style_1">open Functory.Sequential</span><br /></p>
                 <p class="paragraph_style"><br /></p>
                 <p class="paragraph_style">To use several cores (say 4, for example) on a single machine, you should add instead<br /></p>
                 <p class="paragraph_style"><br /></p>
-                <p class="paragraph_style">            <span class="style_1">open Factory.Cores<br /></span></p>
+                <p class="paragraph_style">            <span class="style_1">open Functory.Cores<br /></span></p>
                 <p class="paragraph_style"><span class="style_1">            let () = set_number_of_cores 4</span><br /></p>
                 <p class="paragraph_style"><br /></p>
                 <p class="paragraph_style">Finally, to use a network of, say 2 cores on machine “mach1” and 4 cores on machine “mach2”, you should <br /></p>
                 <p class="paragraph_style">add instead<br /></p>
                 <p class="paragraph_style_1"><br /></p>
-                <p class="paragraph_style_1">             open Factory.Network<br /></p>
+                <p class="paragraph_style_1">             open Functory.Network<br /></p>
                 <p class="paragraph_style_1">             let () = declare_workers ~n:2 “mach1”<br /></p>
                 <p class="paragraph_style_1">             let () = declare_workers ~n:4 “mach2”<br /></p>
                 <p class="paragraph_style"><br /></p>
