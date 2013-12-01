@@ -11,7 +11,7 @@ state.mps: figures.ml
 	TEXINPUTS=`pwd`: mlpost -latex main.tex figures.ml
 
 export: main-pp.pdf
-	cp main-pp.pdf ~/WWW/publis/tfp11.pdf
+	scp main-pp.pdf filliatr@acces.lri.fr:~/WWW/publis/tfp11.pdf
 
 paper5.zip: main-pp.tex state.mps chart1.pdf
 	rm -rf paper5/
