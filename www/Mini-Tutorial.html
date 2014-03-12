@@ -82,7 +82,12 @@
                 <p class="paragraph_style">            <span class="style_1">ocamlopt -I +factory unix.cmxa factory.cmxa &lt;your files...&gt;</span><br /></p>
                 <p class="paragraph_style"><br /></p>
                 <p class="paragraph_style">and then run as any usual OCaml program. In the network case, the same program needs to be run on<br /></p>
-                <p class="paragraph_style">the three machines - two workers and one master. (It is also possible to run different programs for master<br /></p>
+                <p class="paragraph_style">the three machines (the two
+                  workers being run on machines "mach1" and "mach2",
+                  respectively, with environment
+                  variable <tt>WORKER</tt> being set).
+<p>
+(It is also possible to run different programs for master<br /></p>
                 <p class="paragraph_style">and workers: see documentation for details)<br /></p>
                 <p class="paragraph_style"><br /></p>
                 <p style="padding-bottom: 0pt; " class="paragraph_style">              </p>
