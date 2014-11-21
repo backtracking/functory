@@ -28,16 +28,16 @@ let map_fold_wrapper2 map fold = function
 
 module Make
   (X : sig
-     val compute : 
-       worker:('a -> 'b) -> 
+     val compute :
+       worker:('a -> 'b) ->
        master:('a * 'c -> 'b -> ('a * 'c) list) ->
        ('a * 'c) list ->
        unit
    end) :
 sig
-  
+
   val map : f:('a -> 'b) -> 'a list -> 'b list
-    
+
   val map_local_fold :
     f:('a -> 'b) -> fold:('c -> 'b -> 'c) -> 'c -> 'a list -> 'c
 
@@ -67,7 +67,7 @@ end = struct
       ~worker:f
       ~master:(fun _ r -> acc := fold !acc r; [])
       (List.map (fun x -> x, ()) l);
-    !acc 
+    !acc
 
   let map_remote_fold  ~(f : 'a -> 'b) ~(fold : 'c -> 'b -> 'c) acc l =
     let acc = ref (Some acc) in
@@ -79,7 +79,7 @@ end = struct
 		     | None -> Stack.push r pending; []
 		     | Some v -> acc := None; [Fold (v, r), ()]
 		   end
-		 | Fold r -> 
+		 | Fold r ->
 		     assert (!acc = None);
 		     if not (Stack.is_empty pending) then
 		       [Fold (r, Stack.pop pending), ()]
@@ -97,12 +97,12 @@ end = struct
     let acc = ref (Some acc) in
     X.compute
       ~worker:(map_fold_wrapper2 f fold)
-      ~master:(fun _ r -> 
+      ~master:(fun _ r ->
 		 match !acc with
-		 | None -> 
+		 | None ->
 		     acc := Some r; []
-		 | Some v -> 
-		     acc := None; 
+		 | Some v ->
+		     acc := None;
 		     [Fold (v, r), ()])
       (List.map (fun x -> Map x, ()) l);
     (* we are done; the accumulator must exist *)
@@ -111,24 +111,24 @@ end = struct
       | None -> assert false
 
   let map_fold_a ~(f : 'a -> 'b) ~(fold : 'b -> 'b -> 'b) acc l =
-    let tasks = 
-      let i = ref 0 in 
-      List.map (fun x -> incr i; Map x, (!i, !i)) l 
+    let tasks =
+      let i = ref 0 in
+      List.map (fun x -> incr i; Map x, (!i, !i)) l
     in
     (* results maps i and j to (i,j,r) for each completed reduction of
        the interval i..j with result r *)
-    let results = Hashtbl.create 17 in 
-    let merge i j r = 
+    let results = Hashtbl.create 17 in
+    let merge i j r =
       if Hashtbl.mem results (i-1) then begin
 	let l, h, x = Hashtbl.find results (i-1) in
 	assert (h = i-1);
-	Hashtbl.remove results l; 
+	Hashtbl.remove results l;
 	Hashtbl.remove results h;
 	[Fold (x, r), (l, j)]
       end else if Hashtbl.mem results (j+1) then begin
 	let l, h, x = Hashtbl.find results (j+1) in
 	assert (l = j+1);
-	Hashtbl.remove results h; 
+	Hashtbl.remove results h;
 	Hashtbl.remove results l;
 	[Fold (r, x), (i, h)]
       end else begin
@@ -137,7 +137,7 @@ end = struct
 	[]
       end
     in
-    X.compute 
+    X.compute
       ~worker:(map_fold_wrapper2 f fold)
       ~master:(fun x r -> match x with
 		 | Map _, (i, _) -> merge i i r

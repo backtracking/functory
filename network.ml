@@ -32,24 +32,24 @@ let ping_interval = ref 10.
 
 let set_ping_interval t = ping_interval := t
 
-let is_worker = 
-  try ignore (Sys.getenv "WORKER"); true with Not_found -> false 
+let is_worker =
+  try ignore (Sys.getenv "WORKER"); true with Not_found -> false
 
 let encode_string_pair (s1, s2) =
   let buf = Buffer.create 1024 in
   Binary.buf_string buf s1;
   Binary.buf_string buf s2;
   Buffer.contents buf
-    
+
 let decode_string_pair s =
-  let s1, pos = Binary.get_string s 0 in 
-  let s2, _ = Binary.get_string s pos in 
+  let s1, pos = Binary.get_string s 0 in
+  let s2, _ = Binary.get_string s pos in
   s1, s2
 
 let print_exception fmt = function
-  | Unix_error (e, s1, s2) -> 
+  | Unix_error (e, s1, s2) ->
     fprintf fmt "Unix_error (%s, %S, %S)" (Unix.error_message e) s1 s2
-  | e -> 
+  | e ->
     fprintf fmt "%s" (Printexc.to_string e)
 
 (** Worker *****************************************************************)
@@ -60,28 +60,28 @@ let print_exception fmt = function
   the worker runs a server which accept connection on the given port
   (see function "compute" below)
 
-  on each accepted connection, it does a double-fork and the grand-child 
+  on each accepted connection, it does a double-fork and the grand-child
   runs function "server_fun" with the computation function "compute"
-  and the socket ("cin", "cout") as arguments; 
+  and the socket ("cin", "cout") as arguments;
   we call this ``the worker'' from now on
 
-  the worker has a main loop waiting for messages from the master 
+  the worker has a main loop waiting for messages from the master
   (using "select" on the socket); each message is managed using
-  "handle_message_from_master". Messages Kill, Ping and Stop are handled 
-  immediately. 
+  "handle_message_from_master". Messages Kill, Ping and Stop are handled
+  immediately.
 
-  An Assign message makes the worker fork a sub-process, say P, which runs the 
+  An Assign message makes the worker fork a sub-process, say P, which runs the
   computation using "compute". The worker and P communicate using a pipe.
 
   When the computation is completed, its result is written to the pipe and P
   terminates.
 
-  The worker, on the other side, checks whether there is something to read 
+  The worker, on the other side, checks whether there is something to read
   from the pipe (with the same call to "select" it is using to read from the
   master). It so, it reads it and send a Completed message to the master.
 
   BEWARE: the worker cannot simply wait for P to complete using
-  waitpid [WNOHANG] pid and then read from the pipe, since for P to complete 
+  waitpid [WNOHANG] pid and then read from the pipe, since for P to complete
   it must be necessary to read from the pipe; said otherwise, we could have
   a deadlock with the worker waiting for P to complete before reading from
   the pipe, and P waiting for the worker to read from the pipe in order to
@@ -103,7 +103,7 @@ module Worker = struct
   let computations : (string, (string -> string)) Hashtbl.t = Hashtbl.create 17
 
   let register_computation = Hashtbl.add computations
-    
+
   let register_computation2 n f =
     register_computation n
       (fun s -> let x, y = decode_string_pair s in f x y)
@@ -124,14 +124,14 @@ module Worker = struct
     let fdin = descr_of_in_channel cin in
     let fdout = descr_of_out_channel cout in
     let running_task = ref (None : running_task option) in
-    let handle_message_from_master () = 
+    let handle_message_from_master () =
       let m = Master.receive fdin in
       dprintf "received: %a@." Master.print m;
       match m with
 	| Master.Assign (id, f, a) ->
 	    let fin, fout = pipe () in
 	    begin match fork () with
-	      | 0 -> 
+	      | 0 ->
 		  begin try
 		    (* FIXME: catch exceptions here *)
 		    close fin;
@@ -139,8 +139,8 @@ module Worker = struct
 		    dprintf "  id %d: computation is running...@." id;
 		    let r : string = compute f a in
 		    let c = out_channel_of_descr fout in
-		    dprintf "  id %d: starting output_value with length %d@." 
-		      id (String.length r); 
+		    dprintf "  id %d: starting output_value with length %d@."
+		      id (String.length r);
 		    output_value c r;
 		    dprintf "  id %d: output_value done@." id;
 		    flush c;
@@ -148,11 +148,11 @@ module Worker = struct
 		    dprintf "  id %d: computation done@." id;
 		    exit 0
 		  with e ->
-		    dprintf "cannot execute job %d (%s)@." 
+		    dprintf "cannot execute job %d (%s)@."
 		      id (Printexc.to_string e);
 		    exit 1
 		  end
-	      | pid -> 
+	      | pid ->
 		  assert (!running_task = None);
 		  close fout;
 		  let t = { id = id; pid = pid; file = fin } in
@@ -174,9 +174,9 @@ module Worker = struct
     let robust_waitpid pid = try Some (waitpid [WNOHANG] pid) with _ -> None in
     let wait_for_completed_task t = (* only to handle failures *)
       match robust_waitpid t.pid with
-	| None 
+	| None
 	| Some (0, _) (* not yet completed *)
-	| Some (_, WEXITED 0) (* already completed *) -> 
+	| Some (_, WEXITED 0) (* already completed *) ->
 	    ()
 	| Some _ -> (* failure *)
 	    running_task := None;
@@ -186,9 +186,9 @@ module Worker = struct
     let handle fd =
       if fd == fdin then begin
 	handle_message_from_master ()
-      end else begin 
+      end else begin
 	match !running_task with
-	  | None -> 
+	  | None ->
 	      assert false
 	  | Some t ->
 	      let c = in_channel_of_descr t.file in
@@ -200,38 +200,38 @@ module Worker = struct
       end
     in
     (* main loop *)
-    try 
-      while true do 
+    try
+      while true do
 	let l = match !running_task with
 	  | None -> [fdin]
 	  | Some { file = fd } -> [fdin; fd]
 	in
 	let l,_,_ = select l [] [] 1. in
 	List.iter handle l;
-	match !running_task with 
-	  | None -> () 
+	match !running_task with
+	  | None -> ()
 	  | Some t -> wait_for_completed_task t
       done;
       assert false
-    with 
-      | End_of_file -> 
-	  dprintf "master disconnected@."; 
+    with
+      | End_of_file ->
+	  dprintf "master disconnected@.";
   	  begin match !running_task with
 	    | None -> ()
 	    | Some t -> kill t.pid Sys.sigkill
 	  end;
-	  exit 0 
+	  exit 0
       | ExitOnStop r ->
 	  ignore (Sys.signal Sys.sigpipe old_sigpipe_handler);
 	  r
-      | e -> 
+      | e ->
 	  let s = match e with
-	    | Unix_error (e, f, x) -> 
+	    | Unix_error (e, f, x) ->
 		sprintf "%s (%s, %s)" (error_message e) f x
-	    | e -> 
+	    | e ->
 		Printexc.to_string e
 	  in
-	  eprintf "anomaly: %s@." s; 
+	  eprintf "anomaly: %s@." s;
 	  exit 1
 
   (* sockets are allocated lazily; this table maps port numbers to sockets *)
@@ -256,25 +256,25 @@ module Worker = struct
     let sock = get_socket port in
     try
       Hashtbl.find sockets_fd port
-    with Not_found -> 
+    with Not_found ->
       let s,_ = Unix.accept sock in
       Hashtbl.add sockets_fd port s;
       s
 
-  let compute compute ?(port = !default_port_number) () = 
+  let compute compute ?(port = !default_port_number) () =
     dprintf "port = %d@." port;
     let sock = get_socket port in
     while true do
-      let s, _ = Unix.accept sock in 
+      let s, _ = Unix.accept sock in
       match Unix.fork() with
-	| 0 -> 
-	    if Unix.fork() <> 0 then exit 0; 
-            let inchan = Unix.in_channel_of_descr s 
-            and outchan = Unix.out_channel_of_descr s in 
+	| 0 ->
+	    if Unix.fork() <> 0 then exit 0;
+            let inchan = Unix.in_channel_of_descr s
+            and outchan = Unix.out_channel_of_descr s in
 	    ignore (server_fun compute inchan outchan);
             begin try close_in inchan; close_out outchan with _ -> () end;
             exit 0
-	| id -> 
+	| id ->
 	    Unix.close s;
 	    ignore (Unix.waitpid [] id)
     done;
@@ -284,15 +284,15 @@ end
 
 (** Master *****************************************************************)
 
-(* 
-  Master implementation 
+(*
+  Master implementation
 
   Each available worker is represented as a record of type "worker" below.
   Each worker is given a distinct ID, stored in field "worker_id".
   The field "sockaddr" stores the connection socket, to be used to (re)connect.
   Fields "fdin" and "fdout" are only meaningful for a connected worker, and
   contain the socket to communicate with the worker.
-  The field "job" contains either None, for an idle worker, or Some j for a 
+  The field "job" contains either None, for an idle worker, or Some j for a
   worker currently perfoming the task with ID j (tasks have IDs, distinct
   from worker IDs).
 
@@ -300,11 +300,11 @@ end
   in the global list "workers".
 
   The master loop is implemented in function "main_master".
-  It maintains a queue of tasks to do (todo) and a set of idle workers 
+  It maintains a queue of tasks to do (todo) and a set of idle workers
   (idle_workers). It loops as long as there is some task to do or
   some task currently running, with the following 3 steps.
 
-  The first step is to check and update the status of each worker, 
+  The first step is to check and update the status of each worker,
   which could be:
   - Disconnected: we try to connect and, if so, declare the worker idle
   - Pinged: we look for a possible timeout and, if so, remove from idle workers
@@ -312,7 +312,7 @@ end
   - Ok/Error: we send ping, if appropriate
 
   The second step is to start new tasks, if possible: if there is some idle
-  worker and some task to do, we try to assign the latter to the former 
+  worker and some task to do, we try to assign the latter to the former
   (with "create_job"). On failure, we backtrack and put the task back into the
   todo queue.
 
@@ -335,7 +335,7 @@ type worker_state =
   | Pinged of float (* last time we pinged *)
   | Error  of float (* last time we pinged *)
 
-type worker = { 
+type worker = {
   worker_id : int;
   sockaddr : sockaddr;
   mutable state : worker_state;
@@ -361,11 +361,11 @@ let print_sockaddr fmt = function
   | ADDR_INET (ia, port) -> fprintf fmt "%s:%d" (string_of_inet_addr ia) port
 
 let print_worker fmt w = match w.job with
-  | None -> 
-      fprintf fmt "@[%d @[(%a,@ idle)@]@]" 
-      w.worker_id print_sockaddr w.sockaddr 
-  | Some j -> 
-      fprintf fmt "@[%d @[(%a,@ running task %d)@]@]" 
+  | None ->
+      fprintf fmt "@[%d @[(%a,@ idle)@]@]"
+      w.worker_id print_sockaddr w.sockaddr
+  | Some j ->
+      fprintf fmt "@[%d @[(%a,@ running task %d)@]@]"
       w.worker_id print_sockaddr w.sockaddr j
 
 module WorkerSet : sig
@@ -380,9 +380,9 @@ module WorkerSet : sig
   val cardinal : t -> int
   val iter : (worker -> unit) -> t -> unit
 end = struct
-  module S = 
-    Set.Make(struct 
-	       type t = worker 
+  module S =
+    Set.Make(struct
+	       type t = worker
 	       let compare w1 w2 = Pervasives.compare w1.worker_id w2.worker_id
 	     end)
   type t = S.t ref
@@ -400,39 +400,39 @@ end
 let workers = ref []
 
 let () =
-  at_exit 
+  at_exit
     (fun () ->
        if not is_worker then
 	 let shutdown_worker w = Unix.shutdown w.fdin Unix.SHUTDOWN_SEND in
-	 List.iter 
+	 List.iter
 	   (fun w -> if w.state <> Disconnected then shutdown_worker w)
 	   !workers)
 
 let create_sock_addr name port =
-  let addr = 
-    try  
+  let addr =
+    try
       inet_addr_of_string name
-    with Failure "inet_addr_of_string" -> 
-      try 
-	(gethostbyname name).h_addr_list.(0) 
+    with Failure "inet_addr_of_string" ->
+      try
+	(gethostbyname name).h_addr_list.(0)
       with Not_found ->
 	invalid_arg (sprintf "%s : Unknown server@." name)
   in
-  ADDR_INET (addr, port) 
+  ADDR_INET (addr, port)
 
 let create_worker =
   let r = ref 0 in
   fun ?(port = !default_port_number) s ->
     incr r;
     let a = create_sock_addr s port in
-    { 
+    {
       worker_id = !r;
-      sockaddr = a; 
+      sockaddr = a;
       state = Disconnected;
-      fdin = stdin; 
+      fdin = stdin;
       fdout = stdout;
       job = None; (* idle *)
-    } 
+    }
 
 let declare_workers ?(port = !default_port_number) ?(n=1) s =
   if n <= 0 then invalid_arg "declare_workers";
@@ -475,7 +475,7 @@ type ('a, 'c) computation_ = {
   mutable last_printed_state : int * int * int;
 }
 
-let add_task c t = 
+let add_task c t =
   if c.status = Dead then invalid_arg "add_task: dead computation";
   Queue.add (create_task t) c.todo;
   c.status <- Running
@@ -483,16 +483,16 @@ let add_task c t =
 let add_worker c w =
   WorkerSet.add c.workers w;
   match w.state with
-  | Ok _ | Pinged _ -> 
+  | Ok _ | Pinged _ ->
       if w.job = None then WorkerSet.add c.idle_workers w
-  | Disconnected | Error _ -> 
+  | Disconnected | Error _ ->
       ()
 
 let create_computation_
     ~(assign_job : 'a -> string * string)
-    ~(master : 'a * 'c -> string -> ('a * 'c) list) 
+    ~(master : 'a * 'c -> string -> ('a * 'c) list)
     =
-  let c = { 
+  let c = {
     status = Done;
     old_sigpipe_handler = Sys.signal Sys.sigpipe Sys.Signal_ignore;
     assign_job = assign_job;
@@ -515,7 +515,7 @@ let print_computation c = match c.status with
       let n1 = Queue.length c.todo in
       let n2 = WorkerSet.cardinal c.idle_workers in
       let n3 = Hashtbl.length c.running_tasks in
-      let st = (n1, n2, n3) in 
+      let st = (n1, n2, n3) in
       if st <> c.last_printed_state then begin
 	c.last_printed_state <- st;
 	dprintf "***@.";
@@ -528,16 +528,16 @@ let print_computation c = match c.status with
       end
 
 let send w m =
-  try 
+  try
     Protocol.Master.send w.fdout m
-  with e -> 
-    dprintf "@[<hov 2>could not send message %a@ to worker %a@ (%a)@]@." 
+  with e ->
+    dprintf "@[<hov 2>could not send message %a@ to worker %a@ (%a)@]@."
       Protocol.Master.print m print_worker w print_exception e;
     raise e
 
 let make_idle c w =
   w.job <- None;
-  WorkerSet.add c.idle_workers w 
+  WorkerSet.add c.idle_workers w
 
 (* kill job jid on worker w *)
 let kill_job c w jid =
@@ -577,7 +577,7 @@ let do_one_step ?(timeout=0.) c =
   let send_ping w = send w Protocol.Master.Ping in
   let create_job w t =
     assert (not t.task_done);
-    dprintf "@[<hov 2>create_job: worker=%a,@ task=%a@]@." 
+    dprintf "@[<hov 2>create_job: worker=%a,@ task=%a@]@."
       print_worker w print_task t;
     connect_worker w;
     let id = job_id () in
@@ -610,7 +610,7 @@ let do_one_step ?(timeout=0.) c =
 	    t.task_done <- true;
 	    kill_jobs id t.task_workers;
 	    List.iter (add_task c) (c.master t.task r)
-	  end 
+	  end
       | Protocol.Worker.Aborted id ->
 	  make_idle c w;
 	  let t = Hashtbl.find c.running_tasks id in
@@ -620,10 +620,10 @@ let do_one_step ?(timeout=0.) c =
   print_computation c;
   (* 1. try to connect if not already connected *)
   let current = Unix.time () in
-  WorkerSet.iter 
+  WorkerSet.iter
     (fun w -> match w.state with
        | Disconnected ->
-	   begin try 
+	   begin try
 	     connect_worker w;
 	     dprintf "new connection to %a@." print_worker w;
 	     make_idle c w
@@ -648,14 +648,14 @@ let do_one_step ?(timeout=0.) c =
     c.workers;
   print_computation c;
   (* 2. if possible, start new jobs *)
-  while not (WorkerSet.is_empty c.idle_workers) && not (Queue.is_empty c.todo) 
+  while not (WorkerSet.is_empty c.idle_workers) && not (Queue.is_empty c.todo)
   do
     let t = Queue.pop c.todo in
     if not t.task_done then begin
       let w = WorkerSet.choose c.idle_workers in
-      try 
-	create_job w t 
-      with e -> 
+      try
+	create_job w t
+      with e ->
 	dprintf "@[<hov 2>create_job for worker %a failed:@ %a@]"
 	  print_worker w print_exception e;
 	Queue.push t c.todo;
@@ -664,25 +664,25 @@ let do_one_step ?(timeout=0.) c =
   done;
   print_computation c;
   (* 3. if not, listen for workers *)
-  let fds = 
+  let fds =
     let wl = ref [] in
-    WorkerSet.iter 
-      (fun w -> if w.state <> Disconnected then wl := w :: !wl) 
+    WorkerSet.iter
+      (fun w -> if w.state <> Disconnected then wl := w :: !wl)
       c.workers;
     List.map (fun w -> w.fdin) !wl
   in
   let l,_,_ = select fds [] [] timeout in
-  List.iter 
-    (fun fd -> 
+  List.iter
+    (fun fd ->
        let w = Hashtbl.find worker_fd fd in
-       try  
+       try
 	 listen_for_worker w
-       with e -> 
-	 dprintf "@[<hov 2>worker %a failure:@ %s@]@." 
+       with e ->
+	 dprintf "@[<hov 2>worker %a failure:@ %s@]@."
 	   print_worker w (Printexc.to_string e);
 	 manage_disconnection c w)
     l
-  
+
 let one_step ?timeout c = match c.status with
   | Dead ->
       invalid_arg "one_step: dead computation"
@@ -701,9 +701,9 @@ let nb_tasks c = Queue.length c.todo
 
 let clear c =
   let killed = Hashtbl.create 17 in
-  let kill (jid, w) = 
-    if not (Hashtbl.mem killed jid) then begin 
-      kill_job c w jid; 
+  let kill (jid, w) =
+    if not (Hashtbl.mem killed jid) then begin
+      kill_job c w jid;
       Hashtbl.add killed jid ()
     end
   in
@@ -719,9 +719,9 @@ let kill c =
   WorkerSet.clear c.idle_workers;
   c.status <- Dead
 
-let main_master 
+let main_master
     ~(assign_job : 'a -> string * string)
-    ~(master : 'a * 'c -> string -> ('a * 'c) list) 
+    ~(master : 'a * 'c -> string -> ('a * 'c) list)
     (tasks : ('a * 'c) list)
     =
   let c = create_computation_ ~assign_job ~master in
@@ -733,9 +733,9 @@ let main_master
   kill c
 
 (*****
-let main_master 
+let main_master
     ~(assign_job : 'a -> string * string)
-    ~(master : 'a * 'c -> string -> ('a * 'c) list) 
+    ~(master : 'a * 'c -> string -> ('a * 'c) list)
     (tasks : ('a * 'c) list)
     =
   let old_sigpipe_handler = Sys.signal Sys.sigpipe Sys.Signal_ignore in
@@ -745,27 +745,27 @@ let main_master
   List.iter push_new_task tasks;
   (* idle workers *)
   let idle_workers = WorkerSet.create () in
-  List.iter 
+  List.iter
     (fun w -> match w.state with
-       | Ok _ | Pinged _ -> 
+       | Ok _ | Pinged _ ->
 	   if w.job = None then WorkerSet.add idle_workers w
-       | Disconnected | Error _ -> 
+       | Disconnected | Error _ ->
 	   ())
     !workers;
   (* running tasks (job id -> task) *)
   let running_tasks = Hashtbl.create 17 in
   let send w m =
-    try 
+    try
       Protocol.Master.send w.fdout m
-    with e -> 
-      dprintf "@[<hov 2>could not send message %a@ to worker %a@ (%a)@]@." 
+    with e ->
+      dprintf "@[<hov 2>could not send message %a@ to worker %a@ (%a)@]@."
 	Protocol.Master.print m print_worker w print_exception e;
       raise e
   in
   let send_ping w = send w Protocol.Master.Ping in
   let create_job w t =
     assert (not t.task_done);
-    dprintf "@[<hov 2>create_job: worker=%a,@ task=%a@]@." 
+    dprintf "@[<hov 2>create_job: worker=%a,@ task=%a@]@."
       print_worker w print_task t;
     connect_worker w;
     let id = job_id () in
@@ -797,7 +797,7 @@ let main_master
   in
   let make_idle w =
     w.job <- None;
-    WorkerSet.add idle_workers w 
+    WorkerSet.add idle_workers w
   in
   (* kill job jid on worker w *)
   let kill w jid =
@@ -828,7 +828,7 @@ let main_master
 	    t.task_done <- true;
 	    kill_jobs id t.task_workers;
 	    List.iter push_new_task (master t.task r)
-	  end 
+	  end
       | Protocol.Worker.Aborted id ->
 	  make_idle w;
 	  let t = Hashtbl.find running_tasks id in
@@ -840,7 +840,7 @@ let main_master
     let n1 = Queue.length todo in
     let n2 = WorkerSet.cardinal idle_workers in
     let n3 = Hashtbl.length running_tasks in
-    let st = (n1, n2, n3) in 
+    let st = (n1, n2, n3) in
     if st <> !last_printed_state then begin
       last_printed_state := st;
       dprintf "***@.";
@@ -859,10 +859,10 @@ let main_master
 
     (* 1. try to connect if not already connected *)
     let current = Unix.time () in
-    List.iter 
+    List.iter
       (fun w -> match w.state with
 	 | Disconnected ->
-	     begin try 
+	     begin try
 	       connect_worker w;
 	       dprintf "new connection to %a@." print_worker w;
 	       make_idle w
@@ -893,9 +893,9 @@ let main_master
       let t = Queue.pop todo in
       if not t.task_done then begin
 	let w = WorkerSet.choose idle_workers in
-	try 
-	  create_job w t 
-	with e -> 
+	try
+	  create_job w t
+	with e ->
 	  dprintf "@[<hov 2>create_job for worker %a failed:@ %a@]"
 	    print_worker w print_exception e;
 	  Queue.push t todo;
@@ -906,18 +906,18 @@ let main_master
     print_state ();
 
     (* 3. if not, listen for workers *)
-    let fds = 
+    let fds =
       let wl = List.filter (fun w -> w.state <> Disconnected) !workers in
       List.map (fun w -> w.fdin) wl
     in
     let l,_,_ = select fds [] [] 0.1 in
-    List.iter 
-      (fun fd -> 
+    List.iter
+      (fun fd ->
 	 let w = Hashtbl.find worker_fd fd in
-	 try  
+	 try
 	   listen_for_worker w
-	 with e -> 
-	   dprintf "@[<hov 2>worker %a failure:@ %s@]@." 
+	 with e ->
+	   dprintf "@[<hov 2>worker %a failure:@ %s@]@."
 	     print_worker w (Printexc.to_string e);
 	   manage_disconnection w)
       l;
@@ -940,7 +940,7 @@ module Mono = struct
 
     let create ~master =
       let assign_job x = "f", x in
-      create_computation_ ~assign_job ~master 
+      create_computation_ ~assign_job ~master
 
     let add_worker = add_worker
     let remove_worker = remove_worker
@@ -956,11 +956,11 @@ module Mono = struct
 
     let compute ~master tl =
       main_master ~assign_job:(fun x -> "f", x) ~master tl
-	
+
   end
 
   module Worker = struct
-    let compute f ?port () = 
+    let compute f ?port () =
       ignore (Worker.compute (fun _ x -> f x) ?port ())
   end
 
@@ -973,7 +973,7 @@ module Poly = struct
     module Computation = struct
       type ('a, 'c) t = ('a, 'c) computation_
 
-      let create ~(master : 'a * 'c -> 'b -> ('a * 'c) list) = 
+      let create ~(master : 'a * 'c -> 'b -> ('a * 'c) list) =
 	let assign_job x = "f", Marshal.to_string x [] in
 	let master t s = let r = Marshal.from_string s 0 in master t r in
 	create_computation_ ~assign_job ~master
@@ -990,50 +990,50 @@ module Poly = struct
     end
 
     let compute ~master tl =
-      main_master 
-	~assign_job:(fun x -> "f", Marshal.to_string x []) 
+      main_master
+	~assign_job:(fun x -> "f", Marshal.to_string x [])
 	~master:(fun t s -> let r = Marshal.from_string s 0 in master t r)
 	tl
-	
+
     include Map_fold.Make
 	(struct
 	   let compute ~worker = compute
 	 end)
-    let map l = 
+    let map l =
       map ~f:(fun _ -> assert false) l
-    let map_local_fold ~fold acc l = 
+    let map_local_fold ~fold acc l =
       map_local_fold
 	~f:(fun _ -> assert false) ~fold acc l
-    let map_remote_fold acc l = 
+    let map_remote_fold acc l =
       map_remote_fold
 	~f:(fun _ -> assert false) ~fold:(fun _ _ -> assert false) acc l
-    let map_fold_ac acc l = 
+    let map_fold_ac acc l =
       map_fold_ac
 	~f:(fun _ -> assert false) ~fold:(fun _ _ -> assert false) acc l
-    let map_fold_a acc l = 
+    let map_fold_a acc l =
       map_fold_a
 	~f:(fun _ -> assert false) ~fold:(fun _ _ -> assert false) acc l
 
   end
 
   module Worker = struct
-    let unpoly f s = 
+    let unpoly f s =
       let x = Marshal.from_string s 0 in
       let r = f x in
       Marshal.to_string r []
 
-    let compute f ?port () = 
+    let compute f ?port () =
       ignore (Worker.compute (fun _ -> unpoly f) ?port ())
 
-    let map ~f = 
+    let map ~f =
       compute f
-    let map_local_fold ~f = 
+    let map_local_fold ~f =
       compute f
-    let map_remote_fold ~f ~fold = 
+    let map_remote_fold ~f ~fold =
       compute (Map_fold.map_fold_wrapper f fold)
-    let map_fold_ac ~f ~fold = 
+    let map_fold_ac ~f ~fold =
       compute (Map_fold.map_fold_wrapper2 f fold)
-    let map_fold_a ~f ~fold = 
+    let map_fold_a ~f ~fold =
       compute (Map_fold.map_fold_wrapper2 f fold)
   end
 
@@ -1041,10 +1041,10 @@ end
 
 module Same = struct
 
-  module Worker = struct 
+  module Worker = struct
 
     let compute ?port () =
-      let compute f x = 
+      let compute f x =
 	let f = (Marshal.from_string f 0 : 'a -> 'b) in
 	let x = (Marshal.from_string x 0 : 'a) in
 	Marshal.to_string (f x) []
@@ -1057,10 +1057,10 @@ module Same = struct
 
     type ('a, 'c) t = ('a, 'c) computation_
 
-    let create 
-	~(worker : 'a -> 'b) 
-	~(master : 'a * 'c -> 'b -> ('a * 'c) list) 
-    = 
+    let create
+	~(worker : 'a -> 'b)
+	~(master : 'a * 'c -> 'b -> ('a * 'c) list)
+    =
       let worker_closure = Marshal.to_string worker [Marshal.Closures] in
       let assign_job x = worker_closure, Marshal.to_string x [] in
       let master ac r = master ac (Marshal.from_string r 0) in
@@ -1076,22 +1076,22 @@ module Same = struct
 
   end
 
-  let () = 
+  let () =
     if is_worker then begin
       dprintf "starting worker loop...@.";
       Worker.compute () (* never returns *)
     end
-      
+
   let compute
-      ~(worker : 'a -> 'b) 
-      ~(master : 'a * 'c -> 'b -> ('a * 'c) list) 
+      ~(worker : 'a -> 'b)
+      ~(master : 'a * 'c -> 'b -> ('a * 'c) list)
       tasks
   =
     let worker_closure = Marshal.to_string worker [Marshal.Closures] in
     let assign_job x = worker_closure, Marshal.to_string x [] in
     let master ac r = master ac (Marshal.from_string r 0) in
     main_master ~assign_job ~master tasks
-      
+
   include Map_fold.Make(struct let compute = compute end)
 
  end

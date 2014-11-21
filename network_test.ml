@@ -39,9 +39,9 @@ let () = Arg.parse
 
 let () = Functory.Network.set_default_port_number !port
 
-let () = 
+let () =
   if not !worker then begin
-    if !local then 
+    if !local then
       declare_workers ~n:2 "localhost"
     else
       declare_workers ~n:12 "moloch"
@@ -60,12 +60,12 @@ let () = match !kind with
       end else begin
 	let s = ref 0 in
 	Mono.Master.compute
-	  ~master:(fun _ r -> s := !s + int_of_string r; []) 
+	  ~master:(fun _ r -> s := !s + int_of_string r; [])
 	  (List.map (fun x -> x,()) ["1";"2";"3"]);
 	printf "%d@." !s;
 	assert (!s = 12)
       end
-  | Poly -> 
+  | Poly ->
       if !worker then begin
 	printf "I'm a poly worker...@.";
 	match !test with
@@ -105,7 +105,7 @@ let () = match !kind with
 	  | _ ->
 	      assert false (*TODO*)
       end
-  | Same -> 
+  | Same ->
       if !worker then begin
 	printf "I'm a same worker...@.";
 	Same.Worker.compute ()

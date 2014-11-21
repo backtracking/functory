@@ -1,0 +1,13 @@
+*.o
+*.annot
+*.cm*
+.depend
+Makefile
+a.out
+autom4te.cache
+config.log
+config.status
+configure
+*.a
+test.opt
+version.ml

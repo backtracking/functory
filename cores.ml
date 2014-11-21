@@ -19,12 +19,12 @@ open Control
 open Unix
 
 (* main loop: assigns tasks to workers, until no more task *)
-let run 
-    ~(create_job : 'worker -> 'task -> unit) 
-    ~(wait : unit -> 'worker * 'task list) 
+let run
+    ~(create_job : 'worker -> 'task -> unit)
+    ~(wait : unit -> 'worker * 'task list)
     (workers : 'worker list)
     (tasks : 'task list)
-    = 
+    =
   let todo = Queue.create () in
   List.iter (fun t -> Queue.push t todo) tasks;
   let towait = ref 0 in
@@ -59,7 +59,7 @@ type 'a job = {
   worker : int;
   pid : int;
   file : string;
-  task : 'a; 
+  task : 'a;
 }
 
 let create_worker w (f : 'a -> 'b) (t : 'a * 'c) : ('a * 'c) job =
@@ -77,12 +77,12 @@ let create_worker w (f : 'a -> 'b) (t : 'a * 'c) : ('a * 'c) job =
 	  file = file;
 	  task = t }
 
-let compute 
+let compute
     ~(worker : 'a -> 'b) ~(master : ('a * 'c) -> 'b -> ('a * 'c) list) tasks =
   let jobs = Hashtbl.create 17 in (* PID -> job *)
-  let rec wait () = 
+  let rec wait () =
     match Unix.wait () with
-    | p, WEXITED e -> 
+    | p, WEXITED e ->
         dprintf "master: got result from worker PID %d@." p;
         begin try
           let j = Hashtbl.find jobs p in
@@ -93,10 +93,10 @@ let compute
           close_in c;
           Sys.remove j.file;
           let l = master j.task r in j.worker, l
-        with Not_found -> 
+        with Not_found ->
           (* If the pid is unknown to us, it's probably a process created
 	     by one of the workers. In this case, simply continue to wait. *)
-          wait () 
+          wait ()
 	end
     | p, _ ->
         Format.eprintf "master: ** PID %d killed or stopped! **@." p;
@@ -120,7 +120,7 @@ type 'a p_job = {
   p_worker : int;
   p_pid : int;
   p_file : file_descr;
-  p_task : 'a; 
+  p_task : 'a;
 }
 
 let create_worker w (f : 'a -> 'b) (t : 'a * 'c) : ('a * 'c) p_job =
@@ -139,10 +139,10 @@ let create_worker w (f : 'a -> 'b) (t : 'a * 'c) : ('a * 'c) p_job =
 	  p_file = fdin;
 	  p_task = t }
 
-let compute 
+let compute
     ~(worker : 'a -> 'b) ~(master : ('a * 'c) -> 'b -> ('a * 'c) list) tasks =
   let jobs = Hashtbl.create 17 in (* fd -> job *)
-  let rec wait () = 
+  let rec wait () =
     let fds = Hashtbl.fold (fun fd _ acc -> fd :: acc) jobs [] in
     match select fds [] [] (-1.0) with
       | fd :: _, _, _ ->
@@ -153,7 +153,7 @@ let compute
           let c = in_channel_of_descr j.p_file in
           let r : 'b = input_value c in
           close_in c;
-          let l = master j.p_task r in 
+          let l = master j.p_task r in
 	  j.p_worker, l
       | [], _, _ ->
 	  assert false
@@ -177,20 +177,20 @@ type ('a, 'b) map_reduce =
   | Reduce of 'b
 
 let map_reduce ~map ~reduce l =
-  let results = Hashtbl.create 17 in 
+  let results = Hashtbl.create 17 in
   let to_reduce = Hashtbl.create 17 in
   let add k2 v2l =
-    try 
+    try
       let l = Hashtbl.find results k2 in
       Hashtbl.replace results k2 (v2l :: l);
       Hashtbl.replace to_reduce k2 ()
     with Not_found ->
       Hashtbl.add results k2 [v2l]
   in
-  let reduce_tasks () = 
-    let tl = 
-      Hashtbl.fold 
-	(fun k2 _ acc -> (Reduce (k2, Hashtbl.find results k2)) :: acc) 
+  let reduce_tasks () =
+    let tl =
+      Hashtbl.fold
+	(fun k2 _ acc -> (Reduce (k2, Hashtbl.find results k2)) :: acc)
 	to_reduce []
     in
     Hashtbl.iter (fun x _ -> Hashtbl.remove results x) to_reduce;
@@ -201,19 +201,19 @@ let map_reduce ~map ~reduce l =
     ~f:(function
 	  | Map v1 -> Map (map v1)
 	  | Reduce (k2, v2l) -> Reduce (reduce k2 v2l))
-    ~handle:(fun x r -> 
+    ~handle:(fun x r ->
 	       match x, r with
-		 | Map _, Map r -> 
+		 | Map _, Map r ->
 		     List.iter (fun (k2, v2) -> add k2 [v2]) r; reduce_tasks ()
-		 | Reduce (k2, _), Reduce r -> 
+		 | Reduce (k2, _), Reduce r ->
 		     add k2 r; reduce_tasks ()
 		 | _ ->
 		     assert false)
     (List.map (fun x -> Map x) l);
-  Hashtbl.fold 
+  Hashtbl.fold
     (fun k2 v2l res -> match v2l with
        | [v2l] -> (k2, v2l) :: res
-       | _ -> assert false) 
+       | _ -> assert false)
     results []
 
 

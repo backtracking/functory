@@ -37,7 +37,7 @@ EXE = @EXE@
 LIBEXT = @LIBEXT@
 OBJEXT = @OBJEXT@
 
-INCLUDES = 
+INCLUDES =
 BFLAGS = -dtypes -g $(INCLUDES)
 OFLAGS = -dtypes $(INCLUDES) -for-pack Functory
 
@@ -52,15 +52,15 @@ CMXA = functory.cmxa
 TESTDIRS = n-queens sums sort sort-nfs
 TESTS := $(patsubst %, tests/%/a.out, $(TESTDIRS))
 
-all: $(OCAMLBEST) 
-byte: $(CMA) 
-opt: $(CMA) $(CMXA) 
+all: $(OCAMLBEST)
+byte: $(CMA)
+opt: $(CMA) $(CMXA)
 
 # bytecode and native-code compilation
 ######################################
 
 CMO = control.cmo sequential.cmo map_fold.cmo \
-      cores.cmo binary.cmo protocol.cmo network.cmo 
+      cores.cmo binary.cmo protocol.cmo network.cmo
 CMX = $(CMO:.cmo=.cmx)
 
 GENERATED = version.ml
@@ -128,11 +128,11 @@ version.ml: Makefile
 
 tests: $(TESTS)
 
-test: test.opt 
+test: test.opt
 	WORKER=yes xterm -e "./test.opt" &
 	sleep 1 && ./test.opt
 
-test-network: network_test.opt 
+test-network: network_test.opt
 	sh ./test-network.sh
 
 test2: master_test.opt worker_test.opt
@@ -182,11 +182,11 @@ INSTALL_LIBDIR=$(DESTDIR)$(OCAMLLIB)/functory
 
 install: install-$(OCAMLBEST)
 
-install-byte: 
+install-byte:
 	mkdir -p $(INSTALL_LIBDIR)
 	cp -f functory.mli functory.cmo functory.cmi $(CMA) $(INSTALL_LIBDIR)
 
-install-opt: 
+install-opt:
 	mkdir -p $(INSTALL_LIBDIR)
 	cp -f functory.mli functory.cmo functory.cmi $(CMA) $(INSTALL_LIBDIR)
 	cp -f functory$(LIBEXT) functory.cmx $(CMXA) $(INSTALL_LIBDIR)
@@ -212,7 +212,7 @@ FILES = *.mli *.ml tests/*/*.ml \
 export: source export-www export-doc
 	cp README.txt LICENSE CHANGES $(WWW)
 
-source: 
+source:
 	mkdir -p export/$(EXPORTDIR)
 	cp --parents $(FILES) export/$(EXPORTDIR)
 	cd export ; tar cf $(TAR) $(EXPORTDIR) ; gzip -f --best $(TAR)
@@ -269,7 +269,7 @@ binary: $(NAME).$(OCAMLBEST) $(DOCFILES)
 	latex $< && latex $<
 
 .dvi.ps:
-	dvips $< -o $@ 
+	dvips $< -o $@
 
 .tex.html:
 	hevea $<
@@ -305,7 +305,7 @@ config.status: configure
 	./config.status --recheck
 
 configure: configure.in
-	autoconf 
+	autoconf
 
 # clean
 #######

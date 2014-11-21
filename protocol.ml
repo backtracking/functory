@@ -25,7 +25,7 @@ let set_magic_number n = magic_number := n
 
 exception BadMagicNumber
 
-let check_magic_number s pos = 
+let check_magic_number s pos =
   let m, pos = get_int31 s pos in
   if m <> !magic_number then raise BadMagicNumber;
   pos
@@ -55,7 +55,7 @@ let rec read_n_bytes fd s ofs len =
   if n < len then read_n_bytes fd s (ofs + n) (len -n)
 (*   assert (n = len) (\* FIXME: wait for other bytes to be available *\) *)
 
-let generic_receive get fd = 
+let generic_receive get fd =
   read_n_bytes fd read_buffer 0 4;
   let len, _ = get_int31 read_buffer 0 in
   (* eprintf "generic_receive: len=%d@." len; *)
@@ -70,14 +70,14 @@ exception BadProtocol
 
 let print_string fmt s =
   let n = String.length s in
-  if n <= 10 then 
-    fprintf fmt "%S" s 
+  if n <= 10 then
+    fprintf fmt "%S" s
   else
     fprintf fmt "<length %d>" n
 
 module Master = struct
 
-  type t = 
+  type t =
     | Assign of int * string * string (* id, function * argument *)
     | Kill of int                     (* id *)
     | Stop of string
@@ -85,7 +85,7 @@ module Master = struct
 
   let print fmt = function
     | Assign (id, f, a) ->
-	fprintf fmt "assign %d f=%a a=%a" id print_string f print_string a 
+	fprintf fmt "assign %d f=%a a=%a" id print_string f print_string a
     | Kill id ->
 	fprintf fmt "kill %d" id
     | Stop s ->
@@ -94,7 +94,7 @@ module Master = struct
 	fprintf fmt "ping"
 
   let buf b = function
-    | Assign (id, f, a) -> 
+    | Assign (id, f, a) ->
 	buf_int31 b !magic_number;
 	buf_int8 b 1; (* 1 = assign *)
 	buf_int31 b id;
@@ -118,7 +118,7 @@ module Master = struct
     let pos = check_magic_number s pos in
     let c, pos = get_uint8 s pos in
     match c with
-      | 1 (* assign *) -> 
+      | 1 (* assign *) ->
 	  let id, pos = get_int31 s pos in
 	  let f, pos = get_string s pos in
 	  let a, pos = get_string s pos in
@@ -146,7 +146,7 @@ module Worker = struct
     | Aborted of int            (* id *)
 
   let print fmt = function
-    | Pong -> 
+    | Pong ->
 	fprintf fmt "pong"
     | Completed (id, s) ->
 	fprintf fmt "completed %d s=%a" id print_string s
@@ -154,7 +154,7 @@ module Worker = struct
 	fprintf fmt "aborted %d" id
 
   let buf b = function
-    | Pong -> 
+    | Pong ->
 	buf_int31 b !magic_number;
 	buf_int8 b 3 (* 3 = pong *)
     | Completed (id, s) ->
@@ -166,7 +166,7 @@ module Worker = struct
 	buf_int31 b !magic_number;
 	buf_int8 b 5; (* 5 = aborted *)
 	buf_int31 b id
-	
+
   let send = generic_send buf
 
   let get s pos =
