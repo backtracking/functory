@@ -1,4 +1,6 @@
 
+ o Cores: use waitpid instead of wait
+
 version 0.5, January 20, 2012
 -----------------------------
  o Cores: now uses a queue, so that tasks are processed in the order they
