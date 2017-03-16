@@ -1,7 +1,7 @@
 (**************************************************************************)
 (*                                                                        *)
-(*  Functory: a distributed computing library for Ocaml                   *)
-(*  Copyright (C) 2010 Jean-Christophe Filliatre and Kalyan Krishnamani   *)
+(*  Functory: a distributed computing library for OCaml                   *)
+(*  Copyright (C) 2010- Jean-Christophe Filliatre and Kalyan Krishnamani  *)
 (*                                                                        *)
 (*  This software is free software; you can redistribute it and/or        *)
 (*  modify it under the terms of the GNU Library General Public           *)
@@ -99,14 +99,6 @@ let print_exception fmt = function
 *)
 
 module Worker = struct
-
-  let computations : (string, (string -> string)) Hashtbl.t = Hashtbl.create 17
-
-  let register_computation = Hashtbl.add computations
-
-  let register_computation2 n f =
-    register_computation n
-      (fun s -> let x, y = decode_string_pair s in f x y)
 
   type running_task = {
     id : int;          (* task ID, passed by the master *)

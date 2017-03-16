@@ -1,7 +1,7 @@
 ##########################################################################
 #                                                                        #
-#  Functory: a distributed computing library for Ocaml                   #
-#  Copyright (C) 2010 Jean-Christophe Filliatre and Kalyan Krishnamani   #
+#  Functory: a distributed computing library for OCaml                   #
+#  Copyright (C) 2010- Jean-Christophe Filliatre and Kalyan Krishnamani  #
 #                                                                        #
 #  This software is free software; you can redistribute it and/or        #
 #  modify it under the terms of the GNU Library General Public           #
@@ -136,8 +136,8 @@ test-network: network_test.opt
 	sh ./test-network.sh
 
 test2: master_test.opt worker_test.opt
-	./worker_test.opt &
-	sleep 1 && ./master_test.opt && killall -9 worker_test.opt
+	./worker_test.opt -d &
+	sleep 1 && ./master_test.opt -d && killall -9 worker_test.opt
 
 install-test: tests/fault/a.out
 	cp tests/fault/a.out ~
