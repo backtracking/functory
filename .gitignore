@@ -11,3 +11,4 @@ configure
 *.a
 test.opt
 version.ml
+network_test.opt
