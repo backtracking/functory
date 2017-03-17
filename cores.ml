@@ -77,31 +77,30 @@ let create_worker w (f : 'a -> 'b) (t : 'a * 'c) : ('a * 'c) job =
 	  file = file;
 	  task = t }
 
-exception Worker of int
-
 let compute
     ~(worker : 'a -> 'b) ~(master : ('a * 'c) -> 'b -> ('a * 'c) list) tasks =
   let jobs = Hashtbl.create 17 in (* PID -> job *)
   let rec wait () =
-    try
-      Hashtbl.iter (fun pid _ -> match Unix.waitpid [] pid with
-      | _, WEXITED e ->
-        dprintf "master: got result from worker PID %d@." pid;
-        raise (Worker pid)
-      | _ ->
-        Format.eprintf "master: ** PID %d killed or stopped! **@." pid)
-        jobs;
-      wait ()
-    with Worker pid ->
-      let j = Hashtbl.find jobs pid in
-      Hashtbl.remove jobs pid;
-      dprintf "master: got result from worker %d@." j.worker;
-      let c = open_in j.file in
-      let r : 'b = input_value c in
-      close_in c;
-      Sys.remove j.file;
-      let l = master j.task r in
-      j.worker, l
+   match Unix.wait () with
+   | p, WEXITED e ->
+       dprintf "master: got result from worker PID %d@." p;
+       begin try
+         let j = Hashtbl.find jobs p in
+        Hashtbl.remove jobs p;
+         dprintf "master: got result from worker %d@." j.worker;
+         let c = open_in (*in_channel_of_descr *) j.file in
+         let r : 'b = input_value c in
+         close_in c;
+         Sys.remove j.file;
+         let l = master j.task r in j.worker, l
+       with Not_found ->
+         (* If the pid is unknown to us, it's probably a process created
+           by one of the workers. In this case, simply continue to wait. *)
+         wait ()
+      end
+   | p, _ ->
+       Format.eprintf "master: ** PID %d killed or stopped! **@." p;
+       wait ()
   in
   try
     run
