@@ -42,26 +42,26 @@ let generic_send buf fd t =
   Buffer.clear write_buffer;
   Binary.buf_int31 write_buffer len;
   let slen = Buffer.contents write_buffer in
-  assert (Unix.write fd slen 0 4 = 4);
-  assert (Unix.write fd s 0 len = len)
+  assert (Unix.write_substring fd slen 0 4 = 4);
+  assert (Unix.write_substring fd s 0 len = len)
 
-let read_buffer = String.create 1024
+let read_buffer = Bytes.create 1024
 
-let rec read_n_bytes fd s ofs len =
-  let n = Unix.read fd s ofs len in
+let rec read_n_bytes fd buffer ofs len =
+  let n = Unix.read fd buffer ofs len in
   (* eprintf "read: len=%d got=%d@." len n; *)
   if n < 0 then begin eprintf "read_n_bytes: couldn't read@."; exit 1 end;
   if n = 0 then raise End_of_file;
-  if n < len then read_n_bytes fd s (ofs + n) (len -n)
+  if n < len then read_n_bytes fd buffer (ofs + n) (len -n)
 (*   assert (n = len) (\* FIXME: wait for other bytes to be available *\) *)
 
 let generic_receive get fd =
   read_n_bytes fd read_buffer 0 4;
-  let len, _ = get_int31 read_buffer 0 in
+  let len, _ = get_int31 (Bytes.to_string read_buffer) 0 in
   (* eprintf "generic_receive: len=%d@." len; *)
-  let s = if len <= 1024 then read_buffer else String.create len in
+  let s = if len <= 1024 then read_buffer else Bytes.create len in
   read_n_bytes fd s 0 len;
-  let t, _ = get s 0 in
+  let t, _ = get (Bytes.to_string s) 0 in
   t
 
 (* master *)
