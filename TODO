@@ -1,9 +1,11 @@
 
 - low-level API: remove_task
 
-
 - Cores: use pipes instead of local files (and thus select instead of wait)
   and compare performances
+
+- Cores: flush stdout and stderr before fork, to avoid duplicating
+  user messages
 
 - more fault tolerance:
 
@@ -25,7 +27,7 @@
 - minimal API (map, fold, etc.)
 
   . map : ...
- 
+
   . reduce : (a -> b) -> (c -> b -> c) -> c -> a list -> c
 
     assumption : the order of elements in the list is irrelevant
@@ -34,7 +36,7 @@
   . reduce2 : (a -> b) -> (b -> b -> b) -> b -> a list -> b list
 
     assumption : reduce is AC
-    variant    : reduce is A but not C 
+    variant    : reduce is A but not C
                  (still we can parallelize some adjacent reductions)
 
 - make Str generic wrt a type t together with 2 functions to/from_string
