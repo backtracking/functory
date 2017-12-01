@@ -1,4 +1,7 @@
 
+ o fixed compilation with OCaml 4.06 (using Bytes instead of String)
+   (contributed by haselwarter@github)
+
 version 0.5, January 20, 2012
 -----------------------------
  o Cores: now uses a queue, so that tasks are processed in the order they
