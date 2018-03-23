@@ -1,4 +1,6 @@
 
+version 0.6, March 23, 2018
+---------------------------
  o fixed compilation with OCaml 4.06 (using Bytes instead of String)
    (contributed by haselwarter@github)
 

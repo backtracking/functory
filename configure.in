@@ -65,8 +65,8 @@ OCAMLLIB=`$OCAMLC -v | tail -1 | cut -f 4 -d " "`
 echo "ocaml library path is $OCAMLLIB"
 
 case $OCAMLVERSION in
-  0.*|1.*|2.*|3.0**)
-        AC_MSG_ERROR(Functory requires Ocaml version 3.10.0 or higher);;
+  0.*|1.*|2.*|3.*|4.00*|4.01*)
+        AC_MSG_ERROR(You need OCaml 4.02 or higher);;
 esac
 
 

@@ -404,7 +404,7 @@ let create_sock_addr name port =
   let addr =
     try
       inet_addr_of_string name
-    with Failure "inet_addr_of_string" ->
+    with Failure _ ->
       try
 	(gethostbyname name).h_addr_list.(0)
       with Not_found ->
