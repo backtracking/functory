@@ -375,7 +375,7 @@ end = struct
   module S =
     Set.Make(struct
 	       type t = worker
-	       let compare w1 w2 = Pervasives.compare w1.worker_id w2.worker_id
+	       let compare w1 w2 = Stdlib.compare w1.worker_id w2.worker_id
 	     end)
   type t = S.t ref
   let create () = ref S.empty

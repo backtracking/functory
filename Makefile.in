@@ -37,7 +37,7 @@ EXE = @EXE@
 LIBEXT = @LIBEXT@
 OBJEXT = @OBJEXT@
 
-INCLUDES =
+INCLUDES =  @OCAMLINCLUDE@
 BFLAGS = -dtypes -g $(INCLUDES)
 OFLAGS = -dtypes $(INCLUDES) -for-pack Functory
 
